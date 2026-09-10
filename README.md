@@ -89,7 +89,21 @@ git clone https://github.com/patorinaldi/gastos.git
 cd gastos
 ```
 
+### Base de datos
+
+El backend se conecta a un PostgreSQL 17 real, también en desarrollo (`ddl-auto: validate`
+no admite bases en memoria). El repositorio incluye un `compose.yaml` que lo levanta:
+
+```bash
+docker compose up -d          # Postgres en localhost:5432 (db/user/pass: gastos)
+```
+
+Los datos persisten en un volumen entre reinicios. Mientras el esquema todavía cambia de
+forma destructiva, `docker compose down -v` borra el volumen y arranca de cero.
+
 ### Backend
+
+Con la base levantada:
 
 ```bash
 cd backend
@@ -103,7 +117,8 @@ curl http://localhost:8080/actuator/health
 # {"groups":["liveness","readiness"],"status":"UP"}
 ```
 
-Compilar y ejecutar la batería de pruebas:
+Compilar y ejecutar la batería de pruebas (no necesita el `compose.yaml`: las pruebas de
+integración levantan su propio PostgreSQL con Testcontainers, pero sí requieren Docker):
 
 ```bash
 cd backend

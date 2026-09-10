@@ -4,6 +4,14 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gastos}
+    username: ${DB_USERNAME:gastos}
+    password: ${DB_PASSWORD:gastos}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
 
 # Solo /actuator/health queda expuesto, y sin detalle de componentes: el detalle
 # revela nombres de host, esquemas y estado interno de las dependencias.
