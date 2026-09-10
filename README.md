@@ -115,8 +115,7 @@ El empaquetado deja el ejecutable en `backend/target/gastos-<versión>.jar`, que
 
 ### Frontend
 
-Pendiente: el esqueleto del cliente web se incorpora en la tarea 9 de la Iteración 1. Las
-instrucciones se agregan acá en ese momento.
+Pendiente
 
 ---
 
