@@ -6,8 +6,14 @@ spring:
       enabled: true
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gastos}
-    username: ${DB_USERNAME:gastos}
-    password: ${DB_PASSWORD:gastos}
+    username: ${DB_API_USERNAME:gastos_api}
+    password: ${DB_API_PASSWORD:gastos_api}
+  flyway:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gastos}
+    user: ${DB_ADMIN_USERNAME:gastos}
+    password: ${DB_ADMIN_PASSWORD:gastos}
+    placeholders:
+      api_password: ${DB_API_PASSWORD:gastos_api}
   jpa:
     hibernate:
       ddl-auto: validate
