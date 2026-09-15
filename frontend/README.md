@@ -1,6 +1,11 @@
 # Cliente web
 
-Reservado para el cliente web: React 19 + TypeScript + Vite, build estático apto para CDN.
+React 19 + TypeScript + Vite, build estático apto para CDN. La instalación y ejecución local
+están en el [README principal](../README.md#frontend).
 
-Las instrucciones de instalación y ejecución local se agregan al
-[README principal](../README.md) junto con ese esqueleto.
+| Ruta | Contenido |
+|---|---|
+| `src/router.tsx` | Rutas de la aplicación |
+| `src/layouts/` | Shell de la app: layout y navegación de las pantallas autenticadas |
+| `src/pages/` | Una pantalla por ruta |
+| `src/config.ts` | Configuración leída del entorno (`VITE_API_URL`) |
