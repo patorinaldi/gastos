@@ -32,3 +32,10 @@ management:
 
 server:
   port: 8080
+
+# Implementación de EmailSender. "console" escribe los correos en el log en lugar de
+# enviarlos: sirve solo en desarrollo, porque ahí quedan los enlaces con tokens de
+# verificación y recuperación de contraseña.
+gastos:
+  email:
+    sender: ${EMAIL_SENDER:console}
