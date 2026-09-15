@@ -15,7 +15,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     /**
      * Búsqueda de login. Case-insensitive: Spring Data JPA traduce IgnoreCase a
      * {@code upper(email) = upper(?1)}, por eso el índice único
-     * {@code users_email_key} (V3) está sobre {@code upper(email)}.
+     * {@code users_email_key} (V2.5) está sobre {@code upper(email)}.
      */
     Optional<User> findByEmailIgnoreCase(String email);
 

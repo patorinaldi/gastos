@@ -1,4 +1,4 @@
--- V3 · Índice de email alineado con la función que usa Spring Data JPA
+-- V2.5 · Índice de email alineado con la función que usa Spring Data JPA
 --
 -- findByEmailIgnoreCase / existsByEmailIgnoreCase (UserRepository) generan JPQL
 -- con upper(email) = upper(?1): Spring Data JPA usa JpqlQueryTemplates.UPPER como
