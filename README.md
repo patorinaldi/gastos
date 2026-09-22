@@ -107,8 +107,14 @@ Con la base levantada:
 
 ```bash
 cd backend
-./mvnw spring-boot:run          # en Windows: mvnw.cmd spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+# en Windows: mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev
 ```
+
+El perfil `dev` fija `gastos.email.sender=console`: los correos se escriben en el log en lugar
+de enviarse. Sin ese perfil, y sin la variable `EMAIL_SENDER`, la aplicación no arranca. Es
+deliberado: evita que un despliegue distraído quede escribiendo en el log los enlaces de
+verificación con sus tokens.
 
 La API queda en `http://localhost:8080`. Para comprobar que arrancó:
 
