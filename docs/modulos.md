@@ -10,7 +10,8 @@ reglas hace cumplir y de qué depende. Los identificadores `RF-xx`, `RNF-xx` y `
 
 - Prefijo común `/api`. Todos los recursos se sirven bajo él.
 - Autenticación por token de sesión en `Authorization: Bearer <token>`, salvo el registro, el
-  inicio de sesión, la verificación de correo y el punto de verificación de estado.
+  inicio de sesión, la verificación de correo, la recuperación de contraseña y el punto de
+  verificación de estado.
 - El hogar nunca viaja en la petición. Se toma del token de sesión y se propaga al contexto de la
   base. Un cliente no puede pedir datos de otro hogar porque no tiene forma de nombrarlo.
 - Los errores se devuelven con `application/problem+json` (RFC 9457), resueltos de forma
@@ -18,16 +19,16 @@ reglas hace cumplir y de qué depende. Los identificadores `RF-xx`, `RNF-xx` y `
 - Los importes se serializan como cadena decimal con dos decimales, para no perder precisión en el
   tránsito por JSON (RD-01).
 
-## Estado al 21/09/2026
+## Estado al 23/09/2026
 
 | Módulo | Responsable | Estado |
 |---|---|---|
 | M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Pendiente |
-| M2 Hogares | Elian | Pendiente, |
-| M3 Gastos | Elian | Pendiente, |
+| M2 Hogares | Elian | Pendiente |
+| M3 Gastos | Elian | Pendiente |
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
-| M5 Análisis | Juan | Pendiente, |
-| M6 API de integración | Juan | Pendiente, |
+| M5 Análisis | Juan | Pendiente |
+| M6 API de integración | Juan | Pendiente |
 | M7 Interfaz de usuario | Elian, Pato | Esqueleto implementado, pantallas pendientes |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
 
@@ -70,9 +71,13 @@ POST /api/auth/login
 
 **Decisiones de diseño.** El identificador del hogar viaja como atributo dentro del token de
 sesión. Así, cada petición autenticada trae consigo el contexto de aislamiento sin necesidad de una
-consulta adicional. El registro y la creación del hogar son una sola transacción (RN-11).
+consulta adicional. El registro y la creación del hogar son una sola transacción (RN-11): el alta
+crea el hogar, fija su identificador en el contexto de la transacción y recién entonces siembra el
+catálogo inicial de M4, que se inserta bajo las políticas de aislamiento y por lo tanto exige un
+hogar activo.
 
-Depende de M8 (esquema, propagación de contexto) y de M2 (hogar creado en el alta).
+Depende de M8 (esquema, propagación de contexto). El hogar que crea el alta es el que después
+administra M2.
 
 ---
 
@@ -107,7 +112,7 @@ POST /api/household/invitations/redeem
 del usuario autenticado es el único al que puede acceder, y nombrarlo en la ruta sugeriría que
 existe la posibilidad de pedir otro.
 
-Depende de M1 (identidad) y M8 (aislamiento).
+Depende de M1 (identidad; el hogar se crea en el alta) y M8 (aislamiento).
 
 ---
 
@@ -165,7 +170,7 @@ Requisitos: RF-19 a RF-24. Reglas: RN-09, RN-10, RN-12, RN-13.
 | `GET` | `/api/categories` | Catálogo de categorías del hogar. | Sesión |
 | `POST` | `/api/categories` | Crea una categoría. | Sesión |
 | `PATCH` | `/api/categories/{id}` | Renombra una categoría. | Sesión |
-| `DELETE` | `/api/categories/{id}` | Elimina una categoría sin gastos asociados. | Sesión |
+| `DELETE` | `/api/categories/{id}` | Elimina una categoría sin gastos ni reglas asociados. | Sesión |
 | `GET` | `/api/category-rules` | Reglas patrón-categoría del hogar. | Sesión |
 | `POST` | `/api/category-rules` | Crea una regla y reclasifica retroactivamente. | Sesión |
 | `DELETE` | `/api/category-rules/{id}` | Elimina una regla. | Sesión |
@@ -306,8 +311,8 @@ RNF-25, RNF-27, RNF-28.
 | Rol de aplicación restringido | Implementado | `gastos_api`, sin privilegio de omisión de políticas ni de superusuario. |
 | Propagación del contexto de hogar | Implementado | Se fija al inicio de cada transacción, con alcance transaccional para que no se filtre entre peticiones al devolver la conexión al pool. |
 | Entidades y repositorios | Implementado | Cinco entidades validadas contra el esquema al arrancar. |
-| Pruebas de aislamiento | Implementado | Tres tablas por cuatro operaciones por tres contextos. |
-| Emisor de correo | Implementado | Interfaz propia con implementación de desarrollo que escribe a consola. |
+| Pruebas de aislamiento | Implementado | Las tres tablas con aislamiento, por lectura, alta, modificación y baja, en los tres contextos: sin hogar activo, con el ajeno y con el propio. |
+| Emisor de correo | En revisión | Interfaz propia con implementación de desarrollo que escribe a consola. |
 | Manejo global de errores | Pendiente | Respuestas `problem+json` centralizadas. |
 | Integración continua | Pendiente | Compilación y pruebas bloqueantes en cada PR. |
 | Despliegue | Pendiente | API, base gestionada y cliente web en línea. |
@@ -319,6 +324,8 @@ componentes. El detalle revelaría nombres de host, esquemas y estado de las dep
 
 ## Dependencias entre módulos
 
+`X → Y` se lee «Y depende de X».
+
 ```
 M8 Plataforma      →  base de todos
 M1 Identidad       →  M2, M3, M4, M5, M6
@@ -327,3 +334,6 @@ M3 Gastos          →  M4, M5, M6
 M4 Categorización  →  M3 (resolución en el alta), M5
 M7 Interfaz        →  consume M1 a M6
 ```
+
+M3 y M4 se necesitan mutuamente y es deliberado: el alta de un gasto pide a M4 que resuelva la
+categoría, y el alta de una regla en M4 reclasifica los gastos de M3 que quedaron en la bandeja.
