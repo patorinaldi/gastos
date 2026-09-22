@@ -129,7 +129,7 @@ Requisitos: RF-13 a RF-18. Reglas: RN-06, RN-07, RN-08, RN-12.
 | `GET` | `/api/expenses` | Listado paginado con filtros combinables. | Sesión |
 | `GET` | `/api/expenses/{id}` | Detalle de un gasto. | Sesión |
 | `PATCH` | `/api/expenses/{id}` | Modifica campos de un gasto. | Sesión |
-| `DELETE` | `/api/expenses/{id}` | Elimina un gasto. | Sesión |
+| `DELETE` | `/api/expenses/{id}` | Da de baja un gasto. La baja es lógica. | Sesión |
 
 Parámetros del listado:
 
@@ -154,6 +154,15 @@ POST /api/expenses
 responsable sale del token y la categoría la resuelve M4 (RF-14). Todo lo demás es opcional. Eso es
 lo que baja el costo de registrar un gasto, que es el problema central que el proyecto ataca.
 
+**Las bajas son lógicas.** Un gasto dado de baja deja de aparecer en listados y análisis, pero la
+fila se conserva. En una aplicación de dinero, el borrado físico destruye el historial sobre el que
+después se pide explicación: quién cargó qué, cuándo y por cuánto. La consecuencia es que todas las
+consultas de gastos filtran las filas dadas de baja.
+
+**El conjunto de medios de pago es cerrado.** Lo garantiza un `CHECK` en la base, así que sumar uno
+nuevo requiere una migración. Es deliberado por ahora: evita que cada cliente invente su propia
+variante y que el análisis por medio de pago se fragmente.
+
 Depende de M1, M4 (resolución de categoría) y M8.
 
 ---
@@ -170,7 +179,7 @@ Requisitos: RF-19 a RF-24. Reglas: RN-09, RN-10, RN-12, RN-13.
 | `GET` | `/api/categories` | Catálogo de categorías del hogar. | Sesión |
 | `POST` | `/api/categories` | Crea una categoría. | Sesión |
 | `PATCH` | `/api/categories/{id}` | Renombra una categoría. | Sesión |
-| `DELETE` | `/api/categories/{id}` | Elimina una categoría sin gastos ni reglas asociados. | Sesión |
+| `DELETE` | `/api/categories/{id}` | Da de baja una categoría. La baja es lógica. | Sesión |
 | `GET` | `/api/category-rules` | Reglas patrón-categoría del hogar. | Sesión |
 | `POST` | `/api/category-rules` | Crea una regla y reclasifica retroactivamente. | Sesión |
 | `DELETE` | `/api/category-rules/{id}` | Elimina una regla. | Sesión |
@@ -184,10 +193,27 @@ ni costo por consulta.
 Los patrones se almacenan en minúscula y sin tildes. Se evitan patrones cortos o palabras comunes
 que coincidirían con comercios no relacionados.
 
+**Cuando coinciden varias reglas gana la del patrón más largo.** Con los patrones `super` y
+`supermercado`, el comercio "Super Mercado Rosario" se resuelve por el segundo; con `uber` y
+`uber eats`, un pedido de comida no queda clasificado como transporte. El criterio es que el patrón
+más específico manda, que es lo que el usuario espera al agregar una regla más precisa sobre un
+comercio que ya estaba cubierto. Si dos patrones empatan en longitud, gana la regla más antigua, de
+modo que el resultado no cambia al agregar reglas nuevas. No hace falta una columna de prioridad:
+el orden se deduce del patrón, y no hay un orden que el usuario deba mantener a mano.
+
 **Catálogo inicial.** Cada hogar nuevo recibe 10 categorías y 43 reglas de comercios habituales en
 Argentina, sembradas por la migración V3. Dos categorías, Ropa y Educación, se siembran sin reglas.
 No hay patrones de comercio confiables para ellas, y quedan disponibles para asignar a mano desde
 la bandeja.
+
+**Renombrar una categoría alcanza a todos sus gastos.** Los gastos la referencian por
+identificador y el nombre vive en una sola fila, así que el cambio se refleja en el historial
+completo sin ninguna actualización adicional. No pueden quedar dos nombres para la misma categoría.
+
+**Dar de baja una categoría también es una baja lógica.** Los gastos que la usaban conservan su
+categoría en el historial y en el análisis del período correspondiente; la categoría deja de
+ofrecerse para nuevas asignaciones y sus reglas dejan de aplicarse. Las reglas, en cambio, se
+eliminan físicamente: no son un hecho económico, sino una preferencia de clasificación.
 
 Contratos principales:
 
@@ -313,6 +339,8 @@ RNF-25, RNF-27, RNF-28.
 | Entidades y repositorios | Implementado | Cinco entidades validadas contra el esquema al arrancar. |
 | Pruebas de aislamiento | Implementado | Las tres tablas con aislamiento, por lectura, alta, modificación y baja, en los tres contextos: sin hogar activo, con el ajeno y con el propio. |
 | Emisor de correo | En revisión | Interfaz propia con implementación de desarrollo que escribe a consola. |
+| Migraciones complementarias | Pendiente | Tokens de verificación y restablecimiento, invitaciones y tokens de cliente máquina: las tablas que necesitan los puntos de entrada de M1 y M2. |
+| Baja lógica | Pendiente | Marca de baja en gastos y categorías, filtrado en todas las consultas e índices únicos parciales para que un nombre dado de baja no siga ocupando el suyo. |
 | Manejo global de errores | Pendiente | Respuestas `problem+json` centralizadas. |
 | Integración continua | Pendiente | Compilación y pruebas bloqueantes en cada PR. |
 | Despliegue | Pendiente | API, base gestionada y cliente web en línea. |
