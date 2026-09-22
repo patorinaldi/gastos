@@ -1,0 +1,4 @@
+# Perfil de desarrollo. Arranca con: ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+gastos:
+  email:
+    sender: console

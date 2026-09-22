@@ -33,9 +33,8 @@ management:
 server:
   port: 8080
 
-# Implementación de EmailSender. "console" escribe los correos en el log en lugar de
-# enviarlos: sirve solo en desarrollo, porque ahí quedan los enlaces con tokens de
-# verificación y recuperación de contraseña.
-gastos:
-  email:
-    sender: ${EMAIL_SENDER:console}
+# La implementación de EmailSender la elige gastos.email.sender (variable EMAIL_SENDER).
+# A propósito no tiene valor por defecto: "console" escribe los correos en el log, con sus
+# enlaces y tokens de un solo uso, así que un despliegue que se olvide de definirla tiene que
+# fallar al arrancar y no quedar registrando tokens. En desarrollo la fija el perfil dev
+# (application-dev.yaml) y en las pruebas de integración, IntegrationTest.
