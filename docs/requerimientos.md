@@ -50,7 +50,7 @@ sacrificable), `Podría` (deseable).
 | RF-13 | El sistema debe permitir registrar un gasto indicando únicamente importe y comercio. | Debe | Pendiente |
 | RF-14 | El sistema debe asignar automáticamente al gasto la fecha del día y el usuario autenticado como responsable, cuando no se indiquen explícitamente. | Debe | Pendiente |
 | RF-15 | El sistema debe permitir editar cualquier campo de un gasto del propio hogar. | Debe | Pendiente |
-| RF-16 | El sistema debe permitir eliminar un gasto del propio hogar. | Debe | Pendiente |
+| RF-16 | El sistema debe permitir la baja lógica de un gasto del propio hogar. El gasto deja de figurar en listados y análisis, pero se conserva. | Debe | Pendiente |
 | RF-17 | El sistema debe listar los gastos del hogar de forma paginada, ordenados por fecha descendente. | Debe | Pendiente |
 | RF-18 | El sistema debe permitir filtrar el listado de gastos por período, categoría, integrante y medio de pago, de forma combinable. | Debe | Pendiente |
 
@@ -59,11 +59,11 @@ sacrificable), `Podría` (deseable).
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
 | RF-19 | El sistema debe sembrar en cada hogar nuevo un catálogo inicial de categorías y reglas. | Debe | Implementado |
-| RF-20 | El sistema debe resolver la categoría de un gasto en el alta, aplicando las reglas patrón-categoría del hogar sobre el nombre del comercio. | Debe | Pendiente |
+| RF-20 | El sistema debe resolver la categoría de un gasto en el alta, aplicando las reglas patrón-categoría del hogar sobre el nombre del comercio. Si coinciden varias, aplica la de patrón más largo y, a igual longitud, la más antigua. | Debe | Pendiente |
 | RF-21 | El sistema debe dejar el gasto sin categoría cuando ningún patrón coincide, en lugar de asignar una categoría por defecto. | Debe | Pendiente |
 | RF-22 | El sistema debe ofrecer un listado de los gastos sin categoría del hogar (bandeja de no categorizados). | Debe | Pendiente |
 | RF-23 | El sistema debe permitir crear una regla patrón-categoría y aplicarla retroactivamente a los gastos sin categoría que coincidan. | Debe | Pendiente |
-| RF-24 | El sistema debe permitir administrar el catálogo de categorías del hogar (alta, renombrado, baja). | Debería | Pendiente |
+| RF-24 | El sistema debe permitir administrar el catálogo de categorías del hogar (alta, renombrado y baja lógica). | Debería | Pendiente |
 
 ### M5. Análisis
 
@@ -197,9 +197,9 @@ queda sin módulo que lo implemente.
 |---|---|---|---|
 | M1 Identidad y acceso | RF-01 a RF-07 | RN-01, RN-02, RN-03, RN-11 | RNF-05, RNF-06, RNF-08 |
 | M2 Hogares | RF-08 a RF-12 | RN-04, RN-05 | RNF-01, RNF-02 |
-| M3 Gastos | RF-13 a RF-18 | RN-06, RN-07, RN-08 | RNF-10, RNF-12, RNF-13 |
-| M4 Categorización | RF-19 a RF-24 | RN-09, RN-10, RN-12, RN-13 | RNF-13 |
-| M5 Análisis | RF-25 a RF-29 | RN-08, RN-14 | RNF-11, RNF-13 |
+| M3 Gastos | RF-13 a RF-18 | RN-06, RN-07, RN-08, RN-16 | RNF-10, RNF-12, RNF-13 |
+| M4 Categorización | RF-19 a RF-24 | RN-09, RN-10, RN-12, RN-13, RN-16, RN-17 | RNF-13 |
+| M5 Análisis | RF-25 a RF-29 | RN-08, RN-14, RN-16 | RNF-11, RNF-13 |
 | M6 API de integración | RF-30 a RF-32 | RN-06, RN-07 | RNF-10 |
 | M7 Interfaz de usuario | RF-33 a RF-38 | ninguna | RNF-14 a RNF-17 |
 | M8 Plataforma y calidad | RF-39 a RF-42 | RN-15 | RNF-01 a RNF-04, RNF-18, RNF-19, RNF-22 a RNF-25 |
