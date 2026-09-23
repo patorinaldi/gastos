@@ -169,15 +169,23 @@ ningún gasto ya clasificado.
 
 ### RN-09. El nombre de categoría es único dentro del hogar
 
-Sin distinguir mayúsculas. `Comida` y `comida` son la misma categoría. La unicidad rige entre las
-categorías activas: una categoría dada de baja no bloquea su nombre (RN-16).
+Sin distinguir mayúsculas. `Comida` y `comida` son la misma categoría. La unicidad rige solo entre
+las categorías activas: una categoría dada de baja no bloquea su nombre (RN-16), y el hogar puede
+crear otra con el mismo nombre.
 
-**Nivel.** Motor. Índice único `categories_household_name_key` sobre `(household_id, lower(name))`.
-Hoy abarca todas las filas. Con la baja lógica pasa a ser un índice parcial sobre las categorías
-activas.
+**Nivel.** Motor. Índice único parcial `categories_household_name_key` sobre
+`(household_id, lower(name))`, con la condición `where deleted_at is null`. Las filas dadas de baja
+quedan fuera del índice, así que pueden repetir el nombre entre sí y con la categoría activa.
 
 **Motivo.** Las categorías duplicadas por capitalización parten el gasto de un mismo concepto en
-dos filas del análisis, que es el problema que el sistema quiere resolver.
+dos filas del análisis, que es el problema que el sistema quiere resolver. El índice es parcial
+porque un índice total haría que una categoría dada de baja siguiera ocupando su nombre para
+siempre: el hogar no podría volver a crear `Transporte` después de dar de baja la anterior, y la
+baja lógica se sentiría como un borrado que no libera nada.
+
+**Consecuencia.** Dos filas pueden tener el mismo nombre en el mismo hogar, siempre que como mucho
+una esté activa. Los gastos siguen apuntando por identificador a la categoría que tenían, así que
+el historial distingue la categoría vieja de la nueva aunque se llamen igual.
 
 ### RN-10. El patrón de regla es único dentro del hogar
 
