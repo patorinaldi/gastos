@@ -135,8 +135,33 @@ todas con `on delete restrict`.
 
 **Motivo.** Es defensa en capas. Aunque el aislamiento por políticas fallara o el código de negocio
 tuviera un error, la clave compuesta impide que un gasto del hogar A quede apuntando a una
-categoría del hogar B. El `restrict` evita que eliminar una categoría borre el historial de gastos
-asociado.
+categoría del hogar B. El `restrict` es una segunda barrera: la aplicación no borra físicamente
+gastos ni categorías (RN-16), y si alguien lo intentara por fuera de ella, la base rechaza eliminar
+una categoría que todavía tiene gastos.
+
+### RN-16. Gastos y categorías se dan de baja de forma lógica
+
+Dar de baja un gasto o una categoría marca la fila como dada de baja y la conserva. Nunca se borra
+físicamente. Las reglas de categorización, en cambio, sí se eliminan físicamente.
+
+Consecuencias de cada baja:
+
+- **Gasto dado de baja.** Deja de aparecer en listados, en la bandeja de no categorizados y en el
+  análisis. La fila conserva importe, comercio, responsable y fechas.
+- **Categoría dada de baja.** Deja de ofrecerse para nuevas asignaciones y sus reglas dejan de
+  aplicarse. Los gastos que ya la tenían la conservan, en el historial y en el análisis del período
+  que corresponda.
+- **Nombre liberado.** Un nombre de categoría dado de baja no sigue ocupando su lugar: el hogar
+  puede crear otra categoría activa con el mismo nombre (ver RN-09).
+
+**Nivel.** Ambos. La aplicación filtra las filas dadas de baja en todas las consultas de gastos y
+categorías. El motor sostiene la unicidad solo entre filas activas, con índices únicos parciales.
+
+**Motivo.** En una aplicación de dinero, el borrado físico destruye el historial sobre el que
+después se pide explicación: quién cargó qué, cuándo y por cuánto. Con una categoría pasa lo mismo:
+borrarla dejaría sin clasificar gastos de meses ya analizados. Las reglas no tienen ese problema
+porque no son un hecho económico sino una preferencia de clasificación, y eliminar una no altera
+ningún gasto ya clasificado.
 
 ---
 
@@ -144,21 +169,33 @@ asociado.
 
 ### RN-09. El nombre de categoría es único dentro del hogar
 
-Sin distinguir mayúsculas. `Comida` y `comida` son la misma categoría.
+Sin distinguir mayúsculas. `Comida` y `comida` son la misma categoría. La unicidad rige solo entre
+las categorías activas: una categoría dada de baja no bloquea su nombre (RN-16), y el hogar puede
+crear otra con el mismo nombre.
 
-**Nivel.** Motor. Índice único `categories_household_name_key` sobre `(household_id, lower(name))`.
+**Nivel.** Motor. Índice único parcial `categories_household_name_key` sobre
+`(household_id, lower(name))`, con la condición `where deleted_at is null`. Las filas dadas de baja
+quedan fuera del índice, así que pueden repetir el nombre entre sí y con la categoría activa.
 
 **Motivo.** Las categorías duplicadas por capitalización parten el gasto de un mismo concepto en
-dos filas del análisis, que es el problema que el sistema quiere resolver.
+dos filas del análisis, que es el problema que el sistema quiere resolver. El índice es parcial
+porque un índice total haría que una categoría dada de baja siguiera ocupando su nombre para
+siempre: el hogar no podría volver a crear `Transporte` después de dar de baja la anterior, y la
+baja lógica se sentiría como un borrado que no libera nada.
+
+**Consecuencia.** Dos filas pueden tener el mismo nombre en el mismo hogar, siempre que como mucho
+una esté activa. Los gastos siguen apuntando por identificador a la categoría que tenían, así que
+el historial distingue la categoría vieja de la nueva aunque se llamen igual.
 
 ### RN-10. El patrón de regla es único dentro del hogar
 
 **Nivel.** Motor. Índice único `category_rules_household_pattern_key` sobre
 `(household_id, lower(pattern))`.
 
-**Motivo.** Dos reglas con el mismo patrón apuntando a categorías distintas harían que la
-clasificación dependiera del orden de evaluación, y el motor dejaría de producir siempre el mismo
-resultado para la misma entrada.
+**Motivo.** Dos reglas con el mismo patrón apuntando a categorías distintas no tendrían forma de
+desempatarse.
+Patrones distintos que coinciden con el mismo comercio sí pueden convivir, y los resuelve
+RN-17.
 
 ### RN-12. Si ningún patrón coincide, el gasto queda sin categoría
 
@@ -173,8 +210,9 @@ enseñándole al sistema un comercio por vez.
 
 ### RN-13. Crear una regla reclasifica retroactivamente, solo los gastos sin categoría
 
-Al dar de alta una regla, se aplica a los gastos del hogar que coincidan con el patrón y que no
-tengan categoría asignada. No se reasignan los que ya la tienen.
+Al dar de alta una regla, se aplica a los gastos activos del hogar que coincidan con el patrón y
+que no tengan categoría asignada. No se reasignan los que ya la tienen, ni los dados de baja
+(RN-16).
 
 **Nivel.** Aplicación.
 
@@ -182,6 +220,29 @@ tengan categoría asignada. No se reasignan los que ya la tienen.
 golpe. Reasignar gastos ya clasificados alteraría análisis que el usuario ya dio por buenos,
 incluso los que corrigió a mano. Una clasificación manual es una decisión explícita y una regla
 nueva no debe sobrescribirla.
+
+
+### RN-17. Si coinciden varias reglas, gana la del patrón más largo
+
+Cuando más de una regla del hogar coincide con el comercio, se aplica la de patrón más largo. Si dos
+patrones empatan en longitud, se aplica la regla más antigua.
+
+Ejemplos:
+
+- Con los patrones `super` y `supermercado`, el comercio "Super Mercado Rosario" se resuelve por
+  `supermercado`.
+- Con `uber` y `uber eats`, un pedido de comida no queda clasificado como transporte.
+
+**Nivel.** Aplicación.
+
+**Motivo.** El patrón más específico manda, que es lo que el usuario espera cuando agrega una regla
+más precisa sobre un comercio que ya estaba cubierto. El desempate por antigüedad hace que agregar
+una regla nueva nunca cambie cómo se resuelve un comercio que ya tenía un ganador con un patrón de
+la misma longitud. No hace falta una columna de prioridad: el orden se deduce del patrón y de la
+fecha de alta, y no hay un orden que el usuario deba mantener a mano.
+
+**Relación con otras reglas.** Solo compiten las reglas de categorías activas (RN-16). Para un
+patrón idéntico no hay desempate posible, y por eso RN-10 lo impide.
 
 ---
 
@@ -234,3 +295,5 @@ inesperado en producción.
 | RN-13 | La regla nueva reclasifica solo lo no categorizado | Aplicación | M4 |
 | RN-14 | La media histórica ignora los meses sin registro | Aplicación | M5 |
 | RN-15 | El esquema pertenece a las migraciones | Aplicación | M8 |
+| RN-16 | Gastos y categorías se dan de baja de forma lógica | Ambos | M3, M4 |
+| RN-17 | Entre reglas que coinciden gana el patrón más largo | Aplicación | M4 |
