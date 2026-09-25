@@ -157,6 +157,18 @@ Consecuencias de cada baja:
 **Nivel.** Ambos. La aplicación filtra las filas dadas de baja en todas las consultas de gastos y
 categorías. El motor sostiene la unicidad solo entre filas activas, con índices únicos parciales.
 
+**Cómo se registra.** `expenses` y `categories` llevan tres columnas:
+
+- `active`: la marca de baja. Es la condición que filtra la aplicación y la que usan los índices
+  parciales.
+- `deleted_at`: el momento de la baja. Es null mientras la fila está activa.
+- `updated_at`: la última modificación de la fila, sea o no la baja.
+
+`active` y `deleted_at` dicen lo mismo de dos maneras. Un `check` en cada tabla
+(`expenses_active_deleted_at_consistent`, `categories_active_deleted_at_consistent`) impide que se
+contradigan: una fila activa no tiene fecha de baja y una dada de baja siempre la tiene.
+`updated_at` no alcanza como fecha de baja porque cualquier edición posterior la pisa.
+
 **Motivo.** En una aplicación de dinero, el borrado físico destruye el historial sobre el que
 después se pide explicación: quién cargó qué, cuándo y por cuánto. Con una categoría pasa lo mismo:
 borrarla dejaría sin clasificar gastos de meses ya analizados. Las reglas no tienen ese problema
@@ -174,7 +186,7 @@ las categorías activas: una categoría dada de baja no bloquea su nombre (RN-16
 crear otra con el mismo nombre.
 
 **Nivel.** Motor. Índice único parcial `categories_household_name_key` sobre
-`(household_id, lower(name))`, con la condición `where deleted_at is null`. Las filas dadas de baja
+`(household_id, lower(name))`, con la condición `where active`. Las filas dadas de baja
 quedan fuera del índice, así que pueden repetir el nombre entre sí y con la categoría activa.
 
 **Motivo.** Las categorías duplicadas por capitalización parten el gasto de un mismo concepto en
