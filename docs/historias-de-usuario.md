@@ -2,9 +2,20 @@
 
 Proyecto Gastos. Trabajo Final Integrador, TUP UTN.
 
-Las historias describen la funcionalidad desde la perspectiva de quien la usa; los requisitos de
-[requerimientos.md](requerimientos.md) la describen desde la del sistema. Ambos documentos cubren
-el mismo alcance y se referencian mutuamente.
+Las historias describen la funcionalidad desde la perspectiva de quien la usa, y los requisitos de
+[requerimientos.md](requerimientos.md), desde la del sistema. Las historias cubren toda la
+funcionalidad visible para el usuario. Dos grupos de requisitos no tienen historia propia, a
+propósito:
+
+- **Interfaz** (RF-33 a RF-36 y RF-38, módulo M7). Describen las pantallas por las que pasan las
+  historias de los demás módulos, y su comportamiento ya está en esas historias. Por ejemplo, las
+  pantallas de invitación de RF-38 son la parte visible de HU-05 y HU-06.
+- **Plataforma** (RF-39 a RF-42, módulo M8). Migraciones, manejo de errores, verificación de estado
+  e integración continua. Ningún usuario las pide: se verifican con pruebas automatizadas y no con
+  criterios de aceptación.
+
+Los identificadores son estables. Las historias que se agregaron después de la primera versión
+reciben el número siguiente, aunque se ubiquen en la sección de su módulo.
 
 Cada historia se redactó siguiendo **INVEST** (Independiente, Negociable, Valiosa, Estimable,
 Pequeña, Testeable) y sus criterios de aceptación están en formato **BDD (Given-When-Then)**, de
@@ -128,6 +139,32 @@ Escenario: No se revela si el correo existe
   Entonces el sistema responde igual que si existiera
 ```
 
+### HU-17 · Administrar los tokens de mis automatizaciones
+
+> **Como** integrante,
+> **quiero** emitir un token para una automatización de mi teléfono y poder revocarlo
+> **para** registrar gastos sin abrir la aplicación, y cortar el acceso si pierdo el dispositivo.
+
+*Requisitos: RF-07, RF-31*
+
+```gherkin
+Escenario: Emitir un token
+  Dado que inicié sesión
+  Cuando emito un token para mi automatización
+  Entonces el sistema me entrega un token de larga duración asociado a mi hogar y a mi usuario
+
+Escenario: El token solo sirve para la captura rápida
+  Dado que tengo un token de cliente máquina válido
+  Cuando lo uso para consultar el listado de gastos
+  Entonces el sistema rechaza la petición
+
+Escenario: Revocar un token
+  Dado que emití un token para un teléfono que perdí
+  Cuando lo revoco
+  Entonces las capturas que lleguen con ese token se rechazan
+  Y mi sesión web sigue activa
+```
+
 ---
 
 ## M2. Hogares
@@ -215,6 +252,25 @@ Escenario: Listado del hogar
   Cuando abro la pantalla del hogar
   Entonces veo los tres con su nombre
   Y no veo integrantes de ningún otro hogar
+```
+
+### HU-18 · Renombrar el hogar
+
+> **Como** integrante,
+> **quiero** cambiar el nombre de mi hogar
+> **para** reconocerlo en la aplicación cuando lo comparto con quienes conviven conmigo.
+
+*Requisitos: RF-11*
+
+```gherkin
+Escenario: Cambio de nombre
+  Dado que mi hogar se llama "Casa de Ana"
+  Cuando lo renombro a "Depto Palermo"
+  Entonces todos los integrantes ven el hogar con el nombre nuevo
+
+Escenario: Nombre vacío
+  Cuando intento dejar el hogar con un nombre formado solo por espacios
+  Entonces el sistema lo rechaza y conserva el nombre anterior
 ```
 
 ---
@@ -418,6 +474,45 @@ Escenario: Filtrado interactivo
   Entonces el total, los desgloses y el listado pasan a mostrar solo julio
 ```
 
+### HU-19 · Ver en qué comercios se gasta más
+
+> **Como** integrante,
+> **quiero** ver los comercios donde más gastamos en el período
+> **para** detectar consumos que se repiten y que quizás podamos reducir.
+
+*Requisitos: RF-28 · Reglas: RN-16*
+
+```gherkin
+Escenario: Ranking de comercios
+  Dado que en septiembre gastamos 30000 en "Carrefour", 12000 en "Shell" y 4000 en "Farmacity"
+  Cuando consulto los comercios con mayor gasto de septiembre
+  Entonces veo "Carrefour", "Shell" y "Farmacity" en ese orden, con su total acumulado
+
+Escenario: Los gastos dados de baja no cuentan
+  Dado que di de baja un gasto de 20000 en "Shell"
+  Cuando consulto los comercios con mayor gasto del período
+  Entonces el total de "Shell" no incluye ese gasto
+```
+
+### HU-20 · Filtrar el análisis
+
+> **Como** integrante,
+> **quiero** aplicar al análisis los mismos filtros que al listado de gastos
+> **para** responder preguntas puntuales, como cuánto gastó cada persona en supermercado.
+
+*Requisitos: RF-29, RF-18*
+
+```gherkin
+Escenario: Resumen filtrado por categoría
+  Dado que mi hogar tiene gastos de varias categorías en septiembre
+  Cuando consulto el resumen de septiembre filtrado por la categoría "Supermercado"
+  Entonces el total y el desglose por integrante solo incluyen gastos de "Supermercado"
+
+Escenario: Filtros combinados en el análisis
+  Cuando consulto el resumen filtrado por un integrante y por el medio de pago "Tarjeta"
+  Entonces el total y los desgloses solo incluyen los gastos que cumplen las dos condiciones
+```
+
 ---
 
 ## M6. API de integración
@@ -469,3 +564,7 @@ Escenario: Token revocado
 | HU-14 Evolución mensual | M5 | RF-27 | RN-14 |
 | HU-15 Filtrado interactivo | M5, M7 | RF-37 | ninguna |
 | HU-16 Captura desde el teléfono | M6 | RF-30 a RF-32 | RN-06, RN-07 |
+| HU-17 Tokens de automatización | M1, M6 | RF-07, RF-31 | ninguna |
+| HU-18 Renombrar el hogar | M2 | RF-11 | ninguna |
+| HU-19 Comercios con más gasto | M5 | RF-28 | RN-16 |
+| HU-20 Filtrar el análisis | M5 | RF-18, RF-29 | ninguna |
