@@ -199,7 +199,7 @@ Escenario: Listado del hogar
 > **quiero** registrar un gasto indicando solo el importe y el comercio
 > **para** que anotarlo no me cueste más que el gasto mismo.
 
-*Requisitos: RF-13, RF-14, RF-20 · Reglas: RN-06, RN-07, RN-12*
+*Requisitos: RF-13, RF-14, RF-20 · Reglas: RN-06, RN-07, RN-12, RN-17*
 
 ```gherkin
 Escenario: Alta mínima con categoría automática
@@ -208,6 +208,12 @@ Escenario: Alta mínima con categoría automática
   Entonces el gasto queda con fecha de hoy
   Y con mi usuario como responsable
   Y con la categoría "Supermercado"
+
+Escenario: Coinciden varias reglas y gana el patrón más largo
+  Dado que mi hogar tiene una regla que asocia "uber" a "Transporte"
+  Y otra que asocia "uber eats" a "Restaurantes y delivery"
+  Cuando registro un gasto en "Uber Eats"
+  Entonces el gasto queda con la categoría "Restaurantes y delivery"
 
 Escenario: Comercio sin regla
   Dado que ninguna regla de mi hogar coincide con "Almacén de Pepe"
@@ -226,7 +232,7 @@ Escenario: Importe inválido
 > **quiero** editar o dar de baja un gasto ya cargado
 > **para** arreglar un error de tipeo sin que quede sucio el análisis.
 
-*Requisitos: RF-15, RF-16 · Reglas: RN-06, RN-07, RN-08*
+*Requisitos: RF-15, RF-16 · Reglas: RN-06, RN-07, RN-08, RN-16*
 
 ```gherkin
 Escenario: Edición
@@ -235,6 +241,12 @@ Escenario: Edición
   Entonces el gasto queda actualizado
   Y los totales del período lo reflejan
 
+Escenario: Baja de un gasto
+  Dado que cargué por error un gasto que no ocurrió
+  Cuando lo doy de baja
+  Entonces deja de figurar en el listado, en la bandeja y en el análisis
+  Y el gasto se conserva con su importe, su comercio y su responsable
+
 Escenario: Puedo corregir gastos de otro integrante
   Dado que un gasto lo cargó otro integrante de mi hogar
   Cuando lo edito
@@ -242,7 +254,7 @@ Escenario: Puedo corregir gastos de otro integrante
 
 Escenario: No puedo tocar gastos de otro hogar
   Dado que conozco el identificador de un gasto de otro hogar
-  Cuando intento editarlo o eliminarlo
+  Cuando intento editarlo o darlo de baja
   Entonces el sistema responde como si no existiera
 ```
 
@@ -301,10 +313,10 @@ Escenario: Patrón duplicado
 ### HU-12 · Administrar el catálogo de categorías
 
 > **Como** integrante,
-> **quiero** agregar, renombrar o quitar categorías
+> **quiero** agregar, renombrar o dar de baja categorías
 > **para** que reflejen cómo gasta mi casa y no una lista genérica.
 
-*Requisitos: RF-24 · Reglas: RN-09*
+*Requisitos: RF-24 · Reglas: RN-09, RN-16*
 
 ```gherkin
 Escenario: Nombre duplicado
@@ -312,10 +324,12 @@ Escenario: Nombre duplicado
   Cuando intento crear "supermercado"
   Entonces el sistema la rechaza por duplicada
 
-Escenario: Baja con gastos asociados
+Escenario: Baja de una categoría con gastos asociados
   Dado que la categoría "Transporte" tiene gastos asociados
-  Cuando intento eliminarla
-  Entonces el sistema lo impide para no perder el historial
+  Cuando la doy de baja
+  Entonces deja de ofrecerse para clasificar gastos nuevos
+  Y sus reglas dejan de aplicarse
+  Y los gastos que ya la tenían la conservan en el historial y en el análisis
 ```
 
 ---
@@ -328,7 +342,7 @@ Escenario: Baja con gastos asociados
 > **quiero** ver el total del mes y su distribución por categoría, persona y medio de pago
 > **para** saber en qué se nos va el dinero.
 
-*Requisitos: RF-25, RF-26 · No funcionales: RNF-11*
+*Requisitos: RF-25, RF-26 · Reglas: RN-16 · No funcionales: RNF-11*
 
 ```gherkin
 Escenario: Resumen del mes
@@ -337,6 +351,11 @@ Escenario: Resumen del mes
   Entonces veo el total del período
   Y su desglose por categoría, por integrante y por medio de pago
   Y los totales solo incluyen gastos de mi hogar
+
+Escenario: Los gastos dados de baja no cuentan
+  Dado que en septiembre di de baja un gasto de 5000
+  Cuando abro el tablero con ese período
+  Entonces el total y los desgloses no incluyen ese gasto
 ```
 
 ### HU-14 · Comparar contra lo habitual
@@ -413,12 +432,12 @@ Escenario: Token revocado
 | HU-05 Invitar | M2 | RF-08, RF-12 | RN-05 |
 | HU-06 Unirse a un hogar | M2 | RF-09 | RN-04, RN-05 |
 | HU-07 Ver integrantes | M2 | RF-10 | ninguna |
-| HU-08 Registrar un gasto | M3 | RF-13, RF-14, RF-20 | RN-06, RN-07, RN-12 |
-| HU-09 Corregir o eliminar | M3 | RF-15, RF-16 | RN-06, RN-08 |
+| HU-08 Registrar un gasto | M3 | RF-13, RF-14, RF-20 | RN-06, RN-07, RN-12, RN-17 |
+| HU-09 Corregir o dar de baja | M3 | RF-15, RF-16 | RN-06, RN-08, RN-16 |
 | HU-10 Buscar movimientos | M3 | RF-17, RF-18 | ninguna |
 | HU-11 Vaciar la bandeja | M4 | RF-22, RF-23 | RN-13 |
-| HU-12 Catálogo de categorías | M4 | RF-24 | RN-09 |
-| HU-13 Gasto del período | M5 | RF-25, RF-26 | ninguna |
+| HU-12 Catálogo de categorías | M4 | RF-24 | RN-09, RN-16 |
+| HU-13 Gasto del período | M5 | RF-25, RF-26 | RN-16 |
 | HU-14 Evolución mensual | M5 | RF-27 | RN-14 |
 | HU-15 Filtrado interactivo | M5, M7 | RF-37 | ninguna |
 | HU-16 Captura desde el teléfono | M6 | RF-30 a RF-32 | RN-06, RN-07 |
