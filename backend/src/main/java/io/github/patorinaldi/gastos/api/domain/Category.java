@@ -13,14 +13,24 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.UpdateTimestamp;
 
 /**
  * Categoría de gasto, propia de cada hogar. Bajo RLS desde la migración V2.
  *
  * <p>Sobre el uso de Lombok, ver {@link Household}.
+ *
+ * <p>Baja lógica como la de {@link Expense}. Una categoría dada de baja no aparece en ninguna
+ * lectura por JPA, pero los gastos que la tenían conservan su {@code categoryId}: para mostrarla en
+ * el historial está {@code CategoryRepository#findAllByIdIncludingInactive}.
  */
 @Entity
 @Table(name = "categories")
+@SQLDelete(sql = "update categories set active = false, deleted_at = now(), updated_at = now()"
+        + " where id = ?")
+@SQLRestriction("active")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Category {
@@ -40,6 +50,16 @@ public class Category {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Column(name = "active", nullable = false, insertable = false, updatable = false)
+    private boolean active = true;
+
+    @Column(name = "deleted_at", insertable = false, updatable = false)
+    private Instant deletedAt;
 
     public Category(UUID householdId, String name) {
         this.householdId = householdId;

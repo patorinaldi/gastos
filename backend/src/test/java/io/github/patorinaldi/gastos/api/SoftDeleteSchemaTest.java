@@ -16,9 +16,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * categorías (RN-16), la coherencia entre {@code active} y {@code deleted_at}, y la unicidad del
  * nombre de categoría solo entre las activas (RN-09).
  *
- * <p>El filtrado de las filas dadas de baja es de la aplicación y no se prueba acá. Las bajas
- * se hacen con SQL directo porque las entidades todavía no mapean {@code active} ni
- * {@code deleted_at}.
+ * <p>Las bajas se hacen con SQL directo a propósito: lo que se prueba es lo que sostiene la base
+ * aunque alguien escriba sin pasar por las entidades. El filtrado de las filas dadas de baja es de
+ * la aplicación y está en {@code SoftDeleteRepositoryTest}.
  */
 class SoftDeleteSchemaTest extends HouseholdTestSupport {
 
