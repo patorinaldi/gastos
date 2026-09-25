@@ -220,10 +220,10 @@ Escenario: Importe inválido
   Entonces el sistema lo rechaza indicando que debe ser mayor que cero
 ```
 
-### HU-09 · Corregir o eliminar un gasto
+### HU-09 · Corregir o dar de baja un gasto
 
 > **Como** integrante,
-> **quiero** editar o borrar un gasto ya cargado
+> **quiero** editar o dar de baja un gasto ya cargado
 > **para** arreglar un error de tipeo sin que quede sucio el análisis.
 
 *Requisitos: RF-15, RF-16 · Reglas: RN-06, RN-07, RN-08*
