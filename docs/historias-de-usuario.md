@@ -31,7 +31,7 @@ modo que cada criterio se traduce directamente en una prueba automatizada.
 > **quiero** crear una cuenta con mi correo y una contraseña
 > **para** empezar a registrar los gastos de mi casa.
 
-*Requisitos: RF-01, RF-02, RF-03 · Reglas: RN-01, RN-11*
+*Requisitos: RF-01, RF-02, RF-03, RF-19 · Reglas: RN-01, RN-11*
 
 ```gherkin
 Escenario: Alta exitosa
@@ -199,7 +199,7 @@ Escenario: Listado del hogar
 > **quiero** registrar un gasto indicando solo el importe y el comercio
 > **para** que anotarlo no me cueste más que el gasto mismo.
 
-*Requisitos: RF-13, RF-14, RF-20 · Reglas: RN-06, RN-07, RN-12, RN-17*
+*Requisitos: RF-13, RF-14, RF-20, RF-21 · Reglas: RN-06, RN-07, RN-12, RN-17*
 
 ```gherkin
 Escenario: Alta mínima con categoría automática
@@ -400,7 +400,7 @@ Escenario: Filtrado interactivo
 > **quiero** que registre el gasto apenas me llega la notificación del banco
 > **para** no tener que abrir la aplicación.
 
-*Requisitos: RF-30, RF-31, RF-32 · No funcionales: RNF-10*
+*Requisitos: RF-30, RF-31, RF-32 · Reglas: RN-06, RN-07 · No funcionales: RNF-10*
 
 ```gherkin
 Escenario: Captura rápida
@@ -425,15 +425,15 @@ Escenario: Token revocado
 
 | Historia | Módulo | Requisitos | Reglas |
 |---|---|---|---|
-| HU-01 Registro | M1 | RF-01, RF-02, RF-03 | RN-01, RN-11 |
+| HU-01 Registro | M1, M4 | RF-01, RF-02, RF-03, RF-19 | RN-01, RN-11 |
 | HU-02 Confirmación de correo | M1 | RF-03, RF-04 | RN-02, RN-03 |
 | HU-03 Inicio de sesión | M1 | RF-05 | RN-02 |
 | HU-04 Recuperación de contraseña | M1 | RF-06 | RN-03 |
 | HU-05 Invitar | M2 | RF-08, RF-12 | RN-05 |
 | HU-06 Unirse a un hogar | M2 | RF-09 | RN-04, RN-05 |
 | HU-07 Ver integrantes | M2 | RF-10 | ninguna |
-| HU-08 Registrar un gasto | M3 | RF-13, RF-14, RF-20 | RN-06, RN-07, RN-12, RN-17 |
-| HU-09 Corregir o dar de baja | M3 | RF-15, RF-16 | RN-06, RN-08, RN-16 |
+| HU-08 Registrar un gasto | M3, M4 | RF-13, RF-14, RF-20, RF-21 | RN-06, RN-07, RN-12, RN-17 |
+| HU-09 Corregir o dar de baja | M3 | RF-15, RF-16 | RN-06, RN-07, RN-08, RN-16 |
 | HU-10 Buscar movimientos | M3 | RF-17, RF-18 | ninguna |
 | HU-11 Vaciar la bandeja | M4 | RF-22, RF-23 | RN-13 |
 | HU-12 Catálogo de categorías | M4 | RF-24 | RN-09, RN-16 |
