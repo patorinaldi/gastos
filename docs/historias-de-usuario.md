@@ -14,7 +14,7 @@ modo que cada criterio se traduce directamente en una prueba automatizada.
 
 | Actor | Descripción |
 |---|---|
-| **Visitante** | Persona sin cuenta. Solo puede registrarse o recuperar su contraseña. |
+| **Visitante** | Persona sin cuenta, o con la cuenta creada y el correo todavía sin verificar. Solo puede registrarse y confirmar su correo. |
 | **Integrante** | Usuario registrado y verificado, perteneciente a un hogar. Es el actor principal. |
 | **Cliente automatizado** | Programa que registra gastos mediante token de máquina, sin sesión. |
 
@@ -154,18 +154,46 @@ Escenario: El código se canjea una sola vez
 
 ### HU-06 · Unirse a un hogar
 
-> **Como** visitante registrado,
-> **quiero** ingresar el código que me pasaron
-> **para** sumarme al hogar de mi conviviente en lugar de quedarme en uno propio.
+> **Como** integrante que se registró por su cuenta,
+> **quiero** ingresar el código que me pasó mi conviviente
+> **para** sumarme a su hogar y que compartamos una sola vista de los gastos.
 
-*Requisitos: RF-09 · Reglas: RN-04, RN-05*
+*Requisitos: RF-09 · Reglas: RN-04, RN-05, RN-18*
+
+Por RN-11, al registrarme ya tengo un hogar propio, y puede que ya tenga gastos cargados. Al unirme
+a otro hogar dejo el anterior. Si era su único integrante, el hogar queda archivado: sus datos se
+conservan, pero nadie puede acceder a ellos. Si tenía otros integrantes, el hogar sigue activo para
+ellos (RN-18).
 
 ```gherkin
-Escenario: Canje exitoso
-  Dado que tengo un código de invitación vigente
-  Cuando lo canjeo
-  Entonces paso a integrar ese hogar
+Escenario: Me uno a otro hogar y el mío queda archivado
+  Dado que soy el único integrante de mi hogar
+  Y registré gastos en él
+  Y tengo un código de invitación vigente
+  Cuando canjeo el código
+  Entonces el sistema me advierte que mis gastos actuales dejarán de estar accesibles
+  Y me pide confirmación
+
+Escenario: Confirmo el cambio de hogar
+  Dado que el sistema me advirtió que mis gastos actuales dejarán de estar accesibles
+  Cuando confirmo
+  Entonces paso a integrar el hogar de la invitación
   Y veo los gastos ya cargados por sus integrantes
+  Y ninguno de mis gastos anteriores aparece en el hogar nuevo
+  Y mi hogar anterior queda archivado con todos sus datos conservados
+
+Escenario: Desisto del cambio de hogar
+  Dado que el sistema me advirtió que mis gastos actuales dejarán de estar accesibles
+  Cuando no confirmo
+  Entonces sigo en mi hogar con mis gastos
+  Y el código sigue disponible
+
+Escenario: Dejo un hogar que tiene otros integrantes
+  Dado que otra persona también integra mi hogar
+  Cuando canjeo un código de invitación vigente y confirmo
+  Entonces paso a integrar el hogar de la invitación
+  Y mi hogar anterior sigue activo para la otra persona
+  Y los gastos que registré ahí siguen formando parte de ese hogar
 
 Escenario: Código vencido
   Dado que el código venció
@@ -430,7 +458,7 @@ Escenario: Token revocado
 | HU-03 Inicio de sesión | M1 | RF-05 | RN-02 |
 | HU-04 Recuperación de contraseña | M1 | RF-06 | RN-03 |
 | HU-05 Invitar | M2 | RF-08, RF-12 | RN-05 |
-| HU-06 Unirse a un hogar | M2 | RF-09 | RN-04, RN-05 |
+| HU-06 Unirse a un hogar | M2 | RF-09 | RN-04, RN-05, RN-18 |
 | HU-07 Ver integrantes | M2 | RF-10 | ninguna |
 | HU-08 Registrar un gasto | M3, M4 | RF-13, RF-14, RF-20, RF-21 | RN-06, RN-07, RN-12, RN-17 |
 | HU-09 Corregir o dar de baja | M3 | RF-15, RF-16 | RN-06, RN-07, RN-08, RN-16 |
