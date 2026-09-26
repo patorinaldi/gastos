@@ -190,8 +190,10 @@ class HouseholdIsolationTest extends HouseholdTestSupport {
             // La mitad que realmente prueba algo: B sigue viendo lo suyo.
             assertThat(withHousehold(hogarB.householdId(),
                     () -> expenses.findById(hogarB.expenseId()))).isPresent();
+            // findByIdAndActiveTrue y no findById: Category no filtra las bajas, así que una
+            // baja lógica hecha desde A dejaría la fila presente pero inactiva.
             assertThat(withHousehold(hogarB.householdId(),
-                    () -> categories.findById(hogarB.categoryId()))).isPresent();
+                    () -> categories.findByIdAndActiveTrue(hogarB.categoryId()))).isPresent();
         }
     }
 
@@ -229,8 +231,8 @@ class HouseholdIsolationTest extends HouseholdTestSupport {
                 categories.deleteById(nueva);
                 return null;
             });
-            assertThat(withHousehold(hogarA.householdId(), () -> categories.findById(nueva)))
-                    .isEmpty();
+            assertThat(withHousehold(hogarA.householdId(),
+                    () -> categories.findByIdAndActiveTrue(nueva))).isEmpty();
         }
     }
 

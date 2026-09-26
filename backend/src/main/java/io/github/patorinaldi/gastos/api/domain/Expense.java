@@ -38,6 +38,10 @@ import org.hibernate.annotations.UpdateTimestamp;
  * tiene que acordarse de filtrarlas. {@code active} y {@code deletedAt} son de solo lectura desde
  * la entidad: el único camino para cambiarlos es la baja, que los escribe juntos y no puede violar
  * el check de coherencia de la V4.
+ *
+ * <p>{@link SQLRestriction} está acá y no en {@link Category} a propósito. Un gasto dado de baja
+ * tiene que desaparecer de todo, incluidos los totales del análisis. Una categoría dada de baja, en
+ * cambio, tiene que seguir apareciendo en los gastos viejos que la usaban (ver {@link Category}).
  */
 @Entity
 @Table(name = "expenses")

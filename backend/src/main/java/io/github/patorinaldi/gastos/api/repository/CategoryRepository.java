@@ -1,12 +1,10 @@
 package io.github.patorinaldi.gastos.api.repository;
 
 import io.github.patorinaldi.gastos.api.domain.Category;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
 /**
  * categories está bajo RLS, así que ninguna firma recibe el hogar: el filtro lo aplica
@@ -14,21 +12,23 @@ import org.springframework.data.jpa.repository.Query;
  *
  * <p>Sin contexto de hogar en la transacción estas consultas devuelven cero filas, no todas.
  *
- * <p>Las categorías dadas de baja quedan fuera de todas las consultas y {@code delete} es una baja
- * lógica (ver {@link Category}). La única excepción es {@link #findAllByIdIncludingInactive}.
+ * <p>{@code delete} es una baja lógica, pero las categorías dadas de baja <em>no</em> se filtran
+ * en todas las consultas (ver {@link Category}). {@code findById}, {@code findAllById} y
+ * {@code findAll} las incluyen, que es lo que necesitan el historial y el análisis. Las consultas
+ * con {@code ActiveTrue} son las que se usan para ofrecer categorías: el catálogo, la búsqueda por
+ * nombre y la validación de una asignación nueva.
  */
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
-    /** Case-insensitive, en línea con el índice único {@code categories_household_name_key}. */
-    Optional<Category> findByNameIgnoreCase(String name);
-
-    List<Category> findAllByOrderByNameAsc();
-
     /**
-     * Incluye las categorías dadas de baja, para mostrar la categoría de gastos históricos (RN-16).
-     * Es nativa porque {@code @SQLRestriction} no alcanza a las consultas nativas; RLS sí, así que
-     * sigue limitada al hogar activo. No usar para ofrecer categorías en nuevas asignaciones.
+     * Case-insensitive y solo entre las activas, en línea con el índice único parcial
+     * {@code categories_household_name_key}.
      */
-    @Query(value = "select * from categories where id in (:ids)", nativeQuery = true)
-    List<Category> findAllByIdIncludingInactive(Collection<UUID> ids);
+    Optional<Category> findByNameIgnoreCaseAndActiveTrue(String name);
+
+    /** El catálogo que se ofrece al usuario. */
+    List<Category> findAllByActiveTrueOrderByNameAsc();
+
+    /** Para validar que la categoría de una asignación nueva (gasto o regla) siga activa. */
+    Optional<Category> findByIdAndActiveTrue(UUID id);
 }

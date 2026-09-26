@@ -2,6 +2,7 @@ package io.github.patorinaldi.gastos.api.repository;
 
 import io.github.patorinaldi.gastos.api.IntegrationTest;
 import io.github.patorinaldi.gastos.api.domain.Category;
+import io.github.patorinaldi.gastos.api.domain.CategoryRule;
 import io.github.patorinaldi.gastos.api.domain.Expense;
 import io.github.patorinaldi.gastos.api.domain.PaymentMethod;
 import io.github.patorinaldi.gastos.api.security.CurrentHousehold;
@@ -22,7 +23,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Baja lógica vista desde los repositorios (RN-16): {@code delete} marca la fila en lugar de
- * borrarla, y las filas dadas de baja no aparecen en ninguna consulta por JPA.
+ * borrarla. Un gasto dado de baja no aparece en ninguna consulta por JPA. Una categoría dada de
+ * baja deja de ofrecerse, pero el historial y el análisis la siguen viendo, y sus reglas se
+ * eliminan.
+ *
+ * <p>El hogar y el usuario quedan confirmados fuera de la transacción del test, así que el email
+ * es único por ejecución: si una limpieza falla, el siguiente test no choca con
+ * {@code users_email_key}.
  *
  * <p>Lo que la base garantiza por su cuenta (el check de coherencia y el índice parcial) está en
  * {@code SoftDeleteSchemaTest}. El seed y el contexto de hogar siguen el mismo esquema que
@@ -33,6 +40,9 @@ class SoftDeleteRepositoryTest extends IntegrationTest {
 
     @Autowired
     private CategoryRepository categories;
+
+    @Autowired
+    private CategoryRuleRepository rules;
 
     @Autowired
     private ExpenseRepository expenses;
@@ -56,7 +66,7 @@ class SoftDeleteRepositoryTest extends IntegrationTest {
         jdbcTemplate.update(
                 "insert into users (id, household_id, email, password_hash, name)"
                         + " values (?, ?, ?, ?, ?)",
-                duenoId, hogarId, "baja@example.test", "hash", "Dueño");
+                duenoId, hogarId, "baja-" + hogarId + "@example.test", "hash", "Dueño");
         CurrentHousehold.set(hogarId);
     }
 
@@ -115,7 +125,7 @@ class SoftDeleteRepositoryTest extends IntegrationTest {
     }
 
     @Test
-    void unaCategoriaDadaDeBajaNoApareceNiOcupaSuNombre() {
+    void unaCategoriaDadaDeBajaNoSeOfreceNiOcupaSuNombre() {
         Category vieja = categories.saveAndFlush(new Category(hogarId, "Transporte"));
         categories.saveAndFlush(new Category(hogarId, "Comida"));
 
@@ -123,23 +133,37 @@ class SoftDeleteRepositoryTest extends IntegrationTest {
         categories.flush();
         entityManager.clear();
 
-        assertThat(categories.findById(vieja.getId())).isEmpty();
-        assertThat(categories.findByNameIgnoreCase("transporte")).isEmpty();
-        assertThat(categories.findAllByOrderByNameAsc())
+        assertThat(categories.findByIdAndActiveTrue(vieja.getId())).isEmpty();
+        assertThat(categories.findByNameIgnoreCaseAndActiveTrue("transporte")).isEmpty();
+        assertThat(categories.findAllByActiveTrueOrderByNameAsc())
                 .extracting(Category::getName).containsExactly("Comida");
 
         // El índice parcial de la V4 deja crear otra con el mismo nombre, y la búsqueda por
         // nombre encuentra solo la activa.
         Category nueva = categories.saveAndFlush(new Category(hogarId, "Transporte"));
         entityManager.clear();
-        assertThat(categories.findByNameIgnoreCase("transporte"))
+        assertThat(categories.findByNameIgnoreCaseAndActiveTrue("transporte"))
                 .get().extracting(Category::getId).isEqualTo(nueva.getId());
     }
 
     @Test
-    void elHistorialConservaLaCategoriaDadaDeBaja() {
+    void borrarUnaCategoriaLaMarcaYNoLaElimina() {
+        UUID id = categories.saveAndFlush(new Category(hogarId, "Salud")).getId();
+
+        categories.deleteById(id);
+        categories.flush();
+        entityManager.clear();
+
+        // Category no tiene @SQLRestriction: findById la sigue viendo, marcada.
+        Category leida = categories.findById(id).orElseThrow();
+        assertThat(leida.isActive()).isFalse();
+        assertThat(leida.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    void elHistorialYElAnalisisConservanLaCategoriaDadaDeBaja() {
         Category salud = categories.saveAndFlush(new Category(hogarId, "Salud"));
-        Expense gasto = gasto("Farmacity", LocalDate.of(2026, 9, 13));
+        Expense gasto = gasto("Farmacity", LocalDate.of(2026, 8, 13));
         gasto.setCategoryId(salud.getId());
         UUID gastoId = expenses.saveAndFlush(gasto).getId();
 
@@ -147,17 +171,50 @@ class SoftDeleteRepositoryTest extends IntegrationTest {
         categories.flush();
         entityManager.clear();
 
-        // El gasto sigue activo y apunta a la categoría dada de baja.
         assertThat(expenses.findById(gastoId).orElseThrow().getCategoryId())
                 .isEqualTo(salud.getId());
+        assertThat(categories.findAllById(List.of(salud.getId())))
+                .extracting(Category::getName).containsExactly("Salud");
 
-        // Para mostrarla en el historial, la consulta que incluye las inactivas la encuentra.
-        List<Category> historicas = categories.findAllByIdIncludingInactive(List.of(salud.getId()));
-        assertThat(historicas).singleElement().satisfies(categoria -> {
-            assertThat(categoria.getName()).isEqualTo("Salud");
-            assertThat(categoria.isActive()).isFalse();
-            assertThat(categoria.getDeletedAt()).isNotNull();
+        // El caso de la review de la PR #17: una consulta de análisis que une gastos con
+        // categorías. Con @SQLRestriction en Category, Hibernate agregaba "c.active" a la
+        // condición del join y el gasto de agosto salía sin categoría (left join) o
+        // desaparecía del total (join).
+        List<Object[]> totales = entityManager.createQuery(
+                        "select c.name, sum(e.amount) from Expense e"
+                                + " join Category c on c.id = e.categoryId"
+                                + " where e.expenseDate between :desde and :hasta"
+                                + " group by c.name", Object[].class)
+                .setParameter("desde", LocalDate.of(2026, 8, 1))
+                .setParameter("hasta", LocalDate.of(2026, 8, 31))
+                .getResultList();
+        assertThat(totales).singleElement().satisfies(fila -> {
+            assertThat(fila[0]).isEqualTo("Salud");
+            assertThat((BigDecimal) fila[1]).isEqualByComparingTo("100.00");
         });
+    }
+
+    @Test
+    void darDeBajaUnaCategoriaEliminaSusReglasYLiberaSusPatrones() {
+        Category supermercado = categories.saveAndFlush(new Category(hogarId, "Supermercado"));
+        UUID regla = rules.saveAndFlush(
+                new CategoryRule(hogarId, "coto", supermercado.getId())).getId();
+
+        categories.deleteById(supermercado.getId());
+        categories.flush();
+        entityManager.clear();
+
+        // El trigger de la V4 eliminó la regla: el motor ya no puede asignar la categoría dada
+        // de baja.
+        assertThat(rules.findById(regla)).isEmpty();
+        assertThat(rules.findByPatternIgnoreCase("coto")).isEmpty();
+
+        // Y el patrón queda libre para otra categoría.
+        Category almacen = categories.saveAndFlush(new Category(hogarId, "Almacén"));
+        rules.saveAndFlush(new CategoryRule(hogarId, "coto", almacen.getId()));
+        entityManager.clear();
+        assertThat(rules.findByPatternIgnoreCase("coto"))
+                .get().extracting(CategoryRule::getCategoryId).isEqualTo(almacen.getId());
     }
 
     private Expense gasto(String comercio, LocalDate fecha) {

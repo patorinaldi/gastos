@@ -14,7 +14,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 /**
@@ -22,15 +21,22 @@ import org.hibernate.annotations.UpdateTimestamp;
  *
  * <p>Sobre el uso de Lombok, ver {@link Household}.
  *
- * <p>Baja lógica como la de {@link Expense}. Una categoría dada de baja no aparece en ninguna
- * lectura por JPA, pero los gastos que la tenían conservan su {@code categoryId}: para mostrarla en
- * el historial está {@code CategoryRepository#findAllByIdIncludingInactive}.
+ * <p><strong>Baja lógica (RN-16).</strong> {@code delete} marca la fila como en {@link Expense},
+ * pero, a diferencia de ella, esta entidad <em>no</em> lleva {@code @SQLRestriction}. Los gastos
+ * conservan su categoría dada de baja en el historial y en el análisis. Una restricción en la
+ * entidad Hibernate la aplica también a los joins ({@code left join categories c on (c.active)
+ * ...}), y un gasto de agosto quedaría sin categoría, o fuera del total, después de dar de baja su
+ * categoría en septiembre. Por eso las activas se filtran solo donde se ofrecen categorías (ver
+ * {@code CategoryRepository}), y {@code findById} y los joins ven también las dadas de baja.
+ *
+ * <p>Al dar de baja una categoría, un trigger de la V4 elimina físicamente sus reglas. Las
+ * entidades {@link CategoryRule} que ya estén cargadas en el contexto de persistencia no se
+ * enteran. Sobre el estado en memoria después del {@code delete}, ver {@link Expense}.
  */
 @Entity
 @Table(name = "categories")
 @SQLDelete(sql = "update categories set active = false, deleted_at = now(), updated_at = now()"
         + " where id = ?")
-@SQLRestriction("active")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Category {

@@ -28,7 +28,8 @@ class SoftDeleteSchemaTest extends HouseholdTestSupport {
     @BeforeEach
     void createHouseholdWithOwner() {
         household = createHousehold("Casa de prueba");
-        owner = createUser(household, "baja@example.test", "Integrante");
+        // Email único: el usuario queda confirmado y un cleanUp fallido no debe romper el siguiente.
+        owner = createUser(household, "baja-" + household + "@example.test", "Integrante");
     }
 
     @AfterEach
@@ -118,6 +119,22 @@ class SoftDeleteSchemaTest extends HouseholdTestSupport {
         assertThat(categoryOfExpense).isEqualTo(category);
     }
 
+    @Test
+    void deactivatingACategoryDeletesItsRules() {
+        UUID category = insertCategory("Supermercado");
+        UUID otherCategory = insertCategory("Hogar");
+        insertRule("coto", category);
+        insertRule("sodimac", otherCategory);
+
+        softDelete("categories", category);
+
+        // El trigger de la V4 vale por cualquier camino que dé de baja la categoría, no solo por
+        // la entidad. Las reglas de las demás categorías no se tocan.
+        assertThat(withHousehold(household, () -> jdbcTemplate.queryForList(
+                "select pattern from category_rules", String.class)))
+                .containsExactly("sodimac");
+    }
+
     // ------------------------------------------------------------------
 
     private UUID insertCategory(String name) {
@@ -126,6 +143,12 @@ class SoftDeleteSchemaTest extends HouseholdTestSupport {
                 "insert into categories (id, household_id, name) values (?, ?, ?)",
                 id, household, name));
         return id;
+    }
+
+    private void insertRule(String pattern, UUID category) {
+        withHousehold(household, () -> jdbcTemplate.update(
+                "insert into category_rules (household_id, pattern, category_id) values (?, ?, ?)",
+                household, pattern, category));
     }
 
     private UUID insertExpense(UUID category) {
