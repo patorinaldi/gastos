@@ -55,12 +55,20 @@ recuperación de contraseña es alcanzable por la persona titular.
 
 Un token queda invalidado al usarse, y en todos los casos a las 24 horas de emitido.
 
-**Nivel.** Aplicación.
+**Nivel.** Ambos. La aplicación rechaza un token usado o vencido. La base exige que se guarde el
+hash del token y fija el vencimiento de 24 horas como valor por defecto (ver "Cómo se registra").
 
 **Motivo.** Acota la ventana en la que un token filtrado, por ejemplo desde el historial del
 navegador o desde un correo reenviado, sigue sirviendo para tomar el control de una cuenta.
 
 **Diseño.** Una única tabla de tokens cubre ambos usos, porque comparten ciclo de vida.
+
+**Cómo se registra.** Tabla `auth_tokens` (migración V5), con el propósito del token
+(`email_verification` o `password_reset`), su vencimiento y el momento en que se usó. Se guarda
+solo el hash SHA-256 del token, nunca el valor en claro: el token existe únicamente en el correo
+enviado. Si la base se filtrara, sus filas no servirían para verificar cuentas ni para cambiar
+contraseñas. Un `check` exige los 32 bytes de un hash, y el vencimiento de 24 horas es el valor
+por defecto de la columna.
 
 ### RN-11. El alta de un usuario crea su hogar y su catálogo inicial, todo o nada
 
@@ -85,6 +93,9 @@ que a cualquier otra escritura.
 
 ### RN-04. Un usuario pertenece a exactamente un hogar
 
+En cada momento, un usuario integra un solo hogar. Puede cambiarse a otro, en las condiciones de
+RN-18.
+
 **Nivel.** Motor. `users.household_id` es obligatorio y referencia a `households`.
 
 **Motivo.** En el dominio de las unidades de convivencia una persona comparte economía con un solo
@@ -93,11 +104,57 @@ beneficio actual. Ver RD-04.
 
 ### RN-05. Un código de invitación pertenece a un hogar, se canjea una sola vez y vence
 
-**Nivel.** Aplicación.
+El código vence a los 7 días de generado.
+
+**Nivel.** Ambos. La aplicación valida que el código no esté vencido ni canjeado. La tabla
+`household_invitations` (migración V5) guarda solo el hash SHA-256 del código, tiene el vencimiento
+de 7 días como valor por defecto, y un `check` exige que un canje registre a la vez quién canjeó y
+cuándo.
 
 **Motivo.** El código circula por canales que el sistema no controla, como mensajería o papel. Que
 sea de un solo uso evita que quien lo reenvíe incorpore gente no prevista, y el vencimiento limita
-el daño de un código olvidado en una conversación.
+el daño de un código olvidado en una conversación. Siete días cubren el caso habitual, en el que el
+código se comparte por chat y se usa días después.
+
+### RN-18. Al cambiarse de hogar, los gastos quedan en el hogar anterior
+
+Un integrante se cambia de hogar al canjear una invitación a otro (HU-06), previa confirmación. Al
+hacerlo:
+
+- **Sus gastos quedan en el hogar anterior.** Son datos de ese hogar: quienes siguen en él los ven,
+  los editan y los analizan como siempre, con su nombre como responsable.
+- **Deja de ver el hogar anterior**, y desde ese momento opera sobre el nuevo.
+- **Sus tokens de cliente máquina del hogar anterior se revocan**, para que sus automatizaciones no
+  sigan cargando gastos en un hogar que ya no es el suyo.
+- **Si era el último integrante, el hogar anterior se archiva.** Sus datos se conservan, pero nadie
+  accede a ellos.
+
+**Nivel.** Ambos. La aplicación hace el cambio, la revocación y el archivado en una sola
+transacción. En el motor, desde la migración V5, la clave foránea del responsable del gasto es
+simple contra `users (id)`, lo que permite el cambio aunque la persona tenga gastos (ver RN-08).
+El archivado usa `households.active` y `archived_at`, con un `check` que impide que se contradigan,
+igual que la baja lógica de RN-16.
+
+**Tokens emitidos antes del cambio.** Un token de sesión no se guarda en la base: el servidor lo
+firma y lo acepta hasta que vence, así que un token emitido antes del cambio sigue existiendo
+después. Un token de cliente máquina sí se revoca, pero la revocación es código de la aplicación.
+Para que ninguno de los dos pueda seguir operando sobre el hogar anterior:
+
+- En el motor, el trigger `require_user_in_household` rechaza gastos, tokens de cliente máquina e
+  invitaciones a nombre de alguien que no integra hoy el hogar. Es la red de seguridad si todo lo
+  demás falla.
+- **Requisito para el módulo de identidad:** el hogar de cada petición se resuelve desde
+  `users.household_id` y no desde un atributo del token de sesión. Un token viejo no debe poder
+  ni leer ni escribir sobre el hogar anterior, y el trigger solo cubre las escrituras.
+- **Requisito para la API de integración:** autenticar un token de cliente máquina exige que no
+  esté revocado y que su hogar sea el hogar actual de su dueño.
+- **Requisito para el módulo de hogares:** un hogar archivado no acepta operaciones. No se le
+  pueden cargar gastos, generar invitaciones ni emitir tokens.
+
+**Motivo.** Las personas se mudan y las convivencias terminan. El gasto que se compartió mientras
+convivieron pertenece al hogar, no a quien lo cargó: si se lo llevara al irse, los que se quedan
+perderían parte de su historial. Archivar en lugar de borrar mantiene el criterio de RN-16: los
+datos económicos no se destruyen.
 
 ---
 
@@ -126,12 +183,25 @@ agregaciones y evita que la misma forma de pago se escriba de cinco maneras.
 
 ### RN-08. Las referencias de un gasto no pueden cruzar hogares, y nada se borra en cascada
 
-El responsable y la categoría de un gasto deben pertenecer al mismo hogar que el gasto. Además,
-ninguna baja arrastra filas dependientes.
+El responsable y la categoría de un gasto deben pertenecer al mismo hogar que el gasto al
+registrarlo. Además, ninguna baja arrastra filas dependientes.
 
-**Nivel.** Motor. Claves foráneas compuestas `(household_id, owner_id)` contra
-`users (household_id, id)` y `(household_id, category_id)` contra `categories (household_id, id)`,
-todas con `on delete restrict`.
+**Nivel.** Motor.
+
+- **Categoría.** Clave foránea compuesta `(household_id, category_id)` contra
+  `categories (household_id, id)`.
+- **Responsable.** Desde la migración V5, la clave foránea es simple contra `users (id)`, y el
+  trigger `require_user_in_household` exige que, al registrar el gasto o al cambiarle el
+  responsable, el responsable integre en ese momento el hogar del gasto. Hasta la V4 era una clave
+  compuesta contra `users (household_id, id)`, que además exigía que el responsable *siguiera*
+  en el hogar, e impedía cambiarse de hogar a quien tuviera gastos (RN-18). El trigger conserva la
+  garantía al registrar sin esa restricción: los gastos ya cargados quedan a nombre de quien los
+  cargó aunque se haya ido.
+- Todas las claves foráneas usan `on delete restrict`.
+
+La garantía sobre el responsable no descansa solo en que la aplicación lo tome del token de sesión:
+un token emitido antes de un cambio de hogar podría seguir apuntando al hogar anterior (ver RN-18),
+y es el motor el que rechaza ese gasto.
 
 **Motivo.** Es defensa en capas. Aunque el aislamiento por políticas fallara o el código de negocio
 tuviera un error, la clave compuesta impide que un gasto del hogar A quede apuntando a una
@@ -313,9 +383,9 @@ inesperado en producción.
 |---|---|---|---|
 | RN-01 | El correo identifica unívocamente a un usuario | Ambos | M1 |
 | RN-02 | Una cuenta sin verificar no puede operar | Aplicación | M1 |
-| RN-03 | Tokens de un solo uso, con vencimiento de 24 h | Aplicación | M1 |
+| RN-03 | Tokens de un solo uso, con vencimiento de 24 h | Ambos | M1 |
 | RN-04 | Un usuario pertenece a exactamente un hogar | Motor | M2 |
-| RN-05 | La invitación se canjea una sola vez y vence | Aplicación | M2 |
+| RN-05 | La invitación se canjea una sola vez y vence a los 7 días | Ambos | M2 |
 | RN-06 | Importe mayor que cero, con dos decimales exactos | Ambos | M3 |
 | RN-07 | Comercio obligatorio y medio de pago del conjunto cerrado | Motor | M3 |
 | RN-08 | Referencias dentro del hogar, sin borrado en cascada | Motor | M3 |
@@ -328,3 +398,4 @@ inesperado en producción.
 | RN-15 | El esquema pertenece a las migraciones | Aplicación | M8 |
 | RN-16 | Gastos y categorías se dan de baja de forma lógica | Ambos | M3, M4 |
 | RN-17 | Entre reglas que coinciden gana el patrón más largo | Aplicación | M4 |
+| RN-18 | Al cambiarse de hogar, los gastos quedan en el hogar anterior | Ambos | M2 |
