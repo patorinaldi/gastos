@@ -333,13 +333,13 @@ RNF-25, RNF-27, RNF-28.
 
 | Componente | Estado | Descripción |
 |---|---|---|
-| Migraciones versionadas | Implementado | V1 esquema base, V2 rol y políticas de aislamiento, V2.5 índice de correo, V3 catálogo inicial, V4 baja lógica. |
+| Migraciones versionadas | Implementado | V1 esquema base, V2 rol y políticas de aislamiento, V2.5 índice de correo, V3 catálogo inicial, V4 baja lógica, V5 cambio de hogar y tablas de acceso. |
 | Rol de aplicación restringido | Implementado | `gastos_api`, sin privilegio de omisión de políticas ni de superusuario. |
 | Propagación del contexto de hogar | Implementado | Se fija al inicio de cada transacción, con alcance transaccional para que no se filtre entre peticiones al devolver la conexión al pool. |
 | Entidades y repositorios | Implementado | Cinco entidades validadas contra el esquema al arrancar. |
 | Pruebas de aislamiento | Implementado | Las tres tablas con aislamiento, por lectura, alta, modificación y baja, en los tres contextos: sin hogar activo, con el ajeno y con el propio. |
 | Emisor de correo | Implementado | Interfaz propia con implementación de desarrollo que escribe a consola. |
-| Migraciones complementarias | Pendiente | Tokens de verificación y restablecimiento, invitaciones y tokens de cliente máquina: las tablas que necesitan los puntos de entrada de M1 y M2. |
+| Migraciones complementarias | En revisión | Migración V5: tokens de verificación y restablecimiento, invitaciones y tokens de cliente máquina, guardados como hash y sin RLS por ser datos de acceso. Archivado de hogares y cambio de hogar conservando los gastos en el hogar anterior (RN-18). |
 | Baja lógica | Implementado | Marca de baja (`active`, `deleted_at`) en gastos y categorías, con un check que impide que se contradigan. El borrado por JPA es una baja lógica. Los gastos dados de baja quedan fuera de todas las consultas; las categorías, solo de las que las ofrecen, y sus reglas se eliminan. Índice único parcial para que un nombre dado de baja no siga ocupando el suyo. |
 | Manejo global de errores | Pendiente | Respuestas `problem+json` centralizadas. |
 | Integración continua | Pendiente | Compilación y pruebas bloqueantes en cada PR. |
