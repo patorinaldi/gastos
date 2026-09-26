@@ -340,7 +340,7 @@ RNF-25, RNF-27, RNF-28.
 | Pruebas de aislamiento | Implementado | Las tres tablas con aislamiento, por lectura, alta, modificación y baja, en los tres contextos: sin hogar activo, con el ajeno y con el propio. |
 | Emisor de correo | Implementado | Interfaz propia con implementación de desarrollo que escribe a consola. |
 | Migraciones complementarias | En revisión | Migración V5: tokens de verificación y restablecimiento, invitaciones y tokens de cliente máquina, guardados como hash y sin RLS por ser datos de acceso. Archivado de hogares y cambio de hogar conservando los gastos en el hogar anterior (RN-18). |
-| Baja lógica | Implementado | Marca de baja (`active`, `deleted_at`) en gastos y categorías, con un check que impide que se contradigan. El borrado por JPA es una baja lógica y las filas dadas de baja quedan fuera de todas las consultas. Índice único parcial para que un nombre dado de baja no siga ocupando el suyo. |
+| Baja lógica | Implementado | Marca de baja (`active`, `deleted_at`) en gastos y categorías, con un check que impide que se contradigan. El borrado por JPA es una baja lógica. Los gastos dados de baja quedan fuera de todas las consultas; las categorías, solo de las que las ofrecen, y sus reglas se eliminan. Índice único parcial para que un nombre dado de baja no siga ocupando el suyo. |
 | Manejo global de errores | Pendiente | Respuestas `problem+json` centralizadas. |
 | Integración continua | Pendiente | Compilación y pruebas bloqueantes en cada PR. |
 | Despliegue | Pendiente | API, base gestionada y cliente web en línea. |

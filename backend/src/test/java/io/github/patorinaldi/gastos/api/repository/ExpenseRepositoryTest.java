@@ -157,6 +157,6 @@ class ExpenseRepositoryTest extends IntegrationTest {
 
         assertThat(rules.findByPatternIgnoreCase("CARREFOUR")).isPresent();
         assertThat(rules.findByCategoryId(comida.getId())).hasSize(1);
-        assertThat(categories.findByNameIgnoreCase("comida")).isPresent();
+        assertThat(categories.findByNameIgnoreCaseAndActiveTrue("comida")).isPresent();
     }
 }

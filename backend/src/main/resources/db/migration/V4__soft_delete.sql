@@ -13,8 +13,9 @@
 -- updated_at no alcanza como fecha de baja porque se pisa con cualquier edición posterior.
 --
 -- Filtrar las filas dadas de baja es trabajo de la aplicación. La base solo cambia en lo que
--- tiene que sostener ella: la coherencia entre active y deleted_at, y la unicidad del nombre de
--- categoría, que pasa a regir únicamente entre categorías activas (RN-09).
+-- tiene que sostener ella: la coherencia entre active y deleted_at, la unicidad del nombre de
+-- categoría, que pasa a regir únicamente entre categorías activas (RN-09), y la eliminación de las
+-- reglas de una categoría dada de baja.
 --
 -- Las políticas RLS de V2 no cambian: las columnas nuevas son columnas más de tablas que ya
 -- están aisladas. Tampoco los permisos de gastos_api, que se otorgaron sobre la tabla y
@@ -41,3 +42,28 @@ drop index categories_household_name_key;
 create unique index categories_household_name_key
     on categories (household_id, lower(name))
     where active;
+
+-- Las reglas de una categoría dada de baja dejan de aplicarse (RN-16). Se eliminan físicamente,
+-- como cualquier regla: si quedaran, el motor seguiría asignando gastos a una categoría que ya no
+-- se ofrece, y el patrón seguiría ocupando su lugar en category_rules_household_pattern_key, así
+-- que no se podría reasignar a otra categoría.
+--
+-- Un trigger y no la aplicación, para que valga por cualquier camino que dé de baja la categoría.
+-- Es SECURITY INVOKER (el default): el delete corre como gastos_api y bajo las políticas RLS de
+-- V2, y la categoría que se está dando de baja es necesariamente del hogar activo.
+create function delete_rules_of_deactivated_category() returns trigger
+    language plpgsql
+as $$
+begin
+    delete from category_rules
+    where household_id = new.household_id
+      and category_id = new.id;
+    return new;
+end;
+$$;
+
+create trigger categories_delete_rules_on_deactivate
+    after update of active on categories
+    for each row
+    when (old.active and not new.active)
+    execute function delete_rules_of_deactivated_category();
