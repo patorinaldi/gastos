@@ -4,7 +4,8 @@ Proyecto Gastos. Trabajo Final Integrador, TUP UTN.
 
 Detalle de los ocho módulos declarados en la propuesta: qué resuelve cada uno, qué expone, qué
 reglas hace cumplir y de qué depende. Los identificadores `RF-xx`, `RNF-xx` y `RN-xx` remiten a
-[requerimientos.md](requerimientos.md) y [reglas-de-negocio.md](reglas-de-negocio.md).
+[requerimientos.md](requerimientos.md) y [reglas-de-negocio.md](reglas-de-negocio.md). El esquema
+sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 
 ## Convenciones de la API
 
