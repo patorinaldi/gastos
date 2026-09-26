@@ -20,9 +20,10 @@ El diagrama ya generado a partir de este código está exportado en
 4. El diagrama se renderiza solo, del lado derecho.
 
 > **Nota:** este DBML no representa el rol `gastos_api`, la función
-> `app_current_household()`, ni las políticas de Row Level Security — DBML no modela roles, funciones ni policies de
-> Postgres. Esas reglas quedan documentadas como `Note` en las tablas que
-> afectan (`categories`, `category_rules`, `expenses`).
+> `app_current_household()`, las políticas de Row Level Security, los disparadores ni la condición
+> de los índices parciales — DBML no modela nada de eso. Esas reglas quedan documentadas como
+> `Note` en las tablas que afectan (`categories`, `category_rules`, `expenses`) y, en prosa, en
+> [modelo-de-datos.md](../modelo-de-datos.md).
 
 ```dbml
 Project gastos {
@@ -34,6 +35,8 @@ Project gastos {
     2. RLS (V2) sobre categories, category_rules y expenses, con
        household_id = app_current_household().
     Borrado: NO ACTION / restrict en todos los FK.
+    Baja logica (V4): expenses y categories llevan active + deleted_at y no se
+    borran fisicamente. category_rules si se elimina.
   '''
 }
 
@@ -54,7 +57,7 @@ Table users {
 
   indexes {
     (household_id, id) [unique, name: 'users_household_id_id_key']
-    `lower(email)`     [unique, name: 'users_email_key']
+    `upper(email)`     [unique, name: 'users_email_key', note: 'V2.5: upper() y no lower(), que es lo que genera Spring Data para IgnoreCase']
     household_id       [name: 'users_household_idx']
   }
 
@@ -66,13 +69,20 @@ Table categories {
   household_id uuid         [not null]
   name         varchar(200) [not null]
   created_at   timestamptz  [not null, default: `now()`]
+  updated_at   timestamptz  [not null, default: `now()`, note: 'V4']
+  active       boolean      [not null, default: true, note: 'V4: marca de baja logica (RN-16)']
+  deleted_at   timestamptz  [note: 'V4: momento de la baja; null mientras esta activa. check: active = (deleted_at is null)']
 
   indexes {
     (household_id, id)           [unique, name: 'categories_household_id_id_key']
-    (household_id, `lower(name)`) [unique, name: 'categories_household_name_key']
+    (household_id, `lower(name)`) [unique, name: 'categories_household_name_key', note: 'V4: parcial, where active. Una categoria dada de baja libera su nombre']
   }
 
-  Note: 'RLS (V2): enable + force, policy categories_household_isolation.'
+  Note: '''
+    RLS (V2): enable + force, policy categories_household_isolation.
+    Trigger (V4) categories_delete_rules_on_deactivate: al pasar active de true a
+    false, elimina fisicamente las category_rules de esa categoria.
+  '''
 }
 
 Table category_rules {
@@ -101,6 +111,8 @@ Table expenses {
   payment_method text           [not null, note: "check in ('Efectivo', 'Tarjeta', 'Transferencia')"]
   created_at     timestamptz    [not null, default: `now()`]
   updated_at     timestamptz    [not null, default: `now()`]
+  active         boolean        [not null, default: true, note: 'V4: marca de baja logica (RN-16)']
+  deleted_at     timestamptz    [note: 'V4: momento de la baja; null mientras esta activo. check: active = (deleted_at is null)']
 
   indexes {
     (household_id, expense_date) [name: 'expenses_household_date_idx', note: 'expense_date desc']
