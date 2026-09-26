@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Bajo RLS: ver la nota de {@link CategoryRepository} sobre por qué no se pasa el hogar.
+ *
+ * <p>Los gastos dados de baja quedan fuera de todas las consultas y {@code delete} es una baja
+ * lógica (ver {@link Expense}).
  */
 public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 

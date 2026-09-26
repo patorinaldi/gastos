@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 /**
@@ -28,9 +30,24 @@ import org.hibernate.annotations.UpdateTimestamp;
  * el dominio.
  *
  * <p>Sobre el uso de Lombok, ver {@link Household}.
+ *
+ * <p><strong>Baja lógica (RN-16).</strong> {@code delete} no borra la fila: {@link SQLDelete} lo
+ * convierte en un update que marca {@code active = false} y registra {@code deleted_at} y
+ * {@code updated_at}. {@link SQLRestriction} deja las filas dadas de baja fuera de toda lectura
+ * por JPA ({@code findById}, {@code findAll} y las consultas derivadas), así que ningún repositorio
+ * tiene que acordarse de filtrarlas. {@code active} y {@code deletedAt} son de solo lectura desde
+ * la entidad: el único camino para cambiarlos es la baja, que los escribe juntos y no puede violar
+ * el check de coherencia de la V4.
+ *
+ * <p>{@link SQLRestriction} está acá y no en {@link Category} a propósito. Un gasto dado de baja
+ * tiene que desaparecer de todo, incluidos los totales del análisis. Una categoría dada de baja, en
+ * cambio, tiene que seguir apareciendo en los gastos viejos que la usaban (ver {@link Category}).
  */
 @Entity
 @Table(name = "expenses")
+@SQLDelete(sql = "update expenses set active = false, deleted_at = now(), updated_at = now()"
+        + " where id = ?")
+@SQLRestriction("active")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Expense {
@@ -72,6 +89,12 @@ public class Expense {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "active", nullable = false, insertable = false, updatable = false)
+    private boolean active = true;
+
+    @Column(name = "deleted_at", insertable = false, updatable = false)
+    private Instant deletedAt;
 
     public Expense(UUID householdId, UUID ownerId, String merchant, BigDecimal amount,
                    LocalDate expenseDate, PaymentMethod paymentMethod) {

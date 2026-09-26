@@ -154,8 +154,39 @@ Consecuencias de cada baja:
 - **Nombre liberado.** Un nombre de categoría dado de baja no sigue ocupando su lugar: el hogar
   puede crear otra categoría activa con el mismo nombre (ver RN-09).
 
-**Nivel.** Ambos. La aplicación filtra las filas dadas de baja en todas las consultas de gastos y
-categorías. El motor sostiene la unicidad solo entre filas activas, con índices únicos parciales.
+**Nivel.** Ambos. La aplicación filtra los gastos dados de baja en todas las consultas, y las
+categorías dadas de baja solo donde se ofrecen categorías. El motor sostiene la unicidad solo entre
+filas activas, con índices únicos parciales, y elimina las reglas de una categoría al darla de baja.
+
+**Cómo se registra.** `expenses` y `categories` llevan tres columnas:
+
+- `active`: la marca de baja. Es la condición que filtra la aplicación y la que usan los índices
+  parciales.
+- `deleted_at`: el momento de la baja. Es null mientras la fila está activa.
+- `updated_at`: la última modificación de la fila, sea o no la baja.
+
+`active` y `deleted_at` dicen lo mismo de dos maneras. Un `check` en cada tabla
+(`expenses_active_deleted_at_consistent`, `categories_active_deleted_at_consistent`) impide que se
+contradigan: una fila activa no tiene fecha de baja y una dada de baja siempre la tiene.
+`updated_at` no alcanza como fecha de baja porque cualquier edición posterior la pisa.
+
+**Cómo se filtra.** El filtro no es el mismo en las dos entidades, porque la regla tampoco lo es:
+
+- Un gasto dado de baja desaparece de todo. `Expense` lleva `@SQLRestriction("active")`, que
+  Hibernate aplica a toda lectura por JPA, incluidos los joins.
+- Una categoría dada de baja deja de ofrecerse, pero sigue presente en el historial y en el
+  análisis. `Category` no lleva la restricción: Hibernate la agregaría también a la condición de
+  los joins (`left join categories c on (c.active) and ...`), y un gasto de agosto quedaría sin
+  categoría o fuera del total después de dar de baja su categoría en septiembre. Las activas se
+  filtran con consultas explícitas (`...AndActiveTrue`) solo en el catálogo, en la búsqueda por
+  nombre y al validar una asignación nueva.
+
+En las dos entidades, el borrado por JPA es una baja lógica (`@SQLDelete`).
+
+**Reglas de una categoría dada de baja.** Un trigger de la V4
+(`categories_delete_rules_on_deactivate`) las elimina físicamente cuando la categoría pasa a
+inactiva, por cualquier camino que lo haga. Si quedaran, el motor seguiría asignando gastos a una
+categoría que ya no se ofrece, y el patrón seguiría ocupando su lugar en el índice único de RN-10.
 
 **Motivo.** En una aplicación de dinero, el borrado físico destruye el historial sobre el que
 después se pide explicación: quién cargó qué, cuándo y por cuánto. Con una categoría pasa lo mismo:
@@ -174,7 +205,7 @@ las categorías activas: una categoría dada de baja no bloquea su nombre (RN-16
 crear otra con el mismo nombre.
 
 **Nivel.** Motor. Índice único parcial `categories_household_name_key` sobre
-`(household_id, lower(name))`, con la condición `where deleted_at is null`. Las filas dadas de baja
+`(household_id, lower(name))`, con la condición `where active`. Las filas dadas de baja
 quedan fuera del índice, así que pueden repetir el nombre entre sí y con la categoría activa.
 
 **Motivo.** Las categorías duplicadas por capitalización parten el gasto de un mismo concepto en
