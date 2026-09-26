@@ -4,9 +4,15 @@
 -- responsable de un gasto tenía que estar *ahora* en el hogar del gasto, así que un usuario con
 -- gastos no podía cambiarse de hogar. La FK pasa a ser simple, contra users (id). Quien se cambia
 -- de hogar solo actualiza users.household_id: sus gastos quedan en el hogar anterior y los demás
--- integrantes los siguen viendo con su nombre. Que el responsable pertenezca al hogar al cargar el
--- gasto lo garantiza la aplicación, que lo toma siempre del token de sesión y nunca del cliente.
--- Los gastos siguen aislados por RLS igual que antes.
+-- integrantes los siguen viendo con su nombre. Los gastos siguen aislados por RLS igual que antes.
+--
+-- La FK simple ya no exige que el responsable integre el hogar al cargar el gasto, y ese es
+-- justo el caso que crea el cambio de hogar: un token emitido antes del cambio (una sesión o una
+-- automatización) podría seguir cargando gastos en el hogar anterior a nombre de alguien que ya
+-- no está. Un trigger, al final de esta migración, lo impide en el motor: al registrar un gasto,
+-- o al cambiarle el responsable, exige que el responsable integre hoy el hogar del gasto. No
+-- revisa los gastos ya cargados, que conservan a su responsable aunque se haya ido. La misma
+-- regla cubre a los tokens de cliente máquina y a las invitaciones.
 --
 -- Tablas de acceso (RN-03, RN-05). Tokens de verificación y restablecimiento, invitaciones y
 -- tokens de cliente máquina. Se guarda solo el hash SHA-256 (32 bytes): el valor en claro existe
@@ -101,3 +107,43 @@ create index machine_tokens_household_idx on machine_tokens (household_id);
 grant select, insert, update, delete
     on auth_tokens, household_invitations, machine_tokens
     to gastos_api;
+
+-- ── El usuario tiene que integrar hoy el hogar (RN-08, RN-18) ───────────────────────────────
+-- Una sola función para las tres tablas. El argumento del trigger es la columna que identifica
+-- al usuario: el responsable del gasto, el dueño del token o quien crea la invitación. Solo se
+-- dispara al insertar o al cambiar esa columna o el hogar, así que editar o dar de baja un gasto
+-- ya cargado por alguien que se fue sigue funcionando.
+--
+-- Corre con los permisos de quien escribe (gastos_api), que puede leer users porque esa tabla no
+-- tiene RLS. Usa el código de error de un check, así que la aplicación lo recibe como cualquier
+-- otra violación de integridad.
+
+create function require_user_in_household() returns trigger
+    language plpgsql
+as $$
+declare
+    v_user_id uuid := (to_jsonb(new) ->> tg_argv[0])::uuid;
+begin
+    if not exists (select 1
+                   from users u
+                   where u.id = v_user_id
+                     and u.household_id = new.household_id) then
+        raise exception 'require_user_in_household: el usuario % no integra el hogar % (%.%)',
+                v_user_id, new.household_id, tg_table_name, tg_argv[0]
+            using errcode = 'check_violation';
+    end if;
+    return new;
+end;
+$$;
+
+create trigger expenses_owner_in_household
+    before insert or update of owner_id, household_id on expenses
+    for each row execute function require_user_in_household('owner_id');
+
+create trigger machine_tokens_user_in_household
+    before insert or update of user_id, household_id on machine_tokens
+    for each row execute function require_user_in_household('user_id');
+
+create trigger household_invitations_creator_in_household
+    before insert or update of created_by, household_id on household_invitations
+    for each row execute function require_user_in_household('created_by');
