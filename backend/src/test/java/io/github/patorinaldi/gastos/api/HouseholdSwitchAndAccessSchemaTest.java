@@ -149,6 +149,57 @@ class HouseholdSwitchAndAccessSchemaTest extends HouseholdTestSupport {
                 .hasMessageContaining("machine_tokens_token_hash_key");
     }
 
+    @Test
+    void activeHouseholdCannotHaveAnArchiveDate() {
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "update households set archived_at = now() where id = ?", householdA))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("households_active_archived_at_consistent");
+    }
+
+    @Test
+    void noExpensesCanBeRecordedForSomeoneWhoLeftTheHousehold() {
+        UUID oldExpense = insertExpense(householdA, user);
+        jdbcTemplate.update("update users set household_id = ? where id = ?", householdB, user);
+
+        // Un token emitido antes del cambio que siga apuntando al hogar A no puede cargar gastos a
+        // nombre de quien ya se fue.
+        assertThatThrownBy(() -> insertExpense(householdA, user))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("no integra el hogar");
+
+        // Los gastos que ya había cargado se siguen editando y dando de baja: el trigger solo
+        // revisa el responsable al registrarlo o al cambiarlo.
+        withHousehold(householdA, () -> jdbcTemplate.update(
+                "update expenses set merchant = ? where id = ?", "Carrefour Express", oldExpense));
+        withHousehold(householdA, () -> jdbcTemplate.update(
+                "update expenses set active = false, deleted_at = now() where id = ?", oldExpense));
+        Boolean active = withHousehold(householdA, () -> jdbcTemplate.queryForObject(
+                "select active from expenses where id = ?", Boolean.class, oldExpense));
+        assertThat(active).isFalse();
+    }
+
+    @Test
+    void machineTokensAreOnlyForTheOwnersHousehold() {
+        // El usuario integra A: no puede tener un token que cargue gastos en B.
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "insert into machine_tokens (household_id, user_id, name, token_hash)"
+                        + " values (?, ?, ?, ?)",
+                householdB, user, "iPhone de Ana", sha256("token")))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("no integra el hogar");
+    }
+
+    @Test
+    void onlyAMemberCanInviteToAHousehold() {
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "insert into household_invitations (household_id, created_by, code_hash)"
+                        + " values (?, ?, ?)",
+                householdB, user, sha256("GST-4K2P-9XZ")))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("no integra el hogar");
+    }
+
     // ------------------------------------------------------------------
 
     private UUID insertExpense(UUID household, UUID owner) {
