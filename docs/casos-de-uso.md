@@ -13,7 +13,7 @@ Estos casos, la secuencia paso a paso.
 |---|---|---|---|
 | CU-01 | Registrar cuenta y crear hogar | Visitante | M1, M2, M4 |
 | CU-02 | Iniciar sesión | Integrante | M1 |
-| CU-03 | Incorporarse a un hogar existente | Visitante registrado | M2 |
+| CU-03 | Incorporarse a un hogar existente | Integrante | M1, M2 |
 | CU-04 | Registrar un gasto | Integrante | M3, M4 |
 | CU-05 | Crear regla y reclasificar retroactivamente | Integrante | M4 |
 | CU-06 | Consultar el análisis del período | Integrante | M5 |
@@ -75,7 +75,9 @@ Actor principal: integrante. Módulo: M1. Requisitos: RF-05. Reglas: RN-02. No f
 
 **Precondiciones.** El usuario tiene cuenta y confirmó su correo.
 
-**Postcondiciones.** El cliente posee un token de sesión que incluye el identificador del hogar.
+**Postcondiciones.** El cliente posee un token de sesión que identifica al usuario. El hogar de cada
+petición no sale del token: el sistema lo resuelve en cada petición desde el hogar actual del
+usuario (RN-18).
 
 **Flujo principal**
 
@@ -84,7 +86,8 @@ Actor principal: integrante. Módulo: M1. Requisitos: RF-05. Reglas: RN-02. No f
 3. El sistema verifica que la cuenta no esté bloqueada por intentos fallidos.
 4. El sistema compara la contraseña contra el hash almacenado.
 5. El sistema verifica que el correo esté confirmado (RN-02).
-6. El sistema emite un token de sesión que incluye el hogar del usuario.
+6. El sistema emite un token de sesión. Puede incluir el hogar del usuario como dato para el cliente
+   (RF-05), pero el servidor no lo usa para decidir a qué hogar accede la petición.
 7. El sistema reinicia el contador de intentos fallidos.
 
 **Flujo de excepción 4a. Credenciales inválidas**
@@ -107,43 +110,78 @@ Actor principal: integrante. Módulo: M1. Requisitos: RF-05. Reglas: RN-02. No f
 
 ## CU-03. Incorporarse a un hogar existente
 
-Actor principal: visitante registrado. Módulo: M2. Requisitos: RF-09. Reglas: RN-04, RN-05.
+Actor principal: integrante. Módulos: M2 Hogares, M1 Identidad. Requisitos: RF-09, RF-12.
+Reglas: RN-04, RN-05, RN-18.
 
-**Precondiciones.** El usuario tiene cuenta verificada. Un integrante del hogar destino generó un
-código de invitación vigente.
+Por RN-11, todo usuario tiene un hogar desde el registro. Incorporarse a otro hogar es, por lo
+tanto, cambiarse de hogar: el usuario deja el actual y pasa al de la invitación.
 
-**Postcondiciones.** El usuario pasa a integrar el hogar de la invitación. El código queda
-consumido.
+**Precondiciones.** El usuario tiene sesión activa. Un integrante de otro hogar generó un código de
+invitación vigente.
+
+**Postcondiciones.** El usuario integra el hogar de la invitación, y la invitación queda canjeada.
+Los gastos que cargó siguen en el hogar anterior, a su nombre. Sus tokens de cliente máquina del
+hogar anterior quedan revocados. Si era el último integrante, el hogar anterior queda archivado
+con sus datos conservados.
 
 **Flujo principal**
 
 1. El usuario ingresa el código de invitación que le compartieron.
 2. El sistema busca la invitación por el hash del código, ya que no guarda el código en claro, y
-   verifica que exista, no esté canjeada y no haya vencido (RN-05).
-3. El sistema traslada al usuario al hogar de la invitación.
-4. El sistema marca la invitación como canjeada, registrando quién la canjeó y cuándo.
-5. El sistema emite un token de sesión nuevo, con el hogar actualizado.
-6. El usuario ve los gastos ya cargados por los integrantes de ese hogar.
+   verifica que exista, no esté canjeada, no haya vencido (RN-05) y que su hogar esté activo
+   (RN-18).
+3. El sistema verifica que la invitación sea de un hogar distinto del que el usuario integra.
+4. El sistema advierte las consecuencias del cambio y pide confirmación:
+   - los gastos que cargó quedan en su hogar actual y deja de verlos;
+   - sus automatizaciones dejan de funcionar hasta que emita tokens nuevos;
+   - si es el único integrante, su hogar actual queda archivado.
+5. El usuario confirma.
+6. El sistema abre una transacción y, dentro de ella (RN-18):
+   a. cambia el hogar del usuario al de la invitación;
+   b. marca la invitación como canjeada, registrando quién la canjeó y cuándo;
+   c. revoca los tokens de cliente máquina del usuario asociados al hogar anterior;
+   d. si el hogar anterior quedó sin integrantes, lo archiva.
+7. El sistema confirma la transacción y emite un token de sesión nuevo.
+8. El usuario ve los gastos ya cargados por los integrantes del hogar nuevo. Ninguno de los gastos
+   que cargó en el hogar anterior aparece en él.
 
-**Flujo alternativo 3a. El usuario tenía un hogar propio con datos**
+**Flujo alternativo 5a. El usuario no confirma**
 
-- 3a.1. El sistema advierte que los gastos cargados en su hogar anterior dejarán de estar visibles.
-- 3a.2. Si el usuario confirma, el caso continúa en el paso 3.
-- 3a.3. Si no confirma, el caso termina sin cambios.
+- 5a.1. El caso termina sin cambios. El usuario sigue en su hogar con sus gastos.
+- 5a.2. La invitación no se consume y sigue disponible.
 
-Nota de alcance: la migración de los datos del hogar anterior al nuevo no está comprometida para
-esta entrega. Como un usuario pertenece a un solo hogar (RN-04), el caso habitual es canjear la
-invitación antes de cargar gastos.
+**Flujo alternativo 6d. El hogar anterior tiene otros integrantes**
+
+- 6d.1. El sistema no lo archiva. El hogar sigue activo para quienes lo integran.
+- 6d.2. Los gastos que cargó el usuario siguen en ese hogar, visibles para los demás con su nombre
+  como responsable.
 
 **Flujo de excepción 2a. Código vencido o ya canjeado**
 
 - 2a.1. El sistema rechaza el canje indicando que solicite un código nuevo.
 - 2a.2. El usuario permanece en su hogar actual.
 
-**Flujo de excepción 2b. Código inexistente**
+**Flujo de excepción 2b. Código inexistente o de un hogar archivado**
 
 - 2b.1. El sistema responde con el mismo mensaje que para un código vencido, para no permitir
   descubrir códigos válidos por tanteo.
+
+**Flujo de excepción 3a. El código es del hogar que el usuario ya integra**
+
+- 3a.1. El sistema rechaza el canje e informa que ya integra ese hogar.
+- 3a.2. La invitación no se consume. Sin esta verificación, el único integrante de un hogar que
+  canjeara su propio código archivaría el hogar en el que sigue estando.
+
+**Flujo de excepción 6b. La invitación se canjeó mientras el usuario confirmaba**
+
+- 6b.1. Si otra persona canjeó el mismo código entre el paso 2 y la confirmación, el sistema
+  revierte la transacción y responde como en 2a.
+- 6b.2. Ningún paso del cambio queda aplicado a medias: el usuario sigue en su hogar, con sus
+  tokens vigentes.
+
+Nota sobre el token de sesión del paso 7: como el hogar de cada petición se resuelve desde el hogar
+actual del usuario y no desde el token (RN-18), un token emitido antes del cambio ya no da acceso
+al hogar anterior. El token nuevo solo actualiza el dato que muestra el cliente.
 
 ---
 
@@ -230,7 +268,7 @@ el patrón quedan clasificados.
 
 ## CU-06. Consultar el análisis del período
 
-Actor principal: integrante. Módulo: M5. Requisitos: RF-25 a RF-27. Reglas: RN-14.
+Actor principal: integrante. Módulo: M5. Requisitos: RF-25 a RF-27. Reglas: RN-14, RN-18.
 No funcionales: RNF-11.
 
 **Precondiciones.** El integrante tiene sesión activa.
@@ -239,7 +277,8 @@ No funcionales: RNF-11.
 
 1. El integrante abre el tablero.
 2. El sistema toma como período el mes en curso (RD-07).
-3. El sistema propaga el hogar del token al contexto de la consulta.
+3. El sistema resuelve el hogar desde el hogar actual del integrante, no desde el token, y lo fija
+   en el contexto de la transacción (RN-18).
 4. El sistema calcula, agrupando en la base de datos, el total del período y los subtotales por
    categoría, por integrante y por medio de pago.
 5. El sistema calcula la serie mensual y su media histórica sobre los meses con gasto registrado
@@ -266,7 +305,7 @@ No funcionales: RNF-11.
 
 ## CU-07. Capturar un gasto desde un cliente automatizado
 
-Actor principal: cliente automatizado. Módulo: M6. Requisitos: RF-30 a RF-32.
+Actor principal: cliente automatizado. Módulo: M6. Requisitos: RF-30 a RF-32. Reglas: RN-18.
 No funcionales: RNF-10.
 
 **Precondiciones.** Existe un token de cliente máquina vigente, asociado a un hogar y a un
@@ -276,7 +315,8 @@ integrante.
 
 1. El cliente envía importe y comercio al punto de captura, con su token en la cabecera.
 2. El sistema busca el token por su hash, ya que no guarda el valor en claro, y obtiene el hogar y
-   el integrante asociados.
+   el integrante asociados. Verifica que el token no esté revocado y que su hogar sea el hogar
+   actual del integrante (RN-18).
 3. El sistema normaliza el importe, aceptando formato local (`1.234,56`), anglosajón (`1,234.56`)
    o sin separadores (RF-32).
 4. El sistema valida el importe resultante contra RN-06 y el comercio contra RN-07.
@@ -284,9 +324,12 @@ integrante.
 6. El sistema registra el gasto y devuelve su identificador y el importe normalizado.
 7. El sistema registra en el token el momento de su último uso.
 
-**Flujo de excepción 2a. Token inválido o revocado**
+**Flujo de excepción 2a. Token inválido, revocado o de un hogar que su dueño dejó**
 
 - 2a.1. El sistema rechaza la petición sin indicar si el token existió alguna vez.
+- 2a.2. El caso del hogar abandonado cubre un token que la revocación de CU-03 no alcanzó. Si
+  igualmente llegara a registrarse el gasto, el motor lo rechaza porque el responsable no integra
+  ese hogar (ver la sección final).
 
 **Flujo de excepción 3a. El importe no se puede interpretar**
 
@@ -328,12 +371,24 @@ No funcionales: RNF-08.
 
 ## El aislamiento como condición transversal
 
-Ninguno de los casos anteriores incluye pasos de verificación de pertenencia al hogar, y es
-deliberado. El aislamiento no se implementa como un paso más de cada flujo, que podría olvidarse en
-alguno, sino como una condición del entorno de ejecución. La sesión fija el hogar al inicio de cada
-transacción y las políticas del motor filtran toda consulta.
+Los casos que operan sobre gastos, categorías y reglas no incluyen pasos de verificación de
+pertenencia al hogar, y es deliberado. El aislamiento no se implementa como un paso más de cada
+flujo, que podría olvidarse en alguno, sino como una condición del entorno de ejecución. En cada
+petición, el sistema resuelve el hogar desde el hogar actual del usuario, no desde el token de
+sesión (RN-18), y lo fija al inicio de la transacción. Las políticas del motor filtran toda
+consulta sobre esas tres tablas.
 
 La consecuencia, válida para todos los casos de uso, es que si un actor intenta operar sobre datos
 de otro hogar, aun conociendo sus identificadores exactos, el sistema responde como si esos datos
-no existieran. Las lecturas devuelven vacío y las escrituras se rechazan.
+no existieran. Las lecturas devuelven vacío y las escrituras se rechazan. Lo mismo vale para un
+token de sesión emitido antes de un cambio de hogar: ya no alcanza el hogar anterior.
+
+Los datos de acceso son la excepción. Usuarios, tokens de verificación y restablecimiento,
+invitaciones y tokens de cliente máquina no tienen políticas de aislamiento, porque se buscan
+justamente sin contexto de hogar: al iniciar sesión, al canjear un código, al autenticar una
+automatización. Por eso CU-03 y CU-07 verifican el hogar de forma explícita.
+
+El motor agrega una última barrera. Rechaza un gasto, un token de cliente máquina o una invitación
+a nombre de alguien que no integra hoy el hogar. Cubre el caso en que todo lo anterior falle, por
+ejemplo un token de cliente máquina que no se revocó al cambiarse de hogar.
 
