@@ -12,8 +12,10 @@ reglas hace cumplir y de qué depende. Los identificadores `RF-xx`, `RNF-xx` y `
 - Autenticación por token de sesión en `Authorization: Bearer <token>`, salvo el registro, el
   inicio de sesión, la verificación de correo, la recuperación de contraseña y el punto de
   verificación de estado.
-- El hogar nunca viaja en la petición. Se toma del token de sesión y se propaga al contexto de la
-  base. Un cliente no puede pedir datos de otro hogar porque no tiene forma de nombrarlo.
+- El hogar nunca viaja en la petición. El servidor lo resuelve en cada petición desde el hogar
+  actual del usuario autenticado (`users.household_id`), no desde el token, y lo propaga al
+  contexto de la base (RN-18). Un cliente no puede pedir datos de otro hogar porque no tiene forma
+  de nombrarlo.
 - Los errores se devuelven con `application/problem+json` (RFC 9457), resueltos de forma
   centralizada (RF-40).
 - Los importes se serializan como cadena decimal con dos decimales, para no perder precisión en el
@@ -40,13 +42,13 @@ reglas hace cumplir y de qué depende. Los identificadores `RF-xx`, `RNF-xx` y `
 alimenta el contexto de aislamiento. Sin identidad resuelta no hay hogar, y sin hogar no hay datos
 visibles.
 
-Requisitos: RF-01 a RF-07. Reglas: RN-01, RN-02, RN-03, RN-11.
+Requisitos: RF-01 a RF-07. Reglas: RN-01, RN-02, RN-03, RN-11, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
 | `POST` | `/api/auth/register` | Registra un usuario, crea su hogar y siembra el catálogo inicial. Envía el correo de verificación. | No |
 | `POST` | `/api/auth/verify` | Confirma el correo a partir del token recibido. | No |
-| `POST` | `/api/auth/login` | Valida credenciales y emite el token de sesión con el hogar. | No |
+| `POST` | `/api/auth/login` | Valida credenciales y emite el token de sesión. | No |
 | `POST` | `/api/auth/password/forgot` | Emite y envía un token de restablecimiento. | No |
 | `POST` | `/api/auth/password/reset` | Cambia la contraseña con un token válido. | No |
 | `GET` | `/api/auth/me` | Devuelve el usuario autenticado y su hogar. | Sesión |
@@ -68,12 +70,15 @@ POST /api/auth/login
   → 403 correo sin verificar (RN-02)
 ```
 
-**Decisiones de diseño.** El identificador del hogar viaja como atributo dentro del token de
-sesión. Así, cada petición autenticada trae consigo el contexto de aislamiento sin necesidad de una
-consulta adicional. El registro y la creación del hogar son una sola transacción (RN-11): el alta
-crea el hogar, fija su identificador en el contexto de la transacción y recién entonces siembra el
-catálogo inicial de M4, que se inserta bajo las políticas de aislamiento y por lo tanto exige un
-hogar activo.
+**Decisiones de diseño.** El token de sesión identifica al usuario, y el hogar de cada petición se
+lee de `users.household_id`, no de un atributo del token. Cuesta una consulta por petición, pero es
+lo que exige RN-18: el servidor acepta un token firmado hasta que vence, así que si el hogar viajara
+en él, quien se cambió de hogar seguiría leyendo y escribiendo en el anterior con un token emitido
+antes del cambio. El token puede llevar el hogar como dato para el cliente (RF-05), pero el servidor
+no lo usa para decidir a qué hogar accede la petición. El registro y la creación del hogar son una
+sola transacción (RN-11): el alta crea el hogar, fija su identificador en el contexto de la
+transacción y recién entonces siembra el catálogo inicial de M4, que se inserta bajo las políticas
+de aislamiento y por lo tanto exige un hogar activo.
 
 Depende de M8 (esquema, propagación de contexto). El hogar que crea el alta es el que después
 administra M2.
@@ -266,7 +271,7 @@ Depende de M3 (los datos que agrega) y M8.
 **Responsabilidad.** Permitir registrar un gasto desde fuera de la interfaz web, por ejemplo desde
 una automatización del teléfono o un atajo, en el orden de los segundos.
 
-Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07.
+Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -290,7 +295,9 @@ equivocado.
 
 **Decisión de diseño.** El canal de autenticación es propio y distinto del de la sesión web. El
 token es de larga duración, se guarda en un dispositivo y se puede revocar individualmente sin
-afectar la sesión de la persona. Solo habilita este punto de entrada, no el resto de la API.
+afectar la sesión de la persona. Solo habilita este punto de entrada, no el resto de la API. Al
+autenticarlo, el módulo exige que no esté revocado y que su hogar sea el hogar actual de su dueño
+(RN-18), así una automatización no sigue cargando gastos en un hogar que su dueño dejó.
 
 Depende de M1 (emisión y revocación de tokens), M3 y M4.
 
