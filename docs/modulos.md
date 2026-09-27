@@ -87,10 +87,10 @@ administra M2.
 
 ## M2. Hogares
 
-**Responsabilidad.** Administrar la unidad de convivencia: quiénes la integran y cómo se suma
-alguien nuevo.
+**Responsabilidad.** Administrar la unidad de convivencia: quiénes la integran, cómo se suma
+alguien nuevo y qué pasa con el hogar que esa persona deja.
 
-Requisitos: RF-08 a RF-12. Reglas: RN-04, RN-05.
+Requisitos: RF-08 a RF-12. Reglas: RN-04, RN-05, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -98,7 +98,8 @@ Requisitos: RF-08 a RF-12. Reglas: RN-04, RN-05.
 | `PATCH` | `/api/household` | Renombra el hogar. | Sesión |
 | `GET` | `/api/household/members` | Lista los integrantes. | Sesión |
 | `POST` | `/api/household/invitations` | Genera un código de invitación. | Sesión |
-| `POST` | `/api/household/invitations/redeem` | Canjea un código e incorpora al usuario. | Sesión |
+| `POST` | `/api/household/invitations/preview` | Valida un código y describe las consecuencias del cambio de hogar, sin aplicarlo. | Sesión |
+| `POST` | `/api/household/invitations/redeem` | Canjea un código y cambia al usuario de hogar. Exige confirmación explícita. | Sesión |
 
 Contratos principales:
 
@@ -106,17 +107,44 @@ Contratos principales:
 POST /api/household/invitations
   → 201 { "code": "GST-4K2P-9XZ", "expiresAt": "..." }
 
-POST /api/household/invitations/redeem
+POST /api/household/invitations/preview
   { "code": "GST-4K2P-9XZ" }
-  → 200 { "householdId": "...", "householdName": "Casa Rivoira" }
-  → 410 código vencido o ya canjeado (RN-05)
+  → 200 { "householdName": "Casa Rivoira", "currentHouseholdWillBeArchived": true,
+          "machineTokensToRevoke": 2 }
+  → 409 el código es del hogar que el usuario ya integra
+  → 410 código inexistente, vencido, ya canjeado o de un hogar archivado (RN-05, RN-18)
+
+POST /api/household/invitations/redeem
+  { "code": "GST-4K2P-9XZ", "confirm": true }
+  → 200 { "householdId": "...", "householdName": "Casa Rivoira",
+          "previousHouseholdArchived": true }
+  → 400 falta la confirmación
+  → 409 el código es del hogar que el usuario ya integra
+  → 410 código inexistente, vencido, ya canjeado o de un hogar archivado (RN-05, RN-18)
 ```
+
+**El canje es un cambio de hogar.** Por RN-11 todo usuario ya tiene un hogar, así que canjear un
+código implica dejar el actual (CU-03). La interfaz llama primero a `preview` para mostrar la
+advertencia que exige RN-18 y después a `redeem` con `"confirm": true`. `redeem` no depende de que
+se haya llamado a `preview`: repite todas las validaciones y rechaza el canje sin la confirmación.
+Dentro de una sola transacción, `redeem` cambia el hogar del usuario, marca la invitación como
+canjeada, revoca los tokens de cliente máquina del usuario en el hogar anterior y, si ese hogar
+quedó sin integrantes, lo archiva. Los gastos que el usuario cargó quedan en el hogar anterior. Si
+otra persona canjea el mismo código entre las dos llamadas, `redeem` responde `410` y no aplica
+nada.
+
+**Una sola respuesta para todos los códigos inválidos.** Inexistente, vencido, ya canjeado o de un
+hogar archivado responden igual, con `410`, para que no se puedan descubrir códigos válidos por
+tanteo. El `409` sí se distingue porque solo revela el hogar que el usuario ya integra. El código
+viaja en el cuerpo y no en la ruta, para que no quede en los registros de acceso. La base guarda
+solo su hash, así que el valor en claro existe únicamente en la respuesta que genera la invitación.
 
 **Decisión de diseño.** El recurso es `/api/household`, en singular y sin identificador. El hogar
 del usuario autenticado es el único al que puede acceder, y nombrarlo en la ruta sugeriría que
 existe la posibilidad de pedir otro.
 
-Depende de M1 (identidad; el hogar se crea en el alta) y M8 (aislamiento).
+Depende de M1 (identidad; el hogar se crea en el alta; revocación de tokens de cliente máquina) y
+M8 (aislamiento).
 
 ---
 
