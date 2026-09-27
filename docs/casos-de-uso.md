@@ -72,7 +72,6 @@ hogar. Se envió un correo con el enlace de verificación.
 ## CU-02. Iniciar sesión
 
 Actor principal: integrante. Módulo: M1. Requisitos: RF-04, RF-05. Reglas: RN-02.
-No funcionales: RNF-06.
 
 **Precondiciones.** El usuario tiene cuenta y confirmó su correo.
 
@@ -84,28 +83,20 @@ usuario (RN-18).
 
 1. El integrante ingresa correo y contraseña.
 2. El sistema busca el usuario por correo, sin distinguir mayúsculas.
-3. El sistema verifica que la cuenta no esté bloqueada por intentos fallidos.
-4. El sistema compara la contraseña contra el hash almacenado.
-5. El sistema verifica que el correo esté confirmado (RN-02).
-6. El sistema emite un token de sesión. Puede incluir el hogar del usuario como dato para el cliente
+3. El sistema compara la contraseña contra el hash almacenado.
+4. El sistema verifica que el correo esté confirmado (RN-02).
+5. El sistema emite un token de sesión. Puede incluir el hogar del usuario como dato para el cliente
    (RF-05), pero el servidor no lo usa para decidir a qué hogar accede la petición.
-7. El sistema reinicia el contador de intentos fallidos.
 
-**Flujo de excepción 3a. Cuenta bloqueada**
+**Flujo de excepción 3a. Credenciales inválidas**
 
-- 3a.1. Tras 10 intentos fallidos, el sistema rechaza los intentos durante 15 minutos (RNF-06).
-- 3a.2. El sistema informa el bloqueo temporal sin precisar cuántos intentos restan.
-
-**Flujo de excepción 4a. Credenciales inválidas**
-
-- 4a.1. El sistema incrementa el contador de intentos fallidos de la cuenta.
-- 4a.2. El sistema responde con un mensaje genérico, idéntico al de correo inexistente, para no
+- 3a.1. El sistema responde con un mensaje genérico, idéntico al de correo inexistente, para no
   revelar qué correos están registrados.
 
-**Flujo de excepción 5a. Correo sin verificar**
+**Flujo de excepción 4a. Correo sin verificar**
 
-- 5a.1. El sistema rechaza el acceso e indica que debe confirmar el correo.
-- 5a.2. El sistema ofrece reenviar el enlace de verificación.
+- 4a.1. El sistema rechaza el acceso e indica que debe confirmar el correo.
+- 4a.2. El sistema ofrece reenviar el enlace de verificación.
 
 ---
 
@@ -245,7 +236,8 @@ Requisitos: RF-13, RF-14, RF-20, RF-21. Reglas: RN-06, RN-07, RN-08, RN-12, RN-1
 
 ## CU-05. Crear regla y reclasificar retroactivamente
 
-Actor principal: integrante. Módulo: M4. Requisitos: RF-23. Reglas: RN-09, RN-10, RN-13, RN-16.
+Actor principal: integrante. Módulo: M4. Requisitos: RF-23, RF-43.
+Reglas: RN-09, RN-10, RN-13, RN-16.
 
 **Precondiciones.** El integrante tiene sesión activa. Existe al menos un gasto sin categoría.
 Habitualmente se llega desde la bandeja.
@@ -281,7 +273,8 @@ el patrón quedan clasificados.
 **Flujo de excepción 4a. Patrón duplicado**
 
 - 4a.1. El sistema rechaza la creación e informa qué categoría tiene asignada la regla existente.
-- 4a.2. El integrante puede editar esa regla en lugar de crear una nueva.
+- 4a.2. Si quiere que el patrón apunte a otra categoría, el integrante puede eliminar la regla
+  existente (RF-43) y volver a crearla con la categoría nueva.
 
 ---
 

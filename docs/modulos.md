@@ -66,7 +66,6 @@ POST /api/auth/login
   → 200 { "token": "...", "expiresAt": "..." }
   → 401 credenciales inválidas
   → 403 correo sin verificar (RN-02)
-  → 429 superado el límite de intentos (RNF-06)
 ```
 
 **Decisiones de diseño.** El identificador del hogar viaja como atributo dentro del token de
@@ -172,7 +171,7 @@ Depende de M1, M4 (resolución de categoría) y M8.
 **Responsabilidad.** Convertir un nombre de comercio en una categoría, con un resultado
 reproducible y corregible por el usuario.
 
-Requisitos: RF-19 a RF-24. Reglas: RN-09, RN-10, RN-12, RN-13.
+Requisitos: RF-19 a RF-24, RF-43. Reglas: RN-09, RN-10, RN-12, RN-13.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
