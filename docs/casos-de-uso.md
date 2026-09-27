@@ -25,7 +25,7 @@ Estos casos, la secuencia paso a paso.
 ## CU-01. Registrar cuenta y crear hogar
 
 Actor principal: visitante. Módulos: M1 Identidad, M2 Hogares, M4 Categorización.
-Requisitos: RF-01, RF-02, RF-03. Reglas: RN-01, RN-11.
+Requisitos: RF-01, RF-02, RF-03. Reglas: RN-01, RN-03, RN-11.
 
 **Precondiciones.** El visitante no tiene cuenta en el sistema.
 
@@ -43,8 +43,10 @@ hogar. Se envió un correo con el enlace de verificación.
    c. fija el hogar recién creado como contexto de la transacción;
    d. siembra el catálogo inicial de categorías y reglas de ese hogar.
 5. El sistema confirma la transacción.
-6. El sistema genera un token de verificación de un solo uso, con vencimiento a 24 horas.
-7. El sistema envía el correo con el enlace de verificación.
+6. El sistema genera un token de verificación de un solo uso, con vencimiento a 24 horas, y guarda
+   solo su hash (RN-03).
+7. El sistema envía el correo con el enlace de verificación, que es el único lugar donde existe el
+   token en claro.
 8. El sistema informa al visitante que revise su casilla.
 
 **Flujo alternativo 3a. El correo ya está registrado**
@@ -116,9 +118,10 @@ consumido.
 **Flujo principal**
 
 1. El usuario ingresa el código de invitación que le compartieron.
-2. El sistema verifica que el código exista, no esté canjeado y no haya vencido (RN-05).
+2. El sistema busca la invitación por el hash del código, ya que no guarda el código en claro, y
+   verifica que exista, no esté canjeada y no haya vencido (RN-05).
 3. El sistema traslada al usuario al hogar de la invitación.
-4. El sistema marca el código como canjeado.
+4. El sistema marca la invitación como canjeada, registrando quién la canjeó y cuándo.
 5. El sistema emite un token de sesión nuevo, con el hogar actualizado.
 6. El usuario ve los gastos ya cargados por los integrantes de ese hogar.
 
@@ -272,12 +275,14 @@ integrante.
 **Flujo principal**
 
 1. El cliente envía importe y comercio al punto de captura, con su token en la cabecera.
-2. El sistema valida el token y obtiene el hogar y el integrante asociados.
+2. El sistema busca el token por su hash, ya que no guarda el valor en claro, y obtiene el hogar y
+   el integrante asociados.
 3. El sistema normaliza el importe, aceptando formato local (`1.234,56`), anglosajón (`1,234.56`)
    o sin separadores (RF-32).
 4. El sistema valida el importe resultante contra RN-06 y el comercio contra RN-07.
 5. El sistema resuelve la categoría con el motor de reglas del hogar.
 6. El sistema registra el gasto y devuelve su identificador y el importe normalizado.
+7. El sistema registra en el token el momento de su último uso.
 
 **Flujo de excepción 2a. Token inválido o revocado**
 
@@ -294,17 +299,20 @@ integrante.
 ## CU-08. Restablecer la contraseña
 
 Actor principal: visitante. Módulo: M1. Requisitos: RF-06. Reglas: RN-03.
+No funcionales: RNF-08.
 
-**Precondiciones.** El usuario tiene cuenta.
+**Precondiciones.** Ninguna. El caso admite correos sin cuenta (ver 1a).
 
 **Flujo principal**
 
 1. El visitante solicita el restablecimiento indicando su correo.
-2. El sistema genera un token de un solo uso con vencimiento a 24 horas.
-3. El sistema envía el correo con el enlace.
+2. El sistema genera un token de restablecimiento de un solo uso, con vencimiento a 24 horas, y
+   guarda solo su hash.
+3. El sistema envía el correo con el enlace, que es el único lugar donde existe el token en claro.
 4. El visitante abre el enlace e ingresa la contraseña nueva.
-5. El sistema valida el token y la longitud mínima de la contraseña.
-6. El sistema actualiza el hash almacenado e invalida el token.
+5. El sistema busca el token por su hash y valida que sea de restablecimiento, que no esté usado ni
+   vencido, y que la contraseña cumpla la longitud mínima.
+6. El sistema actualiza el hash de la contraseña y registra el token como usado.
 7. El sistema informa el cambio y ofrece iniciar sesión.
 
 **Flujo alternativo 1a. El correo no está registrado**
