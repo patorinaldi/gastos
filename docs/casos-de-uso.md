@@ -188,7 +188,7 @@ al hogar anterior. El token nuevo solo actualiza el dato que muestra el cliente.
 ## CU-04. Registrar un gasto
 
 Actor principal: integrante. Módulos: M3 Gastos, M4 Categorización.
-Requisitos: RF-13, RF-14, RF-20, RF-21. Reglas: RN-06, RN-07, RN-12.
+Requisitos: RF-13, RF-14, RF-20, RF-21. Reglas: RN-06, RN-07, RN-08, RN-12, RN-16, RN-17.
 
 **Precondiciones.** El integrante tiene sesión activa.
 
@@ -201,14 +201,17 @@ Requisitos: RF-13, RF-14, RF-20, RF-21. Reglas: RN-06, RN-07, RN-12.
 3. El sistema valida que el comercio no esté vacío (RN-07).
 4. El sistema asigna la fecha del día y al integrante autenticado como responsable (RF-14).
 5. El sistema consulta el motor de reglas del hogar con el nombre del comercio.
-6. El motor encuentra una regla cuyo patrón coincide y devuelve su categoría.
+6. El motor encuentra una regla cuyo patrón coincide y devuelve su categoría. Si coincide más de
+   una, aplica la de patrón más largo y, a igual longitud, la más antigua (RN-17).
 7. El sistema registra el gasto con esa categoría.
 8. El sistema muestra el gasto en el listado y actualiza los totales del período.
 
 **Flujo alternativo 1a. El integrante completa campos opcionales**
 
-- 1a.1. Indica fecha, medio de pago o categoría distintos de los predeterminados.
+- 1a.1. Indica fecha, medio de pago, responsable o categoría distintos de los predeterminados.
 - 1a.2. Si indica categoría explícitamente, el sistema omite los pasos 5 y 6 y respeta esa elección.
+  La categoría tiene que estar activa (RN-16).
+- 1a.3. Si indica otro responsable, tiene que ser un integrante actual del hogar (RN-08).
 
 **Flujo alternativo 6a. Ningún patrón coincide**
 
@@ -225,11 +228,23 @@ Requisitos: RF-13, RF-14, RF-20, RF-21. Reglas: RN-06, RN-07, RN-12.
 - 7a.1. Si el valor no es `Efectivo`, `Tarjeta` ni `Transferencia`, el sistema rechaza el alta
   (RN-07).
 
+**Flujo de excepción 7b. La categoría indicada no está disponible**
+
+- 7b.1. Si la categoría elegida en 1a está dada de baja o no pertenece al hogar, el sistema rechaza
+  el alta e invita a elegir otra del catálogo (RN-08, RN-16).
+
+**Flujo de excepción 7c. El responsable no integra el hogar**
+
+- 7c.1. Si el responsable indicado en 1a no integra hoy el hogar del gasto, el sistema rechaza el
+  alta (RN-08).
+- 7c.2. El motor rechaza el gasto aunque la aplicación omita esta validación, por ejemplo cuando
+  llega con un token emitido antes de un cambio de hogar (RN-18).
+
 ---
 
 ## CU-05. Crear regla y reclasificar retroactivamente
 
-Actor principal: integrante. Módulo: M4. Requisitos: RF-23. Reglas: RN-10, RN-13.
+Actor principal: integrante. Módulo: M4. Requisitos: RF-23. Reglas: RN-09, RN-10, RN-13, RN-16.
 
 **Precondiciones.** El integrante tiene sesión activa. Existe al menos un gasto sin categoría.
 Habitualmente se llega desde la bandeja.
@@ -241,17 +256,20 @@ el patrón quedan clasificados.
 
 1. El integrante abre la bandeja de no categorizados y elige un gasto.
 2. El sistema propone como patrón el nombre del comercio, normalizado.
-3. El integrante ajusta el patrón si hace falta y elige la categoría destino.
+3. El integrante ajusta el patrón si hace falta y elige la categoría destino entre las categorías
+   activas del hogar (RN-16).
 4. El sistema verifica que el patrón no exista ya en el hogar (RN-10).
 5. El sistema crea la regla.
-6. El sistema busca los gastos sin categoría del hogar que coinciden con el patrón (RN-13).
+6. El sistema busca los gastos activos y sin categoría del hogar que coinciden con el patrón.
+   Los gastos dados de baja no se reclasifican (RN-13, RN-16).
 7. El sistema les asigna la categoría de la regla.
 8. El sistema informa cuántos gastos se reclasificaron y los quita de la bandeja.
 
 **Flujo alternativo 3a. La categoría destino no existe**
 
 - 3a.1. El integrante crea la categoría en el momento.
-- 3a.2. El sistema verifica que su nombre no esté duplicado en el hogar (RN-09).
+- 3a.2. El sistema verifica que su nombre no esté repetido entre las categorías activas del hogar.
+  Una categoría dada de baja no bloquea su nombre (RN-09).
 - 3a.3. El caso continúa en el paso 4.
 
 **Flujo alternativo 6a. Hay gastos ya clasificados que coinciden**
@@ -268,7 +286,7 @@ el patrón quedan clasificados.
 
 ## CU-06. Consultar el análisis del período
 
-Actor principal: integrante. Módulo: M5. Requisitos: RF-25 a RF-27. Reglas: RN-14, RN-18.
+Actor principal: integrante. Módulo: M5. Requisitos: RF-25 a RF-27. Reglas: RN-14, RN-16, RN-18.
 No funcionales: RNF-11.
 
 **Precondiciones.** El integrante tiene sesión activa.
@@ -280,7 +298,8 @@ No funcionales: RNF-11.
 3. El sistema resuelve el hogar desde el hogar actual del integrante, no desde el token, y lo fija
    en el contexto de la transacción (RN-18).
 4. El sistema calcula, agrupando en la base de datos, el total del período y los subtotales por
-   categoría, por integrante y por medio de pago.
+   categoría, por integrante y por medio de pago. Excluye los gastos dados de baja. Un gasto cuya
+   categoría se dio de baja después sigue sumando en ella (RN-16).
 5. El sistema calcula la serie mensual y su media histórica sobre los meses con gasto registrado
    (RN-14).
 6. El sistema presenta los indicadores, los gráficos y los movimientos recientes.
@@ -305,7 +324,7 @@ No funcionales: RNF-11.
 
 ## CU-07. Capturar un gasto desde un cliente automatizado
 
-Actor principal: cliente automatizado. Módulo: M6. Requisitos: RF-30 a RF-32. Reglas: RN-18.
+Actor principal: cliente automatizado. Módulo: M6. Requisitos: RF-30 a RF-32. Reglas: RN-17, RN-18.
 No funcionales: RNF-10.
 
 **Precondiciones.** Existe un token de cliente máquina vigente, asociado a un hogar y a un
@@ -320,7 +339,7 @@ integrante.
 3. El sistema normaliza el importe, aceptando formato local (`1.234,56`), anglosajón (`1,234.56`)
    o sin separadores (RF-32).
 4. El sistema valida el importe resultante contra RN-06 y el comercio contra RN-07.
-5. El sistema resuelve la categoría con el motor de reglas del hogar.
+5. El sistema resuelve la categoría con el motor de reglas del hogar, igual que en CU-04 (RN-17).
 6. El sistema registra el gasto y devuelve su identificador y el importe normalizado.
 7. El sistema registra en el token el momento de su último uso.
 
