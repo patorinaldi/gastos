@@ -25,7 +25,7 @@ Estos casos, la secuencia paso a paso.
 ## CU-01. Registrar cuenta y crear hogar
 
 Actor principal: visitante. Módulos: M1 Identidad, M2 Hogares, M4 Categorización.
-Requisitos: RF-01, RF-02, RF-03. Reglas: RN-01, RN-03, RN-11.
+Requisitos: RF-01, RF-02, RF-03, RF-19. Reglas: RN-01, RN-03, RN-11.
 
 **Precondiciones.** El visitante no tiene cuenta en el sistema.
 
@@ -71,7 +71,8 @@ hogar. Se envió un correo con el enlace de verificación.
 
 ## CU-02. Iniciar sesión
 
-Actor principal: integrante. Módulo: M1. Requisitos: RF-05. Reglas: RN-02. No funcionales: RNF-06.
+Actor principal: integrante. Módulo: M1. Requisitos: RF-04, RF-05. Reglas: RN-02.
+No funcionales: RNF-06.
 
 **Precondiciones.** El usuario tiene cuenta y confirmó su correo.
 
@@ -90,16 +91,16 @@ usuario (RN-18).
    (RF-05), pero el servidor no lo usa para decidir a qué hogar accede la petición.
 7. El sistema reinicia el contador de intentos fallidos.
 
+**Flujo de excepción 3a. Cuenta bloqueada**
+
+- 3a.1. Tras 10 intentos fallidos, el sistema rechaza los intentos durante 15 minutos (RNF-06).
+- 3a.2. El sistema informa el bloqueo temporal sin precisar cuántos intentos restan.
+
 **Flujo de excepción 4a. Credenciales inválidas**
 
 - 4a.1. El sistema incrementa el contador de intentos fallidos de la cuenta.
 - 4a.2. El sistema responde con un mensaje genérico, idéntico al de correo inexistente, para no
   revelar qué correos están registrados.
-
-**Flujo de excepción 3a. Cuenta bloqueada**
-
-- 3a.1. Tras 10 intentos fallidos, el sistema rechaza los intentos durante 15 minutos (RNF-06).
-- 3a.2. El sistema informa el bloqueo temporal sin precisar cuántos intentos restan.
 
 **Flujo de excepción 5a. Correo sin verificar**
 
@@ -286,8 +287,8 @@ el patrón quedan clasificados.
 
 ## CU-06. Consultar el análisis del período
 
-Actor principal: integrante. Módulo: M5. Requisitos: RF-25 a RF-27. Reglas: RN-14, RN-16, RN-18.
-No funcionales: RNF-11.
+Actor principal: integrante. Módulo: M5. Requisitos: RF-25 a RF-29, RF-37.
+Reglas: RN-14, RN-16, RN-18. No funcionales: RNF-11.
 
 **Precondiciones.** El integrante tiene sesión activa.
 
@@ -299,15 +300,22 @@ No funcionales: RNF-11.
    en el contexto de la transacción (RN-18).
 4. El sistema calcula, agrupando en la base de datos, el total del período y los subtotales por
    categoría, por integrante y por medio de pago. Excluye los gastos dados de baja. Un gasto cuya
-   categoría se dio de baja después sigue sumando en ella (RN-16).
+   categoría se dio de baja después sigue sumando en ella (RN-16). También calcula los comercios con
+   mayor gasto acumulado en el período (RF-28).
 5. El sistema calcula la serie mensual y su media histórica sobre los meses con gasto registrado
    (RN-14).
 6. El sistema presenta los indicadores, los gráficos y los movimientos recientes.
 
 **Flujo alternativo 2a. El integrante cambia el período**
 
-- 2a.1. Selecciona otro mes o un rango.
+- 2a.1. Selecciona otro mes o un rango y, si quiere, filtra por categoría, integrante o medio de
+  pago, con los mismos filtros del listado de gastos (RF-29).
 - 2a.2. El caso continúa en el paso 3 con el período elegido.
+
+**Flujo alternativo 4a. El hogar no tiene gastos en el período**
+
+- 4a.1. El sistema presenta un estado vacío explicando cómo cargar el primer gasto (RNF-16), en
+  lugar de gráficos en blanco.
 
 **Flujo alternativo 6a. Filtrado interactivo**
 
@@ -315,20 +323,15 @@ No funcionales: RNF-11.
   distribución.
 - 6a.2. El sistema re-filtra el resto de la pantalla con esa dimensión (RF-37).
 
-**Flujo alternativo 4a. El hogar no tiene gastos en el período**
-
-- 4a.1. El sistema presenta un estado vacío explicando cómo cargar el primer gasto (RNF-16), en
-  lugar de gráficos en blanco.
-
 ---
 
 ## CU-07. Capturar un gasto desde un cliente automatizado
 
-Actor principal: cliente automatizado. Módulo: M6. Requisitos: RF-30 a RF-32. Reglas: RN-17, RN-18.
-No funcionales: RNF-10.
+Actor principal: cliente automatizado. Módulo: M6. Requisitos: RF-07, RF-30 a RF-32.
+Reglas: RN-17, RN-18. No funcionales: RNF-10.
 
-**Precondiciones.** Existe un token de cliente máquina vigente, asociado a un hogar y a un
-integrante.
+**Precondiciones.** Un integrante emitió un token de cliente máquina (RF-07), que sigue vigente y
+está asociado a su hogar y a su usuario.
 
 **Flujo principal**
 
