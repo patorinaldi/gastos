@@ -68,6 +68,7 @@ POST /api/auth/login
   → 200 { "token": "...", "expiresAt": "..." }
   → 401 credenciales inválidas
   → 403 correo sin verificar (RN-02)
+  → 429 superado el límite de intentos (RNF-06)
 ```
 
 **Decisiones de diseño.** El token de sesión identifica al usuario, y el hogar de cada petición se
