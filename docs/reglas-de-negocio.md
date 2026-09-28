@@ -109,7 +109,8 @@ El código vence a los 7 días de generado.
 **Nivel.** Ambos. La aplicación valida que el código no esté vencido ni canjeado. La tabla
 `household_invitations` (migración V5) guarda solo el hash SHA-256 del código, tiene el vencimiento
 de 7 días como valor por defecto, y un `check` exige que un canje registre a la vez quién canjeó y
-cuándo.
+cuándo. Que el canje sea único lo sostiene la aplicación: el motor no impide todavía que un canje
+ya registrado se sobrescriba.
 
 **Motivo.** El código circula por canales que el sistema no controla, como mensajería o papel. Que
 sea de un solo uso evita que quien lo reenvíe incorpore gente no prevista, y el vencimiento limita
