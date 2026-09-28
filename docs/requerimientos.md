@@ -64,6 +64,7 @@ sacrificable), `Podría` (deseable).
 | RF-22 | El sistema debe ofrecer un listado de los gastos sin categoría del hogar (bandeja de no categorizados). | Debe | Pendiente |
 | RF-23 | El sistema debe permitir crear una regla patrón-categoría y aplicarla retroactivamente a los gastos sin categoría que coincidan. | Debe | Pendiente |
 | RF-24 | El sistema debe permitir administrar el catálogo de categorías del hogar (alta, renombrado y baja lógica). | Debería | Pendiente |
+| RF-43 | El sistema debe permitir listar las reglas patrón-categoría del hogar y eliminarlas. Eliminar una regla no altera los gastos ya clasificados. | Debería | Pendiente |
 
 ### M5. Análisis
 
@@ -119,7 +120,7 @@ Cada RNF se expresa con una métrica verificable. Se evitan términos como "ráp
 | RNF-03 | Ante ausencia de contexto de hogar, las consultas deben devolver cero filas, nunca el total. | Prueba automatizada sobre las tres tablas con RLS sin contexto activo. |
 | RNF-04 | La aplicación debe conectarse a la base con un rol sin privilegio de omisión de políticas. | `select rolbypassrls, rolsuper from pg_roles where rolname = current_user` devuelve `false` en ambos. |
 | RNF-05 | Las contraseñas deben almacenarse cifradas con una función de derivación con sal, nunca en texto plano ni con hash simple. | Revisión de código y ausencia de la contraseña en el esquema. Algoritmo bcrypt. |
-| RNF-06 | El sistema debe limitar los intentos fallidos de inicio de sesión a 10 por cuenta, con bloqueo de 15 minutos al superarlos. | Prueba automatizada del limitador. |
+| RNF-06 | El sistema debe limitar los intentos fallidos de inicio de sesión a 10 por correo ingresado, exista o no una cuenta con ese correo, con bloqueo de 15 minutos al superarlos. | Prueba automatizada del limitador, con un correo registrado y con uno sin cuenta. |
 | RNF-07 | Ningún secreto (cadena de conexión, clave de firma, credencial de correo) debe estar versionado en el repositorio. | Inspección del repositorio. Todos se inyectan por variable de entorno. |
 | RNF-08 | Los tokens de verificación de correo y de restablecimiento de contraseña deben ser de un solo uso y vencer a las 24 horas de emitidos. | Prueba automatizada de reutilización y de vencimiento. |
 | RNF-09 | Los registros de la aplicación no deben contener contraseñas, hashes ni tokens en claro. | Revisión de código. Las entidades no exponen `toString()` con campos sensibles. |
@@ -198,7 +199,7 @@ queda sin módulo que lo implemente.
 | M1 Identidad y acceso | RF-01 a RF-07 | RN-01, RN-02, RN-03, RN-11 | RNF-05, RNF-06, RNF-08 |
 | M2 Hogares | RF-08 a RF-12 | RN-04, RN-05 | RNF-01, RNF-02 |
 | M3 Gastos | RF-13 a RF-18 | RN-06, RN-07, RN-08, RN-16 | RNF-10, RNF-12, RNF-13 |
-| M4 Categorización | RF-19 a RF-24 | RN-09, RN-10, RN-12, RN-13, RN-16, RN-17 | RNF-13 |
+| M4 Categorización | RF-19 a RF-24, RF-43 | RN-09, RN-10, RN-12, RN-13, RN-16, RN-17 | RNF-13 |
 | M5 Análisis | RF-25 a RF-29 | RN-08, RN-14, RN-16 | RNF-11, RNF-13 |
 | M6 API de integración | RF-30 a RF-32 | RN-06, RN-07 | RNF-10 |
 | M7 Interfaz de usuario | RF-33 a RF-38 | ninguna | RNF-14 a RNF-17 |

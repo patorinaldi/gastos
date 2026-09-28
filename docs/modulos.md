@@ -13,8 +13,10 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 - Autenticación por token de sesión en `Authorization: Bearer <token>`, salvo el registro, el
   inicio de sesión, la verificación de correo, la recuperación de contraseña y el punto de
   verificación de estado.
-- El hogar nunca viaja en la petición. Se toma del token de sesión y se propaga al contexto de la
-  base. Un cliente no puede pedir datos de otro hogar porque no tiene forma de nombrarlo.
+- El hogar nunca viaja en la petición. El servidor lo resuelve en cada petición desde el hogar
+  actual del usuario autenticado (`users.household_id`), no desde el token, y lo propaga al
+  contexto de la base (RN-18). Un cliente no puede pedir datos de otro hogar porque no tiene forma
+  de nombrarlo.
 - Los errores se devuelven con `application/problem+json` (RFC 9457), resueltos de forma
   centralizada (RF-40).
 - Los importes se serializan como cadena decimal con dos decimales, para no perder precisión en el
@@ -41,13 +43,13 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 alimenta el contexto de aislamiento. Sin identidad resuelta no hay hogar, y sin hogar no hay datos
 visibles.
 
-Requisitos: RF-01 a RF-07. Reglas: RN-01, RN-02, RN-03, RN-11.
+Requisitos: RF-01 a RF-07. Reglas: RN-01, RN-02, RN-03, RN-11, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
 | `POST` | `/api/auth/register` | Registra un usuario, crea su hogar y siembra el catálogo inicial. Envía el correo de verificación. | No |
 | `POST` | `/api/auth/verify` | Confirma el correo a partir del token recibido. | No |
-| `POST` | `/api/auth/login` | Valida credenciales y emite el token de sesión con el hogar. | No |
+| `POST` | `/api/auth/login` | Valida credenciales y emite el token de sesión. | No |
 | `POST` | `/api/auth/password/forgot` | Emite y envía un token de restablecimiento. | No |
 | `POST` | `/api/auth/password/reset` | Cambia la contraseña con un token válido. | No |
 | `GET` | `/api/auth/me` | Devuelve el usuario autenticado y su hogar. | Sesión |
@@ -70,12 +72,15 @@ POST /api/auth/login
   → 429 superado el límite de intentos (RNF-06)
 ```
 
-**Decisiones de diseño.** El identificador del hogar viaja como atributo dentro del token de
-sesión. Así, cada petición autenticada trae consigo el contexto de aislamiento sin necesidad de una
-consulta adicional. El registro y la creación del hogar son una sola transacción (RN-11): el alta
-crea el hogar, fija su identificador en el contexto de la transacción y recién entonces siembra el
-catálogo inicial de M4, que se inserta bajo las políticas de aislamiento y por lo tanto exige un
-hogar activo.
+**Decisiones de diseño.** El token de sesión identifica al usuario, y el hogar de cada petición se
+lee de `users.household_id`, no de un atributo del token. Cuesta una consulta por petición, pero es
+lo que exige RN-18: el servidor acepta un token firmado hasta que vence, así que si el hogar viajara
+en él, quien se cambió de hogar seguiría leyendo y escribiendo en el anterior con un token emitido
+antes del cambio. El token puede llevar el hogar como dato para el cliente (RF-05), pero el servidor
+no lo usa para decidir a qué hogar accede la petición. El registro y la creación del hogar son una
+sola transacción (RN-11): el alta crea el hogar, fija su identificador en el contexto de la
+transacción y recién entonces siembra el catálogo inicial de M4, que se inserta bajo las políticas
+de aislamiento y por lo tanto exige un hogar activo.
 
 Depende de M8 (esquema, propagación de contexto). El hogar que crea el alta es el que después
 administra M2.
@@ -84,10 +89,10 @@ administra M2.
 
 ## M2. Hogares
 
-**Responsabilidad.** Administrar la unidad de convivencia: quiénes la integran y cómo se suma
-alguien nuevo.
+**Responsabilidad.** Administrar la unidad de convivencia: quiénes la integran, cómo se suma
+alguien nuevo y qué pasa con el hogar que esa persona deja.
 
-Requisitos: RF-08 a RF-12. Reglas: RN-04, RN-05.
+Requisitos: RF-08 a RF-12. Reglas: RN-04, RN-05, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -95,7 +100,8 @@ Requisitos: RF-08 a RF-12. Reglas: RN-04, RN-05.
 | `PATCH` | `/api/household` | Renombra el hogar. | Sesión |
 | `GET` | `/api/household/members` | Lista los integrantes. | Sesión |
 | `POST` | `/api/household/invitations` | Genera un código de invitación. | Sesión |
-| `POST` | `/api/household/invitations/redeem` | Canjea un código e incorpora al usuario. | Sesión |
+| `POST` | `/api/household/invitations/preview` | Valida un código y describe las consecuencias del cambio de hogar, sin aplicarlo. | Sesión |
+| `POST` | `/api/household/invitations/redeem` | Canjea un código y cambia al usuario de hogar. Exige confirmación explícita. | Sesión |
 
 Contratos principales:
 
@@ -103,17 +109,44 @@ Contratos principales:
 POST /api/household/invitations
   → 201 { "code": "GST-4K2P-9XZ", "expiresAt": "..." }
 
-POST /api/household/invitations/redeem
+POST /api/household/invitations/preview
   { "code": "GST-4K2P-9XZ" }
-  → 200 { "householdId": "...", "householdName": "Casa Rivoira" }
-  → 410 código vencido o ya canjeado (RN-05)
+  → 200 { "householdName": "Casa Rivoira", "currentHouseholdWillBeArchived": true,
+          "machineTokensToRevoke": 2 }
+  → 409 el código es del hogar que el usuario ya integra
+  → 410 código inexistente, vencido, ya canjeado o de un hogar archivado (RN-05, RN-18)
+
+POST /api/household/invitations/redeem
+  { "code": "GST-4K2P-9XZ", "confirm": true }
+  → 200 { "householdId": "...", "householdName": "Casa Rivoira",
+          "previousHouseholdArchived": true }
+  → 400 falta la confirmación
+  → 409 el código es del hogar que el usuario ya integra
+  → 410 código inexistente, vencido, ya canjeado o de un hogar archivado (RN-05, RN-18)
 ```
+
+**El canje es un cambio de hogar.** Por RN-11 todo usuario ya tiene un hogar, así que canjear un
+código implica dejar el actual (CU-03). La interfaz llama primero a `preview` para mostrar la
+advertencia que exige RN-18 y después a `redeem` con `"confirm": true`. `redeem` no depende de que
+se haya llamado a `preview`: repite todas las validaciones y rechaza el canje sin la confirmación.
+Dentro de una sola transacción, `redeem` cambia el hogar del usuario, marca la invitación como
+canjeada, revoca los tokens de cliente máquina del usuario en el hogar anterior y, si ese hogar
+quedó sin integrantes, lo archiva. Los gastos que el usuario cargó quedan en el hogar anterior. Si
+otra persona canjea el mismo código entre las dos llamadas, `redeem` responde `410` y no aplica
+nada.
+
+**Una sola respuesta para todos los códigos inválidos.** Inexistente, vencido, ya canjeado o de un
+hogar archivado responden igual, con `410`, para que no se puedan descubrir códigos válidos por
+tanteo. El `409` sí se distingue porque solo revela el hogar que el usuario ya integra. El código
+viaja en el cuerpo y no en la ruta, para que no quede en los registros de acceso. La base guarda
+solo su hash, así que el valor en claro existe únicamente en la respuesta que genera la invitación.
 
 **Decisión de diseño.** El recurso es `/api/household`, en singular y sin identificador. El hogar
 del usuario autenticado es el único al que puede acceder, y nombrarlo en la ruta sugeriría que
 existe la posibilidad de pedir otro.
 
-Depende de M1 (identidad; el hogar se crea en el alta) y M8 (aislamiento).
+Depende de M1 (identidad; el hogar se crea en el alta; revocación de tokens de cliente máquina) y
+M8 (aislamiento).
 
 ---
 
@@ -173,7 +206,7 @@ Depende de M1, M4 (resolución de categoría) y M8.
 **Responsabilidad.** Convertir un nombre de comercio en una categoría, con un resultado
 reproducible y corregible por el usuario.
 
-Requisitos: RF-19 a RF-24. Reglas: RN-09, RN-10, RN-12, RN-13.
+Requisitos: RF-19 a RF-24, RF-43. Reglas: RN-09, RN-10, RN-12, RN-13.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -268,7 +301,7 @@ Depende de M3 (los datos que agrega) y M8.
 **Responsabilidad.** Permitir registrar un gasto desde fuera de la interfaz web, por ejemplo desde
 una automatización del teléfono o un atajo, en el orden de los segundos.
 
-Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07.
+Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -292,7 +325,9 @@ equivocado.
 
 **Decisión de diseño.** El canal de autenticación es propio y distinto del de la sesión web. El
 token es de larga duración, se guarda en un dispositivo y se puede revocar individualmente sin
-afectar la sesión de la persona. Solo habilita este punto de entrada, no el resto de la API.
+afectar la sesión de la persona. Solo habilita este punto de entrada, no el resto de la API. Al
+autenticarlo, el módulo exige que no esté revocado y que su hogar sea el hogar actual de su dueño
+(RN-18), así una automatización no sigue cargando gastos en un hogar que su dueño dejó.
 
 Depende de M1 (emisión y revocación de tokens), M3 y M4.
 
