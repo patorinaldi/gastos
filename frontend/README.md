@@ -8,4 +8,5 @@ están en el [README principal](../README.md#frontend).
 | `src/router.tsx` | Rutas de la aplicación |
 | `src/layouts/` | Shell de la app: layout y navegación de las pantallas autenticadas |
 | `src/pages/` | Una pantalla por ruta |
+| `src/types/api.ts` | Contratos de la API, espejo de los DTOs del backend |
 | `src/config.ts` | Configuración leída del entorno (`VITE_API_URL`) |
