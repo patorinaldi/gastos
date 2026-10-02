@@ -238,9 +238,11 @@ desaparecer del desglose los gastos de quien se fue. Como `users` no tiene polí
 aislamiento, el nombre se sigue resolviendo sin problema.
 
 **Sobre el medio de pago.** La columna es `text` con una restricción de valores admitidos en
-español, no un tipo enumerado de la base. La aplicación lo mapea a un enumerado del código cuyas
-constantes están en inglés, con un conversor que traduce en ambos sentidos. Así se respeta la
-convención de identificadores en inglés y valores del dominio en español (RD-06).
+español, no un tipo enumerado de la base. La aplicación lo mapea al enumerado `PaymentMethod`, con
+las constantes `EFECTIVO`, `TARJETA` y `TRANSFERENCIA`, y un conversor que traduce en ambos
+sentidos entre cada constante y el valor que guarda la columna (`Efectivo`, `Tarjeta`,
+`Transferencia`). Así se respeta la convención de identificadores en inglés y valores del dominio
+en español (RD-06).
 
 ---
 
