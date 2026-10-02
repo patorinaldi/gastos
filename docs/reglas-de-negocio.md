@@ -225,6 +225,13 @@ Consecuencias de cada baja:
 - **Nombre liberado.** Un nombre de categoría dado de baja no sigue ocupando su lugar: el hogar
   puede crear otra categoría activa con el mismo nombre (ver RN-09).
 
+**Renombrar no es dar de baja.** Renombrar una categoría modifica su única fila. Los gastos la
+referencian por identificador, así que el nombre nuevo se ve en todo el historial y en el análisis
+de cualquier período, también de los anteriores al cambio, y sus reglas siguen aplicándose. Si lo
+que se busca es separar los gastos viejos de los nuevos, el camino es dar de baja la categoría y
+crear otra: los gastos anteriores conservan la vieja con su nombre, y las reglas se vuelven a crear
+para la nueva.
+
 **Nivel.** Ambos. La aplicación filtra los gastos dados de baja en todas las consultas, y las
 categorías dadas de baja solo donde se ofrecen categorías. El motor sostiene la unicidad solo entre
 filas activas, con índices únicos parciales, y elimina las reglas de una categoría al darla de baja.
