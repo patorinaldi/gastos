@@ -206,7 +206,7 @@ surgen de profundizar el modelo o de las observaciones recibidas.
 | Observación | Respuesta |
 |---|---|
 | No se define qué pasa si dos patrones coinciden con el mismo comercio. | RN-17: gana el patrón más largo; a igual longitud, la regla más antigua. No hace falta una columna de prioridad. |
-| Falta una política de modificación de categorías y su efecto sobre los gastos históricos. | RN-16: la baja es lógica y los gastos conservan su categoría, en el historial y en el análisis. Renombrar alcanza a todo el historial, porque los gastos referencian la categoría por identificador (ver M4 en `modulos.md`). |
+| Falta una política de modificación de categorías y su efecto sobre los gastos históricos. | RN-16 cubre las dos modificaciones. La baja es lógica: los gastos conservan su categoría, en el historial y en el análisis, y sus reglas se eliminan. Renombrar alcanza a todo el historial, porque los gastos referencian la categoría por identificador. Para separar los gastos viejos de los nuevos, se da de baja la categoría y se crea otra. |
 | Falta definir auditoría. | Un registro de auditoría dedicado queda fuera de alcance, y así figura en `requerimientos.md` (§5). El esquema ya conserva la información mínima para reconstruir qué pasó: fechas de alta, modificación, baja y archivado, el responsable de cada gasto, y quién creó y quién canjeó cada invitación. |
 
 ### 6.3 Sobre los requerimientos
