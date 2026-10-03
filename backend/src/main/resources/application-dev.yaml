@@ -2,3 +2,9 @@
 gastos:
   email:
     sender: console
+  jwt:
+    # Solo para desarrollo local: cualquiera que lea el repositorio puede firmar tokens con ella.
+    secret: clave-de-desarrollo-no-usar-en-produccion
+  cors:
+    # Servidor de desarrollo de Vite.
+    allowed-origins: http://localhost:5173
