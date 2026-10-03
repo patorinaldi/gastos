@@ -38,3 +38,13 @@ server:
 # enlaces y tokens de un solo uso, así que un despliegue que se olvide de definirla tiene que
 # fallar al arrancar y no quedar registrando tokens. En desarrollo la fija el perfil dev
 # (application-dev.yaml) y en las pruebas de integración, IntegrationTest.
+#
+# La clave de firma del token de sesión sigue el mismo criterio: vacía si falta JWT_SECRET, y
+# JwtProperties rechaza el arranque con una clave vacía o corta (RNF-07).
+gastos:
+  jwt:
+    secret: ${JWT_SECRET:}
+    ttl: 7d
+  # Orígenes del cliente web, separados por coma. Vacío: ningún otro origen puede llamar a la API.
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
