@@ -9,7 +9,6 @@ import io.github.patorinaldi.gastos.api.security.AuthenticatedUser;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.CurrentUserResponse;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -28,9 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class AuthService {
-
-    /** bcrypt no admite más: {@code BCrypt.hashpw} lanza una excepción en lugar de truncar. */
-    private static final int BCRYPT_MAX_BYTES = 72;
 
     /** Claim con el hogar al emitir el token. Es para el cliente: el servidor no lo lee (RN-18). */
     public static final String HOUSEHOLD_CLAIM = "household";
@@ -71,12 +67,8 @@ public class AuthService {
      */
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        // El registro no acepta contraseñas de más de 72 bytes, así que una más larga nunca es
-        // correcta. Se rechaza antes de llegar a bcrypt, que respondería con un error interno.
-        if (request.password().getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_BYTES) {
-            throw new InvalidCredentialsException();
-        }
-
+        // Una contraseña de más de 72 bytes no llega acá: LoginRequest la rechaza con 400 antes
+        // de que bcrypt, que no admite más, responda con un error interno.
         User user = users.findByEmailIgnoreCase(request.email()).orElse(null);
         if (user == null) {
             passwordEncoder.matches(request.password(), unknownUserHash);

@@ -112,12 +112,12 @@ class LoginTest extends AuthTestSupport {
                 .andExpect(status().isUnauthorized());
     }
 
-    // bcrypt lanza una excepción con más de 72 bytes. 40 eñes son 40 caracteres pero 80 bytes.
+    // bcrypt lanza una excepción con más de 72 bytes, así que sin la validación de LoginRequest
+    // esto sería un 500. 40 eñes son 40 caracteres pero 80 bytes.
     @Test
     void unaContrasenaDeMasDe72BytesNoEsUnErrorInterno() throws Exception {
         login(email, "ñ".repeat(40))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.detail").value(CREDENCIALES_INCORRECTAS));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
