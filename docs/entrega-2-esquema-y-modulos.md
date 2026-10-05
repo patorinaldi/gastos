@@ -164,7 +164,7 @@ cada módulo en la próxima iteración parte de una interfaz acordada entre back
 - Punto de verificación de estado sin autenticación ni detalle interno (RF-41).
 - Esqueleto del cliente web.
 
-La batería tiene **79 pruebas** y corre contra PostgreSQL 17 real en contenedor, el mismo motor y
+La batería tiene **100 pruebas** y corre contra PostgreSQL 17 real en contenedor, el mismo motor y
 versión que producción (RNF-28). Las pruebas se conectan con el rol restringido de la aplicación,
 de modo que las políticas de aislamiento se ejercitan de verdad.
 
