@@ -139,8 +139,8 @@ export interface InvitationPreviewResponse {
 
 export interface RedeemInvitationRequest {
   code: string
-  /** Siempre `true`. Sin confirmación explícita, el canje se rechaza con 400. */
-  confirm: boolean
+  /** Literal `true`: el tipo no deja construir la petición sin confirmar, que el servidor rechaza con 400. */
+  confirm: true
 }
 
 export interface RedeemInvitationResponse {
@@ -155,7 +155,9 @@ export interface RedeemInvitationResponse {
 export interface CreateExpenseRequest {
   amount: Money
   merchant: string
+  /** Sin fecha, la del día. */
   expenseDate?: IsoDate
+  /** Sin medio de pago, el servidor registra `Efectivo`. */
   paymentMethod?: PaymentMethod
   categoryId?: Uuid
 }
@@ -192,10 +194,17 @@ export interface ExpenseFilter {
   /** Sin período, el mes en curso. */
   from?: IsoDate
   to?: IsoDate
-  /** Un UUID, o `UNCATEGORIZED` para la bandeja. */
-  categoryId?: Uuid | typeof UNCATEGORIZED
+  /**
+   * El identificador de una categoría, o `UNCATEGORIZED` para la bandeja.
+   *
+   * El tipo es `string` a secas y no `Uuid | typeof UNCATEGORIZED`: como `Uuid` es un alias de
+   * `string`, esa unión se colapsa y no restringe nada. Lo hace cumplir el servidor, que rechaza
+   * con 400 cualquier valor que no sea un identificador o `uncategorized`.
+   */
+  categoryId?: string
   ownerId?: Uuid
   paymentMethod?: PaymentMethod
+  /** Desde 0. Sin paginación, el servidor devuelve la página 0 de 20 elementos. */
   page?: number
   /** Máximo 100. */
   size?: number
@@ -253,6 +262,10 @@ export interface PaymentMethodTotal {
   total: Money
 }
 
+/**
+ * Un período sin gastos devuelve `total: "0.00"` y las tres listas vacías, nunca null. Para
+ * mostrar el estado vacío hay que mirar las listas, no el total.
+ */
 export interface SummaryResponse {
   total: Money
   byCategory: CategoryTotal[]
@@ -267,7 +280,10 @@ export interface MonthlyPoint {
 
 export interface MonthlySeriesResponse {
   months: MonthlyPoint[]
-  /** Media histórica, calculada solo sobre los meses con gasto registrado. */
+  /**
+   * Media histórica, calculada solo sobre los meses con gasto registrado. Un hogar sin gastos
+   * devuelve `months` vacío y `average: "0.00"`.
+   */
   average: Money
 }
 

@@ -59,6 +59,16 @@ class ApiContractsJsonTest {
         assertThat(request.categoryId()).isNull();
     }
 
+    // La columna payment_method es obligatoria y no tiene default en la base: un alta mínima sin
+    // medio de pago terminaría en un insert fallido, así que el contrato pone Efectivo.
+    @Test
+    void anExpenseWithoutPaymentMethodArrivesAsCash() {
+        CreateExpenseRequest request = json.readValue("""
+                {"amount":"1234.56","merchant":"Carrefour"}""", CreateExpenseRequest.class);
+
+        assertThat(request.paymentMethod()).isEqualTo(PaymentMethodValue.EFECTIVO);
+    }
+
     @Test
     void paymentMethodsTravelInSpanish() {
         String body = json.writeValueAsString(expenseResponse(new BigDecimal("100.00")));
