@@ -1,5 +1,7 @@
 # Gastos
 
+[![CI](https://github.com/patorinaldi/gastos/actions/workflows/ci.yml/badge.svg)](https://github.com/patorinaldi/gastos/actions/workflows/ci.yml)
+
 **Aplicación web para el registro y análisis de gastos compartidos en unidades de convivencia.**
 
 Cada persona se registra con su correo y al hacerlo se crea su hogar, al que invita al resto
@@ -136,7 +138,45 @@ El empaquetado deja el ejecutable en `backend/target/gastos-<versión>.jar`, que
 
 ### Frontend
 
-Pendiente
+```bash
+cd frontend
+npm install
+npm run dev                     # http://localhost:5173
+```
+
+La URL de la API se lee de `VITE_API_URL`. En desarrollo, si no está definida, apunta a
+`http://localhost:8080`; para cambiarla, copiar `frontend/.env.example` a `frontend/.env`. En
+producción es obligatoria y se define como variable del entorno de build.
+
+Chequeo de tipos y build de producción (deja el sitio estático en `frontend/dist/`), y lint:
+
+```bash
+cd frontend
+npm run build
+npm run lint
+```
+
+---
+
+## Integración continua
+
+Cada pull request y cada incorporación a `main` ejecutan
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml), con dos trabajos en paralelo:
+
+| Trabajo | Qué corre |
+|---|---|
+| Backend | `./mvnw verify` con JDK 21: compila, ejecuta la batería completa —las pruebas de integración levantan su propio PostgreSQL con Testcontainers— y empaqueta el jar. |
+| Frontend | `npm ci`, `npm run build` (que incluye el chequeo de tipos) y `npm run lint` con Node 22. |
+
+Si el backend falla, los informes de las pruebas quedan como artefacto de la ejecución durante
+siete días.
+
+Los dos trabajos corren en todas las PR, también en las que solo tocan documentación: un check
+obligatorio que no se ejecuta queda pendiente para siempre y deja la PR sin poder incorporarse.
+
+**Para que una ejecución en rojo bloquee la incorporación**, los dos checks tienen que estar
+marcados como obligatorios en la protección de la rama `main`. Eso se configura en GitHub, no en
+este repositorio, y requiere permisos de administración.
 
 ---
 

@@ -1,0 +1,88 @@
+# Integración continua (RF-42).
+#
+# Dos trabajos en paralelo, uno por componente, para que el resultado diga enseguida dónde está el
+# problema. El del backend tarda varios minutos porque levanta un PostgreSQL real con
+# Testcontainers; el del frontend es de menos de un minuto y no tiene por qué esperarlo.
+#
+# Los dos corren en todas las PR, incluidas las que solo tocan documentación. Filtrar por rutas
+# sería más rápido, pero un check obligatorio que no se ejecuta nunca pasa a estar "pendiente" para
+# siempre y deja la PR sin poder incorporarse.
+#
+# Este archivo no bloquea nada por sí solo: que una PR con las pruebas en rojo no se pueda mergear
+# depende de marcar estos dos checks como obligatorios en la protección de la rama main, que se
+# configura en GitHub y necesita permisos de administración del repositorio.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Si llegan varios push seguidos a la misma rama, solo interesa el último.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # verify compila, corre la batería completa y empaqueta. Las pruebas de integración levantan
+      # su propio PostgreSQL con Testcontainers, que usa el Docker ya instalado en el runner.
+      - name: Compilar y ejecutar las pruebas
+        working-directory: backend
+        run: ./mvnw --batch-mode --no-transfer-progress verify
+
+      # El log de Actions muestra el resumen; el detalle de cada fallo está en estos informes.
+      - name: Guardar los informes de las pruebas
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-de-pruebas
+          path: backend/target/surefire-reports/
+          retention-days: 7
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # ci y no install: instala exactamente lo que fija package-lock.json y falla si quedó
+      # desactualizado respecto de package.json.
+      - name: Instalar dependencias
+        working-directory: frontend
+        run: npm ci
+
+      # build corre antes tsc -b, así que un error de tipos frena acá.
+      - name: Chequear tipos y construir
+        working-directory: frontend
+        run: npm run build
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
