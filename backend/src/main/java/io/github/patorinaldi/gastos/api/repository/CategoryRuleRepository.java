@@ -5,10 +5,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Bajo RLS: ver la nota de {@link CategoryRepository} sobre por qué no se pasa el hogar.
+ * Bajo RLS: ver la nota de {@link CategoryRepository} sobre por qué no se pasa el hogar y por qué
+ * la interfaz es {@code @Transactional(readOnly = true)}.
  */
+@Transactional(readOnly = true)
 public interface CategoryRuleRepository extends JpaRepository<CategoryRule, UUID> {
 
     /** Case-insensitive, en línea con {@code category_rules_household_pattern_key}. */
