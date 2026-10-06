@@ -13,7 +13,7 @@ DER completo está aparte en [der/](der/).
 | 4 | [Secuencia](#4-diagramas-de-secuencia) | Registro, petición autenticada, alta de gasto, cambio de hogar, captura rápida y aislamiento |
 | 5 | [Actividad](#5-diagramas-de-actividad) | Inicio de sesión, alta de gasto con el motor de reglas, creación de regla y restablecimiento de contraseña |
 | 6 | [Despliegue](#6-diagrama-de-despliegue) | Nodos de producción y del entorno de desarrollo, con sus artefactos y protocolos |
-| 7 | [Complementarios](#7-diagramas-complementarios) | Estados de un gasto, entidad-relación resumido y flujo de trabajo del equipo |
+| 7 | [Complementarios](#7-diagramas-complementarios) | Estados de un gasto y entidad-relación resumido |
 
 Los casos `CU-xx` remiten a [casos-de-uso.md](casos-de-uso.md), y los identificadores `RF`, `RNF`
 y `RN`, a [requerimientos.md](requerimientos.md) y [reglas-de-negocio.md](reglas-de-negocio.md).
@@ -269,7 +269,8 @@ Decisiones que definen la arquitectura:
 
 ### 3.2 Capas del backend
 
-Cada capa conoce únicamente a la inmediatamente inferior (RNF-22).
+Las dependencias van en un solo sentido (RNF-22). Los servicios usan las entidades de `domain`
+directamente, además de los repositorios.
 
 ```mermaid
 flowchart TB
@@ -282,6 +283,7 @@ flowchart TB
 
     WEB --> SVC
     SVC --> REP
+    SVC --> DOM
     REP --> DOM
     SEC -.->|"fija el hogar<br/>al abrir transacción"| REP
     CFG -.-> WEB
@@ -331,7 +333,7 @@ sequenceDiagram
 
     U->>W: nombre, correo y contraseña
     W->>C: POST /api/auth/register
-    C->>C: valida formato de correo y contraseña de 8 a 72 caracteres
+    C->>C: valida formato de correo y contraseña de 8 caracteres a 72 bytes
     C->>S: registrar
     S->>DB: ¿existe un usuario con ese upper(email)?
 
@@ -472,10 +474,13 @@ sequenceDiagram
     S->>DB: busca la invitación por el hash del código
     S->>S: vigente, sin canjear, de un hogar activo y distinto del actual
 
-    alt código inválido, vencido, canjeado o de un hogar archivado
+    alt código inexistente, vencido, canjeado o de un hogar archivado
         C-->>W: 410 con el mismo mensaje en todos los casos
         W-->>U: solicitá un código nuevo
-    else código válido
+    else el código es del hogar que el integrante ya integra
+        C-->>W: 409
+        W-->>U: ya integrás ese hogar
+    else código válido de otro hogar
         S->>DB: cuenta integrantes del hogar actual y tokens de máquina activos
         C-->>W: householdName, currentHouseholdWillBeArchived, machineTokensToRevoke
         W-->>U: advierte las consecuencias y pide confirmación
@@ -487,7 +492,7 @@ sequenceDiagram
             W->>C: POST /api/household/invitations/redeem con confirm = true
             C->>S: canjear
             Note over S,DB: comienza la transacción
-            S->>DB: repite las validaciones de la invitación
+            S->>DB: repite las validaciones de la invitación, con los mismos 410 y 409
             S->>DB: update users con el hogar de la invitación
             S->>DB: update household_invitations con redeemed_by y redeemed_at
             S->>DB: update machine_tokens del hogar anterior con revoked_at
@@ -546,7 +551,9 @@ rechaza (HU-17).
 
 ### 4.6 Intento de acceso a datos de otro hogar
 
-La propiedad de seguridad central del sistema, y lo que verifica `HouseholdIsolationTest`.
+La propiedad de seguridad central del sistema. `HouseholdIsolationTest` la verifica a nivel de
+base, sin pasar por la API. La verificación por endpoint, como `GET /api/expenses/{id}` en este
+diagrama, corresponde a la batería de pruebas de la iteración 4.
 
 ```mermaid
 sequenceDiagram
@@ -683,7 +690,7 @@ flowchart TD
     A3 --> W1["El visitante abre el enlace<br/>e ingresa la contraseña nueva"]
     W1 --> D2{"¿Token de restablecimiento,<br/>sin usar y sin vencer?"}
     D2 -->|no| R1["Rechaza e invita a<br/>solicitar uno nuevo (RN-03)"]
-    D2 -->|sí| D3{"¿Contraseña de 8 a<br/>72 caracteres?"}
+    D2 -->|sí| D3{"¿Contraseña de 8 caracteres<br/>a 72 bytes?"}
     D3 -->|no| R2["Rechaza y pide otra"]
     R2 --> W1
     D3 -->|sí| B1["Actualiza el hash de la contraseña<br/>y marca el token como usado"]
@@ -703,8 +710,9 @@ inicia la conexión.
 
 ### 6.1 Producción
 
-Despliegue previsto en la propuesta (§6). Los tres componentes quedan en línea y se publican
-automáticamente desde la rama principal.
+Despliegue previsto en la propuesta (§6). Hoy la CI (#26) solo compila y prueba cada pull
+request. La publicación automática desde `main` y los checks obligatorios de la rama todavía no
+están configurados, y figuran en el diagrama con línea punteada como previstos.
 
 ```mermaid
 flowchart TB
@@ -735,9 +743,11 @@ flowchart TB
     MAILX["«nodo externo»<br/>Proveedor de correo"]
 
     subgraph GH["«nodo» GitHub"]
-        REPO["Repositorio<br/>rama main protegida"]
+        REPO["Repositorio<br/>rama main"]
         GHA["GitHub Actions<br/>compilación y pruebas"]
-        REPO --> GHA
+        PROT["Checks obligatorios<br/>en main"]
+        REPO -->|"cada pull request"| GHA
+        GHA -.->|"previsto"| PROT
     end
 
     SPA -->|"HTTPS · descarga de estáticos"| DIST
@@ -746,8 +756,11 @@ flowchart TB
     JAR -->|"JDBC cifrado · rol gastos_api"| DBS
     JAR -->|"Flyway al arrancar · rol dueño"| DBS
     JAR -->|"correo transaccional"| MAILX
-    GHA -.->|"publica"| DIST
-    GHA -.->|"despliega"| JAR
+    GHA -.->|"publicación prevista"| DIST
+    GHA -.->|"despliegue previsto"| JAR
+
+    classDef previsto stroke-dasharray: 5 5
+    class PROT previsto
 ```
 
 | Nodo | Artefacto | Configuración |
