@@ -6,9 +6,6 @@ import io.github.patorinaldi.gastos.api.domain.User;
 import io.github.patorinaldi.gastos.api.repository.HouseholdRepository;
 import io.github.patorinaldi.gastos.api.repository.UserRepository;
 import io.github.patorinaldi.gastos.api.security.AuthenticatedUser;
-import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.CurrentUserResponse;
-import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginRequest;
-import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginResponse;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -24,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Inicio de sesión (RF-04, RF-05) y datos del usuario autenticado.
+ *
+ * <p>Recibe y devuelve tipos propios, no los contratos de {@code web.dto}: las dependencias van de
+ * la capa web al servicio y nunca al revés (RNF-22). La traducción la hace {@code AuthController}.
  */
 @Service
 public class AuthService {
@@ -66,15 +66,15 @@ public class AuthService {
      * contraseña.
      */
     @Transactional(readOnly = true)
-    public LoginResponse login(LoginRequest request) {
+    public IssuedToken login(String email, String password) {
         // Una contraseña de más de 72 bytes no llega acá: LoginRequest la rechaza con 400 antes
         // de que bcrypt, que no admite más, responda con un error interno.
-        User user = users.findByEmailIgnoreCase(request.email()).orElse(null);
+        User user = users.findByEmailIgnoreCase(email).orElse(null);
         if (user == null) {
-            passwordEncoder.matches(request.password(), unknownUserHash);
+            passwordEncoder.matches(password, unknownUserHash);
             throw new InvalidCredentialsException();
         }
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
         if (!user.isEmailVerified()) {
@@ -85,11 +85,11 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public CurrentUserResponse currentUser(AuthenticatedUser principal) {
+    public CurrentUser currentUser(AuthenticatedUser principal) {
         // El converter ya comprobó que ambos existen en esta misma petición.
         User user = users.findById(principal.userId()).orElseThrow();
         Household household = households.findById(principal.householdId()).orElseThrow();
-        return new CurrentUserResponse(
+        return new CurrentUser(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
@@ -101,7 +101,7 @@ public class AuthService {
     // El token lleva el usuario como subject y el hogar solo como dato para el cliente
     // (RF-05). Se trunca a segundos porque así guarda JWT los instantes: sin truncar, el
     // vencimiento que recibe el cliente no coincidiría con el del token.
-    private LoginResponse issueToken(User user) {
+    private IssuedToken issueToken(User user) {
         Instant issuedAt = clock.instant().truncatedTo(ChronoUnit.SECONDS);
         Instant expiresAt = issuedAt.plus(jwtProperties.ttl());
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -112,6 +112,6 @@ public class AuthService {
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
-        return new LoginResponse(token, expiresAt);
+        return new IssuedToken(token, expiresAt);
     }
 }
