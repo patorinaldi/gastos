@@ -23,8 +23,13 @@
 -- gastos_api (y la de gastos) fuera de esta migración, nunca dejar en producción
 -- el valor con el que Flyway la creó la primera vez; y si el proveedor ofrece
 -- logging de queries/DDL, no activarlo salvo que se pueda excluir CREATE/ALTER ROLE.
+--
+-- Los atributos no se declaran: create role ya crea el rol sin SUPERUSER, CREATEDB,
+-- CREATEROLE, BYPASSRLS ni REPLICATION. Nombrarlos en un alter role, aunque sea para
+-- quitarlos, exige que quien corre la migración los tenga, y en una Postgres gestionada el
+-- administrador no es superusuario: la migración fallaría. Lo verifica
+-- HouseholdTransactionListenerTest contra el rol con el que se conecta la aplicación.
 create role gastos_api login password '${api_password}';
-alter role gastos_api nosuperuser nocreatedb nocreaterole nobypassrls noreplication;
 
 grant usage on schema public to gastos_api;
 grant select, insert, update, delete
