@@ -1,21 +1,12 @@
 package io.github.patorinaldi.gastos.api.service.auth;
 
-import io.github.patorinaldi.gastos.api.config.JwtProperties;
 import io.github.patorinaldi.gastos.api.domain.Household;
 import io.github.patorinaldi.gastos.api.domain.User;
 import io.github.patorinaldi.gastos.api.repository.HouseholdRepository;
 import io.github.patorinaldi.gastos.api.repository.UserRepository;
 import io.github.patorinaldi.gastos.api.security.AuthenticatedUser;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwsHeader;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,15 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
 
-    /** Claim con el hogar al emitir el token. Es para el cliente: el servidor no lo lee (RN-18). */
-    public static final String HOUSEHOLD_CLAIM = "household";
-
     private final UserRepository users;
     private final HouseholdRepository households;
     private final PasswordEncoder passwordEncoder;
-    private final JwtEncoder jwtEncoder;
-    private final JwtProperties jwtProperties;
-    private final Clock clock;
+    private final SessionTokenIssuer tokenIssuer;
 
     // Hash contra el que se compara cuando el correo no existe. Sin esta comparación, la
     // respuesta llega antes para un correo sin cuenta (no corre bcrypt), y la diferencia de
@@ -46,26 +32,27 @@ public class AuthService {
     public AuthService(UserRepository users,
                        HouseholdRepository households,
                        PasswordEncoder passwordEncoder,
-                       JwtEncoder jwtEncoder,
-                       JwtProperties jwtProperties,
-                       Clock clock) {
+                       SessionTokenIssuer tokenIssuer) {
         this.users = users;
         this.households = households;
         this.passwordEncoder = passwordEncoder;
-        this.jwtEncoder = jwtEncoder;
-        this.jwtProperties = jwtProperties;
-        this.clock = clock;
+        this.tokenIssuer = tokenIssuer;
         this.unknownUserHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     /**
      * Valida las credenciales y emite el token de sesión.
      *
-     * <p>El orden importa: primero la contraseña y recién después la verificación del correo.
-     * Al revés, cualquiera podría averiguar si una cuenta está verificada sin conocer su
-     * contraseña.
+     * <p>El orden importa: primero la contraseña y recién después el estado de la cuenta. Al revés,
+     * cualquiera podría averiguar si una cuenta está verificada sin conocer su contraseña.
+     *
+     * <p>A propósito no es {@code @Transactional}. Una transacción toma una conexión del pool al
+     * empezar y la retiene hasta terminar, y bcrypt tarda del orden de 100 ms: muchos intentos de
+     * login simultáneos, aun con correos inventados, agotarían el pool y dejarían sin conexión al
+     * resto de la API. Sin transacción, cada consulta toma la conexión solo mientras corre, y
+     * bcrypt no retiene ninguna. Ni {@code users} ni {@code households} tienen RLS, así que no
+     * hace falta el hogar en contexto.
      */
-    @Transactional(readOnly = true)
     public IssuedToken login(String email, String password) {
         // Una contraseña de más de 72 bytes no llega acá: LoginRequest la rechaza con 400 antes
         // de que bcrypt, que no admite más, responda con un error interno.
@@ -80,15 +67,25 @@ public class AuthService {
         if (!user.isEmailVerified()) {
             throw new EmailNotVerifiedException();
         }
+        // El mismo chequeo que hace la sesión en cada petición: sin él, el login emitiría un token
+        // que el resto de la API rechaza.
+        boolean householdActive = households.findById(user.getHouseholdId())
+                .map(Household::isActive)
+                .orElse(false);
+        if (!householdActive) {
+            throw new HouseholdArchivedException();
+        }
 
-        return issueToken(user);
+        return tokenIssuer.issue(user);
     }
 
     @Transactional(readOnly = true)
     public CurrentUser currentUser(AuthenticatedUser principal) {
-        // El converter ya comprobó que ambos existen en esta misma petición.
-        User user = users.findById(principal.userId()).orElseThrow();
-        Household household = households.findById(principal.householdId()).orElseThrow();
+        // La sesión ya comprobó que existen al autenticar la petición. Si dejaron de existir
+        // entre ese momento y este, corresponde volver a iniciar sesión, no un error interno.
+        User user = users.findById(principal.userId()).orElseThrow(InvalidSessionException::new);
+        Household household = households.findById(principal.householdId())
+                .orElseThrow(InvalidSessionException::new);
         return new CurrentUser(
                 user.getId(),
                 user.getName(),
@@ -96,22 +93,5 @@ public class AuthService {
                 user.isEmailVerified(),
                 household.getId(),
                 household.getName());
-    }
-
-    // El token lleva el usuario como subject y el hogar solo como dato para el cliente
-    // (RF-05). Se trunca a segundos porque así guarda JWT los instantes: sin truncar, el
-    // vencimiento que recibe el cliente no coincidiría con el del token.
-    private IssuedToken issueToken(User user) {
-        Instant issuedAt = clock.instant().truncatedTo(ChronoUnit.SECONDS);
-        Instant expiresAt = issuedAt.plus(jwtProperties.ttl());
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .subject(user.getId().toString())
-                .claim(HOUSEHOLD_CLAIM, user.getHouseholdId().toString())
-                .issuedAt(issuedAt)
-                .expiresAt(expiresAt)
-                .build();
-        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-        String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
-        return new IssuedToken(token, expiresAt);
     }
 }
