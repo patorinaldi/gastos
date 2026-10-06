@@ -2,7 +2,8 @@ package io.github.patorinaldi.gastos.api.web;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.patorinaldi.gastos.api.AuthTestSupport;
-import io.github.patorinaldi.gastos.api.service.auth.AuthService;
+import io.github.patorinaldi.gastos.api.security.SessionAuthenticationConverter;
+import io.github.patorinaldi.gastos.api.service.auth.SessionTokenIssuer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -70,7 +71,8 @@ class LoginTest extends AuthTestSupport {
         Jwt jwt = jwtDecoder.decode(JsonPath.read(body, "$.token"));
 
         assertThat(jwt.getSubject()).isEqualTo(ana.toString());
-        assertThat(jwt.getClaimAsString(AuthService.HOUSEHOLD_CLAIM)).isEqualTo(casa.toString());
+        assertThat(jwt.getClaimAsString(SessionTokenIssuer.HOUSEHOLD_CLAIM)).isEqualTo(casa.toString());
+        assertThat(jwt.<Number>getClaim(SessionAuthenticationConverter.SESSION_VERSION_CLAIM).intValue()).isZero();
         assertThat(Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt())).isEqualTo(Duration.ofDays(7));
         assertThat(Instant.parse(JsonPath.read(body, "$.expiresAt"))).isEqualTo(jwt.getExpiresAt());
     }
@@ -118,6 +120,41 @@ class LoginTest extends AuthTestSupport {
     void unaContrasenaDeMasDe72BytesNoEsUnErrorInterno() throws Exception {
         login(email, "ñ".repeat(40))
                 .andExpect(status().isBadRequest());
+    }
+
+    // Un cliente que agrega el token a cada llamada lo manda también al volver a iniciar sesión,
+    // ya vencido. El login lo ignora.
+    @Test
+    void unTokenVencidoEnElHeaderNoImpideIniciarSesion() throws Exception {
+        String vencido = token(ana, Instant.now().minus(Duration.ofDays(8)));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .header(AUTHORIZATION, "Bearer " + vencido)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email": "%s", "password": "%s"}""".formatted(email, PASSWORD)))
+                .andExpect(status().isOk());
+    }
+
+    // Sin este rechazo, el login emitiría un token que el resto de la API rechaza en cada
+    // petición, y el cliente quedaría entre el login y el 401.
+    @Test
+    void conElHogarArchivadoNoEmiteUnaSesion() throws Exception {
+        jdbcTemplate.update("update households set active = false, archived_at = now() where id = ?", casa);
+
+        login(email, PASSWORD)
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    // El estado del hogar, como el del correo, solo se informa después de validar la contraseña.
+    @Test
+    void conElHogarArchivadoYContrasenaIncorrectaRespondeComoCredencialesIncorrectas() throws Exception {
+        jdbcTemplate.update("update households set active = false, archived_at = now() where id = ?", casa);
+
+        login(email, "otra-contraseña")
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value(CREDENCIALES_INCORRECTAS));
     }
 
     @Test

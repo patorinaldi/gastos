@@ -1,23 +1,18 @@
 package io.github.patorinaldi.gastos.api;
 
-import java.time.Duration;
+import io.github.patorinaldi.gastos.api.service.auth.SessionTokenIssuer;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwsHeader;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Base para las pruebas de endpoints que exigen sesión.
  *
- * <p>Los tokens se firman con el {@code JwtEncoder} de la aplicación, así que pasan por la misma
- * validación que uno emitido por el login. Uso típico:
+ * <p>Los tokens los emite {@link SessionTokenIssuer}, el mismo componente que usa el login, así que
+ * son exactamente los que emite la aplicación. Uso típico:
  *
  * <pre>{@code
  * mockMvc.perform(get("/api/expenses").header(AUTHORIZATION, bearer(userId)))
@@ -29,29 +24,30 @@ public abstract class AuthTestSupport extends HouseholdTestSupport {
     protected MockMvc mockMvc;
 
     @Autowired
-    protected JwtEncoder jwtEncoder;
+    protected SessionTokenIssuer tokenIssuer;
 
     @Autowired
     protected PasswordEncoder passwordEncoder;
 
     /** Header {@code Authorization} con un token vigente para el usuario. */
     protected String bearer(UUID userId) {
-        return "Bearer " + token(userId, Instant.now(), Duration.ofHours(1));
+        return "Bearer " + token(userId, Instant.now());
     }
 
     /**
-     * Token firmado con la clave de la aplicación, emitido en {@code issuedAt} y con la vigencia
-     * indicada. El hogar no se incluye: el servidor lo lee de la base.
+     * Token del usuario emitido en {@code issuedAt}, con su hogar y su versión de sesión actuales.
+     * Emitido hace más tiempo que la vigencia, es un token vencido real.
+     *
+     * <p>Si el usuario no existe, lleva un hogar cualquiera y la versión 0: sirve para probar que
+     * la sesión rechaza a un usuario que no está en la base.
      */
-    protected String token(UUID userId, Instant issuedAt, Duration validity) {
-        Instant issued = issuedAt.truncatedTo(ChronoUnit.SECONDS);
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .subject(userId.toString())
-                .issuedAt(issued)
-                .expiresAt(issued.plus(validity))
-                .build();
-        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+    protected String token(UUID userId, Instant issuedAt) {
+        List<Session> current = jdbcTemplate.query(
+                "select household_id, session_version from users where id = ?",
+                (rs, row) -> new Session(rs.getObject("household_id", UUID.class), rs.getInt("session_version")),
+                userId);
+        Session session = current.isEmpty() ? new Session(UUID.randomUUID(), 0) : current.getFirst();
+        return tokenIssuer.issue(userId, session.householdId(), session.version(), issuedAt).token();
     }
 
     /** Usuario que puede iniciar sesión: contraseña real con bcrypt y correo verificado. */
@@ -67,5 +63,8 @@ public abstract class AuthTestSupport extends HouseholdTestSupport {
     /** Correo único por ejecución, para no chocar con users_email_key si una limpieza falla. */
     protected static String uniqueEmail(String prefix) {
         return prefix + "-" + UUID.randomUUID() + "@ejemplo.test";
+    }
+
+    private record Session(UUID householdId, int version) {
     }
 }
