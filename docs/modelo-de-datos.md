@@ -93,6 +93,7 @@ cambiarse de uno a otro (RN-18).
 | `email_verified` | `boolean` | No nulo, por defecto `false` | Mientras sea falso, la cuenta no puede iniciar sesión (RN-02). |
 | `name` | `varchar(200)` | No nulo, no vacío | Nombre visible en los listados y en el análisis por integrante. |
 | `created_at` | `timestamptz` | No nulo, por defecto ahora | Momento del alta. |
+| `session_version` | `integer` | No nulo, por defecto `0`, no negativo | Versión de sesión (V6). Viaja en cada token de sesión, y uno con otra versión se rechaza. Incrementarla invalida todas las sesiones abiertas del usuario, como al restablecer la contraseña (RNF-29). |
 
 Índices:
 

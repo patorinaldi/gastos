@@ -58,12 +58,25 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    // Versión de sesión (V6). Viaja en cada token de sesión, y un token con una versión distinta
+    // de la actual se rechaza. Sin setter: solo puede avanzar, con invalidateSessions().
+    @Column(name = "session_version", nullable = false)
+    private int sessionVersion;
+
     public User(UUID householdId, String email, String passwordHash, String name) {
         this.householdId = householdId;
         this.email = email;
         this.passwordHash = passwordHash;
         this.name = name;
         this.emailVerified = false;
+    }
+
+    /**
+     * Invalida todos los tokens de sesión emitidos hasta ahora, en todos los dispositivos. Es lo que
+     * corresponde al cambiar la contraseña: si alguien más la tenía, sus sesiones se cierran.
+     */
+    public void invalidateSessions() {
+        sessionVersion++;
     }
 
     @Override
