@@ -59,6 +59,7 @@ Table users {
   email_verified boolean      [not null, default: false]
   name           varchar(200) [not null]
   created_at     timestamptz  [not null, default: `now()`]
+  session_version integer     [not null, default: 0, note: 'V6: versión de sesión; incrementarla invalida los tokens emitidos']
 
   indexes {
     `upper(email)` [unique, name: 'users_email_key', note: 'V2.5: upper() y no lower(), que es lo que genera Spring Data para IgnoreCase']
