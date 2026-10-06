@@ -3,6 +3,8 @@ package io.github.patorinaldi.gastos.api.security;
 import io.github.patorinaldi.gastos.api.repository.UserRepository;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,15 +17,18 @@ import org.springframework.security.oauth2.server.resource.InvalidBearerTokenExc
  * Convierte un token de sesión ya validado (firma y vencimiento) en el usuario autenticado de la
  * petición, con su hogar leído de la base.
  *
- * <p>El token solo aporta el identificador del usuario. El hogar puede haber cambiado desde que
- * se emitió, y un token firmado no se puede modificar ni revocar, así que si el hogar viniera de
- * él, quien se cambió de hogar seguiría operando sobre el anterior hasta que el token venza
- * (RN-18). Cuesta una consulta por petición, que es lo que acepta M1 en {@code modulos.md}.
+ * <p>El token solo aporta el identificador del usuario y su versión de sesión. El hogar puede
+ * haber cambiado desde que se emitió, y un token firmado no se puede modificar, así que si el
+ * hogar viniera de él, quien se cambió de hogar seguiría operando sobre el anterior hasta que el
+ * token venza (RN-18). Cuesta una consulta por petición, que es lo que acepta M1 en
+ * {@code modulos.md}, y esa misma consulta trae la versión de sesión: un token emitido antes de que
+ * cambiara, por ejemplo antes de restablecer la contraseña, se rechaza.
  *
- * <p>Las excepciones son {@link InvalidBearerTokenException} para que la cadena responda 401: un
- * token que no corresponde a un usuario con hogar activo no sirve para nada, aunque la firma sea
- * válida. Un hogar archivado no debería alcanzarse con una sesión, porque se archiva cuando lo
- * deja su último integrante; el chequeo es defensivo.
+ * <p>Todo rechazo es un 401 con el mismo mensaje, sin importar el motivo: distinguir "el usuario
+ * no existe" de "el hogar está archivado" le contaría el estado de una cuenta a quien tenga un
+ * token viejo. Spring Security ya responde con una descripción genérica en
+ * {@code WWW-Authenticate}; el mensaje único cuida que siga sin filtrarse aunque eso cambie. El
+ * motivo real queda solo en el log del servidor.
  *
  * <p>No es un {@code @Component} a propósito: Spring Boot registraría cualquier bean
  * {@link Converter} también en la conversión de parámetros de Spring MVC.
@@ -32,6 +37,13 @@ public class SessionAuthenticationConverter implements Converter<Jwt, AbstractAu
 
     /** Autoridad de la sesión web, la que habilita la API completa. */
     public static final String SESSION_ROLE = "SESSION";
+
+    /** Claim con la versión de sesión. Lo emite {@code SessionTokenIssuer}. */
+    public static final String SESSION_VERSION_CLAIM = "session_version";
+
+    private static final String INVALID_SESSION = "La sesión no es válida";
+
+    private static final Logger log = LoggerFactory.getLogger(SessionAuthenticationConverter.class);
 
     private static final List<GrantedAuthority> SESSION_AUTHORITIES =
             AuthorityUtils.createAuthorityList("ROLE_" + SESSION_ROLE);
@@ -44,10 +56,17 @@ public class SessionAuthenticationConverter implements Converter<Jwt, AbstractAu
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
-        SessionUser user = users.findSessionUser(userId(jwt))
-                .orElseThrow(() -> new InvalidBearerTokenException("El usuario de la sesión no existe"));
+        UUID userId = userId(jwt);
+        SessionUser user = users.findSessionUser(userId).orElse(null);
+        if (user == null) {
+            throw rejected(userId, "el usuario no existe");
+        }
         if (!user.householdActive()) {
-            throw new InvalidBearerTokenException("El hogar de la sesión está archivado");
+            throw rejected(userId, "el hogar está archivado");
+        }
+        Number tokenVersion = jwt.getClaim(SESSION_VERSION_CLAIM);
+        if (tokenVersion == null || tokenVersion.intValue() != user.sessionVersion()) {
+            throw rejected(userId, "la versión de sesión del token no es la vigente");
         }
 
         AuthenticatedUser principal = new AuthenticatedUser(user.userId(), user.householdId());
@@ -60,7 +79,13 @@ public class SessionAuthenticationConverter implements Converter<Jwt, AbstractAu
         try {
             return UUID.fromString(jwt.getSubject());
         } catch (IllegalArgumentException | NullPointerException ex) {
-            throw new InvalidBearerTokenException("El token no identifica a un usuario");
+            log.info("Sesión rechazada: el token no identifica a un usuario");
+            throw new InvalidBearerTokenException(INVALID_SESSION);
         }
+    }
+
+    private static InvalidBearerTokenException rejected(UUID userId, String reason) {
+        log.info("Sesión rechazada para el usuario {}: {}", userId, reason);
+        return new InvalidBearerTokenException(INVALID_SESSION);
     }
 }

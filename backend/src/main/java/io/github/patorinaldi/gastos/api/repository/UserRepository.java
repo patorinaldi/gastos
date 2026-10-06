@@ -24,12 +24,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmailIgnoreCase(String email);
 
     /**
-     * El hogar actual del usuario y si sigue activo, en una sola consulta. Corre en cada petición
-     * autenticada: el hogar se lee de acá y no del token (RN-18). Ninguna de las dos tablas tiene
-     * RLS, así que funciona antes de que haya un hogar en contexto.
+     * El hogar actual del usuario, si sigue activo y la versión de sesión vigente, en una sola
+     * consulta. Corre en cada petición autenticada: el hogar se lee de acá y no del token (RN-18).
+     * Ninguna de las dos tablas tiene RLS, así que funciona antes de que haya un hogar en contexto.
      */
     @Query("""
-            select new io.github.patorinaldi.gastos.api.security.SessionUser(u.id, u.householdId, h.active)
+            select new io.github.patorinaldi.gastos.api.security.SessionUser(
+                u.id, u.householdId, h.active, u.sessionVersion)
             from User u join Household h on h.id = u.householdId
             where u.id = ?1""")
     Optional<SessionUser> findSessionUser(UUID userId);
