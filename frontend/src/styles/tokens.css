@@ -1,0 +1,75 @@
+/*
+ * Tokens del sistema de diseño. Todo color, espacio, radio y tamaño de letra de la interfaz sale
+ * de acá: los componentes no escriben valores sueltos. Cambiar la paleta, o sumar un modo oscuro,
+ * es cambiar este archivo.
+ *
+ * La paleta es cálida a propósito: superficies blancas y crema, tinta casi negra y un único
+ * acento ámbar, reservado para lo que pide atención (avisos, la bandeja, el foco). La acción
+ * principal va en tinta, no en ámbar, para que el acento no pierda fuerza por repetirse.
+ */
+:root {
+  /* Texto */
+  --color-ink: #1e1d18;
+  --color-ink-inverse: #ffffff;
+  --color-text-secondary: #635a50;
+  --color-text-tertiary: #756a5e;
+
+  /* Superficies */
+  --color-surface: #ffffff;
+  --color-surface-sunken: #fbf7f1;
+  --color-surface-muted: #f7f2ea;
+  --color-border: #e6ddd2;
+  --color-divider: #efe8df;
+
+  /*
+   * Acento. --color-accent es el ámbar puro, para superficies y trazos; sobre blanco no llega al
+   * contraste mínimo de un texto, así que el texto en ámbar usa --color-accent-text.
+   */
+  --color-accent: #f2911b;
+  --color-accent-text: #8f5305;
+  --color-accent-text-hover: #6e3f04;
+  --color-accent-soft: #fdebd4;
+  --color-accent-notice: #fdf3e3;
+
+  /* Error */
+  --color-danger: #b23c17;
+  --color-danger-soft: #fbe9e3;
+
+  /* Tipografía */
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-display: 34px;
+
+  /* Espaciado, en una escala de 4 px */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Margen lateral de la pantalla en móvil */
+  --gutter: 22px;
+
+  /* Radios */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Sombras */
+  --shadow-card: 0 18px 44px -18px rgba(30, 29, 24, 0.35), 0 0 0 1px rgba(30, 29, 24, 0.07);
+  --shadow-button: 0 8px 20px -10px rgba(30, 29, 24, 0.7);
+
+  /* Disposición. El umbral entre móvil y escritorio lo fija M7 en modulos.md. */
+  --sidebar-width: 248px;
+  --content-max-width: 960px;
+}
