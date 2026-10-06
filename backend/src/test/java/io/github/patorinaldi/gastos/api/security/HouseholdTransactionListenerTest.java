@@ -20,15 +20,21 @@ class HouseholdTransactionListenerTest extends HouseholdTestSupport {
         CurrentHousehold.clear();
     }
 
+    // La V2 no declara estos atributos: los garantiza create role, que crea el rol sin ninguno.
+    // Si alguna migración posterior se los diera, esta prueba lo detecta.
     @Test
     void appConnectsWithRestrictedRole() {
         Map<String, Object> role = jdbcTemplate.queryForMap(
-                "select rolname, rolsuper, rolbypassrls from pg_roles where rolname = current_user");
+                "select rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolreplication"
+                        + " from pg_roles where rolname = current_user");
 
         assertThat(role)
                 .containsEntry("rolname", "gastos_api")
                 .containsEntry("rolsuper", false)
-                .containsEntry("rolbypassrls", false);
+                .containsEntry("rolbypassrls", false)
+                .containsEntry("rolcreaterole", false)
+                .containsEntry("rolcreatedb", false)
+                .containsEntry("rolreplication", false);
     }
 
     @Test
