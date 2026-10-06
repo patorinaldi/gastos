@@ -220,3 +220,5 @@ Se declaran para acotar el compromiso de la entrega final. No son omisiones.
 | Liquidación de deudas entre integrantes. | El sistema informa el gasto conjunto, no salda cuentas individuales. |
 | Múltiples monedas. | Obliga a modelar cotizaciones y fechas de conversión. |
 | Aplicaciones nativas móviles. | El cliente web responde a pantallas desde 360 px (RNF-15) y la captura rápida se cubre con M6. |
+| Registro de auditoría dedicado. | El esquema ya conserva lo necesario para reconstruir qué pasó: fechas de alta, modificación, baja y archivado, el responsable de cada gasto, y quién creó y quién canjeó cada invitación. |
+| Exportación de datos. | Funcionalidad de evolución posterior. No afecta el modelo de datos actual. |

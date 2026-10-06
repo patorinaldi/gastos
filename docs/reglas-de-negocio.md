@@ -109,7 +109,8 @@ El código vence a los 7 días de generado.
 **Nivel.** Ambos. La aplicación valida que el código no esté vencido ni canjeado. La tabla
 `household_invitations` (migración V5) guarda solo el hash SHA-256 del código, tiene el vencimiento
 de 7 días como valor por defecto, y un `check` exige que un canje registre a la vez quién canjeó y
-cuándo.
+cuándo. Que el canje sea único lo sostiene la aplicación: el motor no impide todavía que un canje
+ya registrado se sobrescriba.
 
 **Motivo.** El código circula por canales que el sistema no controla, como mensajería o papel. Que
 sea de un solo uso evita que quien lo reenvíe incorpore gente no prevista, y el vencimiento limita
@@ -223,6 +224,13 @@ Consecuencias de cada baja:
   que corresponda.
 - **Nombre liberado.** Un nombre de categoría dado de baja no sigue ocupando su lugar: el hogar
   puede crear otra categoría activa con el mismo nombre (ver RN-09).
+
+**Renombrar no es dar de baja.** Renombrar una categoría modifica su única fila. Los gastos la
+referencian por identificador, así que el nombre nuevo se ve en todo el historial y en el análisis
+de cualquier período, también de los anteriores al cambio, y sus reglas siguen aplicándose. Si lo
+que se busca es separar los gastos viejos de los nuevos, el camino es dar de baja la categoría y
+crear otra: los gastos anteriores conservan la vieja con su nombre, y las reglas se vuelven a crear
+para la nueva.
 
 **Nivel.** Ambos. La aplicación filtra los gastos dados de baja en todas las consultas, y las
 categorías dadas de baja solo donde se ofrecen categorías. El motor sostiene la unicidad solo entre

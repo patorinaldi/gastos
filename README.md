@@ -35,8 +35,8 @@ docs/        Documentación técnica e informes de todas las entregas
 .github/     Canalizaciones de integración y despliegue continuo
 ```
 
-El backend se organiza en capas con dependencias unidireccionales, cada una conociendo solo a la
-inmediatamente inferior, bajo `io.github.patorinaldi.gastos.api`:
+El backend se organiza en capas bajo `io.github.patorinaldi.gastos.api`, con dependencias en un
+solo sentido:
 
 | Capa | Contenido |
 |---|---|
