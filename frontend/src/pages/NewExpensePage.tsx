@@ -1,13 +1,13 @@
 import { PageHeader } from '../components/layout/PageHeader.tsx'
 import { EmptyState } from '../components/states/States.tsx'
 
-export function DashboardPage() {
+export function NewExpensePage() {
   return (
     <>
-      <PageHeader title="Tablero" />
+      <PageHeader title="Nuevo gasto" />
       <EmptyState
         title="Pantalla en construcción"
-        description="Acá van a estar el total del período, los gráficos de distribución y evolución, y los últimos movimientos."
+        description="Acá va a estar el alta de un gasto: importe y comercio, y opcionalmente fecha, medio de pago y categoría."
       />
     </>
   )
