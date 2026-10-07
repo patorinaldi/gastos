@@ -1,10 +1,14 @@
-import { Link } from 'react-router'
+import { EmptyState } from '../components/states/States.tsx'
+import { ButtonLink } from '../components/ui/Button.tsx'
 
 export function NotFoundPage() {
   return (
     <main>
-      <h1>Página no encontrada</h1>
-      <Link to="/">Volver al inicio</Link>
+      <EmptyState
+        title="Página no encontrada"
+        description="La dirección no existe o cambió."
+        action={<ButtonLink to="/">Volver al tablero</ButtonLink>}
+      />
     </main>
   )
 }
