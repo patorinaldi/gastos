@@ -180,6 +180,34 @@ este repositorio, y requiere permisos de administración.
 
 ---
 
+## Despliegue
+
+El backend corre en **Azure App Service** (Linux, Java 21) y usa una **Azure Database for
+PostgreSQL – Flexible Server** (PostgreSQL 17). Lo despliega el trabajo *Despliegue del backend*
+de [`ci.yml`](.github/workflows/ci.yml) en cada incorporación a `main`, después de que pasan
+`Backend` y `Frontend`:
+
+1. publica en App Service el mismo jar que se acaba de probar;
+2. espera a que `/actuator/health` responda 200, y si no lo hace, marca el despliegue como fallido.
+
+GitHub entra a Azure por OIDC: el environment `production` guarda los identificadores de Azure
+(`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`), y Azure solo acepta tokens emitidos
+para este repositorio y ese environment. No hay ninguna contraseña de Azure guardada en GitHub.
+
+La aplicación toma su configuración de las variables de entorno de App Service:
+
+| Variable | Contenido |
+|---|---|
+| `DB_URL` | URL JDBC de la base, con `sslmode=require` |
+| `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD` | Rol con el que corren las migraciones. Es dueño de la base y tiene `CREATEROLE`, sin ser superusuario. |
+| `DB_API_USERNAME`, `DB_API_PASSWORD` | Rol con el que se conecta la aplicación (`gastos_api`). Lo crea la V2 en el primer arranque, con esta contraseña. |
+| `JWT_SECRET` | Clave de firma del token de sesión, de 32 caracteres o más |
+| `EMAIL_SENDER` | Implementación del envío de correos |
+| `CORS_ALLOWED_ORIGINS` | Orígenes del cliente web, separados por coma |
+| `WEBSITES_PORT` | `8080`, el puerto en el que escucha la aplicación |
+
+---
+
 ## Convenciones
 
 - **Idioma.** Los identificadores del código se escriben en inglés; los valores de datos del

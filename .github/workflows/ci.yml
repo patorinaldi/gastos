@@ -11,6 +11,9 @@
 # Este archivo no bloquea nada por sí solo: que una PR con las pruebas en rojo no se pueda mergear
 # depende de marcar estos dos checks como obligatorios en la protección de la rama main, que se
 # configura en GitHub y necesita permisos de administración del repositorio.
+#
+# En cada incorporación a main, si pasan los dos trabajos, un tercero despliega el backend en Azure
+# App Service: el mismo jar que se acaba de probar, no uno compilado de nuevo.
 
 name: CI
 
@@ -20,10 +23,12 @@ on:
   push:
     branches: [main]
 
-# Si llegan varios push seguidos a la misma rama, solo interesa el último.
+# En una PR, si llegan varios push seguidos solo interesa el último. En main no se cancela nada:
+# cada incorporación termina en un despliegue, y cortar uno a la mitad podría dejar la app en un
+# estado intermedio.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -58,6 +63,17 @@ jobs:
           path: backend/target/surefire-reports/
           retention-days: 7
 
+      # Solo en main: es el jar que despliega el trabajo siguiente. El patrón deja afuera el
+      # .jar.original que genera el empaquetado de Spring Boot.
+      - name: Guardar el jar probado
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-jar
+          path: backend/target/gastos-*.jar
+          if-no-files-found: error
+          retention-days: 1
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -86,3 +102,65 @@ jobs:
       - name: Lint
         working-directory: frontend
         run: npm run lint
+
+  deploy:
+    name: Despliegue del backend
+    needs: [backend, frontend]
+    # Solo en una incorporación a main, nunca desde una PR.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # El environment production guarda los identificadores de Azure, y la credencial federada de
+    # Azure solo acepta tokens emitidos para este repositorio y este environment.
+    environment:
+      name: production
+      url: https://gastos-api-rrr-d2eyhtcmcabudrgk.canadacentral-01.azurewebsites.net
+    # Dos despliegues nunca corren a la vez: el segundo espera a que termine el primero.
+    concurrency:
+      group: despliegue-produccion
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      # Para pedirle a GitHub el token OIDC con el que se entra a Azure, sin guardar una contraseña.
+      id-token: write
+    env:
+      APP_NAME: gastos-api-rrr
+      HEALTH_URL: https://gastos-api-rrr-d2eyhtcmcabudrgk.canadacentral-01.azurewebsites.net/actuator/health
+    steps:
+      - name: Descargar el jar probado
+        uses: actions/download-artifact@v8
+        with:
+          name: backend-jar
+          path: artifact
+
+      - name: Ubicar el jar
+        id: jar
+        run: echo "path=$(ls artifact/gastos-*.jar)" >> "$GITHUB_OUTPUT"
+
+      - name: Entrar a Azure
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Publicar en App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.APP_NAME }}
+          package: ${{ steps.jar.outputs.path }}
+
+      # El despliegue termina cuando el jar se sube, no cuando la aplicación arranca. En el plan
+      # gratuito, Spring Boot tarda en levantar, y en el primer arranque además corren las
+      # migraciones. Si la aplicación no responde 200 en /actuator/health en unos siete minutos,
+      # el despliegue se marca como fallido.
+      - name: Verificar que la aplicación responda
+        run: |
+          for intento in $(seq 1 28); do
+            codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$HEALTH_URL" || true)
+            echo "intento $intento: $codigo"
+            [ "$codigo" = "200" ] && exit 0
+            sleep 15
+          done
+          echo "La aplicación no respondió 200 en $HEALTH_URL después del despliegue."
+          exit 1
