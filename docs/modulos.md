@@ -388,7 +388,7 @@ RNF-25, RNF-27, RNF-28.
 | Baja lógica | Implementado | Marca de baja (`active`, `deleted_at`) en gastos y categorías, con un check que impide que se contradigan. El borrado por JPA es una baja lógica. Los gastos dados de baja quedan fuera de todas las consultas; las categorías, solo de las que las ofrecen, y sus reglas se eliminan. Índice único parcial para que un nombre dado de baja no siga ocupando el suyo. |
 | Manejo global de errores | Pendiente | Respuestas `problem+json` centralizadas. |
 | Integración continua | Implementado | GitHub Actions en cada PR: el backend con `./mvnw verify`, incluidas las pruebas de integración contra un PostgreSQL de Testcontainers, y el frontend con chequeo de tipos, build y lint. Que una ejecución en rojo bloquee la incorporación depende de marcar los dos checks como obligatorios en la protección de `main`. |
-| Despliegue | Pendiente | API, base gestionada y cliente web en línea. |
+| Despliegue | Backend implementado, cliente web pendiente | El backend se publica en Azure App Service en cada incorporación a `main`, con Flyway al arrancar contra una Azure Database for PostgreSQL – Flexible Server (PostgreSQL 17). La preparación de la base y las variables de entorno están en el README. Falta publicar el cliente web. |
 
 **Verificación de estado.** `GET /actuator/health` responde sin autenticación y sin detalle de
 componentes. El detalle revelaría nombres de host, esquemas y estado de las dependencias (RF-41).
