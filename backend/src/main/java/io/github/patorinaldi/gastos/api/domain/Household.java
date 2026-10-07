@@ -51,6 +51,16 @@ public class Household {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    // Archivado (V5, RN-18). Sin setters: archivar es una operación de M2 que fija las dos
+    // columnas juntas, y el check households_active_archived_at_consistent exige que coincidan.
+    // Arranca en true en Java porque Hibernate inserta el valor del campo, no el default de la
+    // columna.
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
     public Household(String name) {
         this.name = name;
     }

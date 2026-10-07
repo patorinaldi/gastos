@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * categories está bajo RLS, así que ninguna firma recibe el hogar: el filtro lo aplica
@@ -17,7 +18,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * {@code findAll} las incluyen, que es lo que necesitan el historial y el análisis. Las consultas
  * con {@code ActiveTrue} son las que se usan para ofrecer categorías: el catálogo, la búsqueda por
  * nombre y la validación de una asignación nueva.
+ *
+ * <p>{@code @Transactional(readOnly = true)} a nivel de interfaz: los métodos de consulta declarados
+ * acá no abren transacción por su cuenta, a diferencia de los heredados ({@code findById},
+ * {@code save}…). Sin transacción, {@code HouseholdTransactionListener} no fija el hogar y la
+ * consulta devuelve cero filas sin ningún error. Con la anotación, cada consulta abre la suya, o
+ * se suma a la del servicio si ya hay una. Los métodos heredados conservan la suya: {@code save}
+ * sigue escribiendo.
  */
+@Transactional(readOnly = true)
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
     /**

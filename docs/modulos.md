@@ -77,7 +77,16 @@ lee de `users.household_id`, no de un atributo del token. Cuesta una consulta po
 lo que exige RN-18: el servidor acepta un token firmado hasta que vence, así que si el hogar viajara
 en él, quien se cambió de hogar seguiría leyendo y escribiendo en el anterior con un token emitido
 antes del cambio. El token puede llevar el hogar como dato para el cliente (RF-05), pero el servidor
-no lo usa para decidir a qué hogar accede la petición. El registro y la creación del hogar son una
+no lo usa para decidir a qué hogar accede la petición. Ese dato queda desactualizado si el usuario
+se cambia de hogar: el cliente tiene que tomar el hogar de `GET /api/auth/me` y no leerlo del token.
+
+El token vence a los 7 días y lleva además la versión de sesión del usuario (`users.session_version`,
+migración V6). Esa misma consulta por petición la compara con la vigente, y si no coincide rechaza
+el token: incrementar la versión invalida de una vez todas las sesiones del usuario, en todos sus
+dispositivos. Es lo que hace el restablecimiento de contraseña (RNF-29). Cerrar sesión en un solo
+dispositivo es descartar el token del lado del cliente.
+
+El registro y la creación del hogar son una
 sola transacción (RN-11): el alta crea el hogar, fija su identificador en el contexto de la
 transacción y recién entonces siembra el catálogo inicial de M4, que se inserta bajo las políticas
 de aislamiento y por lo tanto exige un hogar activo.
@@ -369,7 +378,7 @@ RNF-25, RNF-27, RNF-28.
 
 | Componente | Estado | Descripción |
 |---|---|---|
-| Migraciones versionadas | Implementado | V1 esquema base, V2 rol y políticas de aislamiento, V2.5 índice de correo, V3 catálogo inicial, V4 baja lógica, V5 cambio de hogar y tablas de acceso. |
+| Migraciones versionadas | Implementado | V1 esquema base, V2 rol y políticas de aislamiento, V2.5 índice de correo, V3 catálogo inicial, V4 baja lógica, V5 cambio de hogar y tablas de acceso, V6 versión de sesión. |
 | Rol de aplicación restringido | Implementado | `gastos_api`, sin privilegio de omisión de políticas ni de superusuario. |
 | Propagación del contexto de hogar | Implementado | Se fija al inicio de cada transacción, con alcance transaccional para que no se filtre entre peticiones al devolver la conexión al pool. |
 | Entidades y repositorios | Implementado | Cinco entidades validadas contra el esquema al arrancar. |
@@ -378,7 +387,7 @@ RNF-25, RNF-27, RNF-28.
 | Migraciones complementarias | Implementado | Migración V5: tokens de verificación y restablecimiento, invitaciones y tokens de cliente máquina, guardados como hash y sin RLS por ser datos de acceso. Archivado de hogares y cambio de hogar conservando los gastos en el hogar anterior (RN-18). |
 | Baja lógica | Implementado | Marca de baja (`active`, `deleted_at`) en gastos y categorías, con un check que impide que se contradigan. El borrado por JPA es una baja lógica. Los gastos dados de baja quedan fuera de todas las consultas; las categorías, solo de las que las ofrecen, y sus reglas se eliminan. Índice único parcial para que un nombre dado de baja no siga ocupando el suyo. |
 | Manejo global de errores | Pendiente | Respuestas `problem+json` centralizadas. |
-| Integración continua | Pendiente | Compilación y pruebas bloqueantes en cada PR. |
+| Integración continua | Implementado | GitHub Actions en cada PR: el backend con `./mvnw verify`, incluidas las pruebas de integración contra un PostgreSQL de Testcontainers, y el frontend con chequeo de tipos, build y lint. Que una ejecución en rojo bloquee la incorporación depende de marcar los dos checks como obligatorios en la protección de `main`. |
 | Despliegue | Pendiente | API, base gestionada y cliente web en línea. |
 
 **Verificación de estado.** `GET /actuator/health` responde sin autenticación y sin detalle de

@@ -1,5 +1,7 @@
 # Gastos
 
+[![CI](https://github.com/patorinaldi/gastos/actions/workflows/ci.yml/badge.svg)](https://github.com/patorinaldi/gastos/actions/workflows/ci.yml)
+
 **Aplicación web para el registro y análisis de gastos compartidos en unidades de convivencia.**
 
 Cada persona se registra con su correo y al hacerlo se crea su hogar, al que invita al resto
@@ -33,8 +35,8 @@ docs/        Documentación técnica e informes de todas las entregas
 .github/     Canalizaciones de integración y despliegue continuo
 ```
 
-El backend se organiza en capas con dependencias unidireccionales, cada una conociendo solo a la
-inmediatamente inferior, bajo `io.github.patorinaldi.gastos.api`:
+El backend se organiza en capas bajo `io.github.patorinaldi.gastos.api`, con dependencias en un
+solo sentido:
 
 | Capa | Contenido |
 |---|---|
@@ -136,7 +138,73 @@ El empaquetado deja el ejecutable en `backend/target/gastos-<versión>.jar`, que
 
 ### Frontend
 
-Pendiente
+```bash
+cd frontend
+npm install
+npm run dev                     # http://localhost:5173
+```
+
+La URL de la API se lee de `VITE_API_URL`. En desarrollo, si no está definida, apunta a
+`http://localhost:8080`; para cambiarla, copiar `frontend/.env.example` a `frontend/.env`. En
+producción es obligatoria y se define como variable del entorno de build.
+
+Chequeo de tipos y build de producción (deja el sitio estático en `frontend/dist/`), y lint:
+
+```bash
+cd frontend
+npm run build
+npm run lint
+```
+
+---
+
+## Integración continua
+
+Cada pull request y cada incorporación a `main` ejecutan
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml), con dos trabajos en paralelo:
+
+| Trabajo | Qué corre |
+|---|---|
+| Backend | `./mvnw verify` con JDK 21: compila, ejecuta la batería completa —las pruebas de integración levantan su propio PostgreSQL con Testcontainers— y empaqueta el jar. |
+| Frontend | `npm ci`, `npm run build` (que incluye el chequeo de tipos) y `npm run lint` con Node 22. |
+
+Si el backend falla, los informes de las pruebas quedan como artefacto de la ejecución durante
+siete días.
+
+Los dos trabajos corren en todas las PR, también en las que solo tocan documentación: un check
+obligatorio que no se ejecuta queda pendiente para siempre y deja la PR sin poder incorporarse.
+
+**Para que una ejecución en rojo bloquee la incorporación**, los dos checks tienen que estar
+marcados como obligatorios en la protección de la rama `main`. Eso se configura en GitHub, no en
+este repositorio, y requiere permisos de administración.
+
+---
+
+## Despliegue
+
+El backend corre en **Azure App Service** (Linux, Java 21) y usa una **Azure Database for
+PostgreSQL – Flexible Server** (PostgreSQL 17). Lo despliega el trabajo *Despliegue del backend*
+de [`ci.yml`](.github/workflows/ci.yml) en cada incorporación a `main`, después de que pasan
+`Backend` y `Frontend`:
+
+1. publica en App Service el mismo jar que se acaba de probar;
+2. espera a que `/actuator/health` responda 200, y si no lo hace, marca el despliegue como fallido.
+
+GitHub entra a Azure por OIDC: el environment `production` guarda los identificadores de Azure
+(`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`), y Azure solo acepta tokens emitidos
+para este repositorio y ese environment. No hay ninguna contraseña de Azure guardada en GitHub.
+
+La aplicación toma su configuración de las variables de entorno de App Service:
+
+| Variable | Contenido |
+|---|---|
+| `DB_URL` | URL JDBC de la base, con `sslmode=require` |
+| `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD` | Rol con el que corren las migraciones. Es dueño de la base y tiene `CREATEROLE`, sin ser superusuario. |
+| `DB_API_USERNAME`, `DB_API_PASSWORD` | Rol con el que se conecta la aplicación (`gastos_api`). Lo crea la V2 en el primer arranque, con esta contraseña. |
+| `JWT_SECRET` | Clave de firma del token de sesión, de 32 caracteres o más |
+| `EMAIL_SENDER` | Implementación del envío de correos |
+| `CORS_ALLOWED_ORIGINS` | Orígenes del cliente web, separados por coma |
+| `WEBSITES_PORT` | `8080`, el puerto en el que escucha la aplicación |
 
 ---
 
