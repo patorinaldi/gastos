@@ -41,7 +41,13 @@ server:
 #
 # La clave de firma del token de sesión sigue el mismo criterio: vacía si falta JWT_SECRET, y
 # JwtProperties rechaza el arranque con una clave vacía o corta (RNF-07).
+#
+# Cada variable de entorno se mapea acá de forma explícita. Sin el mapeo, Spring solo reconoce el
+# nombre derivado de la propiedad (GASTOS_EMAIL_SENDER), no el que documenta el README: la app no
+# la leería y, en el caso del correo, no arrancaría. Lo verifica ApplicationYamlTest.
 gastos:
+  email:
+    sender: ${EMAIL_SENDER:}
   jwt:
     secret: ${JWT_SECRET:}
     ttl: 7d
