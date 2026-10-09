@@ -2,8 +2,11 @@ package io.github.patorinaldi.gastos.api.config;
 
 import io.github.patorinaldi.gastos.api.repository.UserRepository;
 import io.github.patorinaldi.gastos.api.security.HouseholdContextFilter;
+import io.github.patorinaldi.gastos.api.security.ProblemDetailAccessDeniedHandler;
+import io.github.patorinaldi.gastos.api.security.ProblemDetailAuthenticationEntryPoint;
 import io.github.patorinaldi.gastos.api.security.SessionAuthenticationConverter;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,6 +24,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import static org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.pathPattern;
 
@@ -60,8 +64,19 @@ class SecurityConfiguration {
             pathPattern(HttpMethod.POST, "/api/auth/password/forgot"),
             pathPattern(HttpMethod.POST, "/api/auth/password/reset"));
 
+    /**
+     * Los 401 y 403 que responde la propia cadena, antes de llegar a un controlador, salen como
+     * {@code problem+json}, igual que el resto de los errores de la API (RF-40). Los handlers se
+     * configuran dos veces porque el resource server usa los suyos para los tokens inválidos, y la
+     * cadena, para las peticiones sin token o sin permiso.
+     */
     @Bean
-    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, UserRepository users) throws Exception {
+    SecurityFilterChain apiSecurityFilterChain(
+            HttpSecurity http,
+            UserRepository users,
+            @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) throws Exception {
+        ProblemDetailAuthenticationEntryPoint unauthorized = new ProblemDetailAuthenticationEntryPoint(exceptionResolver);
+        ProblemDetailAccessDeniedHandler forbidden = new ProblemDetailAccessDeniedHandler(exceptionResolver);
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
@@ -76,8 +91,13 @@ class SecurityConfiguration {
                         // él quedan cerrados. "/**" incluye también la ruta exacta.
                         .requestMatchers("/api/capture/**").denyAll()
                         .anyRequest().hasRole(SessionAuthenticationConverter.SESSION_ROLE))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(unauthorized)
+                        .accessDeniedHandler(forbidden))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .bearerTokenResolver(ignoringPublicEndpoints())
+                        .authenticationEntryPoint(unauthorized)
+                        .accessDeniedHandler(forbidden)
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(new SessionAuthenticationConverter(users))))
                 .addFilterAfter(new HouseholdContextFilter(), BearerTokenAuthenticationFilter.class)
                 .build();
