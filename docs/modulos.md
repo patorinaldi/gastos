@@ -386,7 +386,7 @@ RNF-25, RNF-27, RNF-28.
 | Emisor de correo | Implementado | Interfaz propia con implementación de desarrollo que escribe a consola. |
 | Migraciones complementarias | Implementado | Migración V5: tokens de verificación y restablecimiento, invitaciones y tokens de cliente máquina, guardados como hash y sin RLS por ser datos de acceso. Archivado de hogares y cambio de hogar conservando los gastos en el hogar anterior (RN-18). |
 | Baja lógica | Implementado | Marca de baja (`active`, `deleted_at`) en gastos y categorías, con un check que impide que se contradigan. El borrado por JPA es una baja lógica. Los gastos dados de baja quedan fuera de todas las consultas; las categorías, solo de las que las ofrecen, y sus reglas se eliminan. Índice único parcial para que un nombre dado de baja no siga ocupando el suyo. |
-| Manejo global de errores | Pendiente | Respuestas `problem+json` centralizadas. |
+| Manejo global de errores | Parcial | Los errores de los controladores y de la validación, y los 401 y 403 que responde la cadena de seguridad antes de llegar a un controlador, salen como `problem+json` con el mismo formato. La cadena conserva además el header `WWW-Authenticate`. Falta un manejo explícito de los errores no previstos y de los de integridad de la base, para que respondan sin detalle técnico (RNF-17). |
 | Integración continua | Implementado | GitHub Actions en cada PR: el backend con `./mvnw verify`, incluidas las pruebas de integración contra un PostgreSQL de Testcontainers, y el frontend con chequeo de tipos, build y lint. Que una ejecución en rojo bloquee la incorporación depende de marcar los dos checks como obligatorios en la protección de `main`. |
 | Despliegue | Pendiente | API, base gestionada y cliente web en línea. |
 
