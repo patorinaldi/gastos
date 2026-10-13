@@ -199,12 +199,72 @@ La aplicación toma su configuración de las variables de entorno de App Service
 | Variable | Contenido |
 |---|---|
 | `DB_URL` | URL JDBC de la base, con `sslmode=require` |
-| `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD` | Rol con el que corren las migraciones. Es dueño de la base y tiene `CREATEROLE`, sin ser superusuario. |
+| `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD` | Rol con el que corren las migraciones (`gastos_admin`). Es dueño de la base y del esquema `public`, y tiene `CREATEROLE`, sin ser superusuario. |
 | `DB_API_USERNAME`, `DB_API_PASSWORD` | Rol con el que se conecta la aplicación (`gastos_api`). Lo crea la V2 en el primer arranque, con esta contraseña. |
 | `JWT_SECRET` | Clave de firma del token de sesión, de 32 caracteres o más |
-| `EMAIL_SENDER` | Implementación del envío de correos |
-| `CORS_ALLOWED_ORIGINS` | Orígenes del cliente web, separados por coma |
+| `EMAIL_SENDER` | Implementación del envío de correos. Hoy solo existe `console`, que escribe los correos en el log: hay que reemplazarla por un proveedor real antes de habilitar el registro. |
+| `CORS_ALLOWED_ORIGINS` | Orígenes del cliente web, separados por coma. Vacía, ningún otro origen puede llamar a la API. |
 | `WEBSITES_PORT` | `8080`, el puerto en el que escucha la aplicación |
+
+Si falta `EMAIL_SENDER` o `JWT_SECRET`, la aplicación no arranca, a propósito. Cada variable se
+mapea de forma explícita en `application.yaml`: una variable que no esté mapeada ahí no la lee
+nadie, aunque esté definida en App Service.
+
+### Preparación de la base
+
+Se hace una sola vez, antes del primer despliegue, conectado al servidor con su administrador (el
+rol que se eligió al crear el Flexible Server). Desde el portal se puede usar Cloud Shell, que ya
+trae `psql` y llega al servidor si está activado *Allow public access from any Azure service*.
+
+1. Crear el rol de las migraciones. Con `\password`, la contraseña no queda escrita en el SQL ni
+   en el historial:
+
+   ```bash
+   psql "host=<servidor>.postgres.database.azure.com port=5432 dbname=postgres user=<administrador> sslmode=require"
+   ```
+   ```sql
+   create role gastos_admin login createrole createdb;
+   \password gastos_admin
+   ```
+
+2. Crear la base como `gastos_admin`, para que quede como su dueño:
+
+   ```bash
+   psql "host=<servidor>.postgres.database.azure.com port=5432 dbname=postgres user=gastos_admin sslmode=require"
+   ```
+   ```sql
+   create database gastos;
+   ```
+
+3. Como el administrador, conectado a la base `gastos`, transferirle el esquema `public` a
+   `gastos_admin` y quitarle `CREATEDB`, que ya no necesita:
+
+   ```bash
+   psql "host=<servidor>.postgres.database.azure.com port=5432 dbname=gastos user=<administrador> sslmode=require"
+   ```
+   ```sql
+   grant gastos_admin to <administrador>;
+   alter schema public owner to gastos_admin;
+   revoke gastos_admin from <administrador>;
+   alter role gastos_admin nocreatedb;
+   ```
+
+**Por qué el paso 3.** En Azure, el esquema `public` de una base nueva pertenece a `azure_pg_admin`,
+no al dueño de la base: `gastos_admin` podría usarlo pero no crear tablas, y Flyway fallaría al
+crear su tabla de historial (`permission denied for schema public`). El `grant` temporal hace falta
+porque, desde PostgreSQL 16, transferirle un objeto a un rol exige poder actuar como ese rol; el
+administrador puede concedérselo a sí mismo porque fue quien creó `gastos_admin`. Las pruebas
+reproducen este mismo escenario con
+[`init-admin-gestionado.sql`](backend/src/test/resources/db/init-admin-gestionado.sql).
+
+`gastos_api` no se crea a mano: lo crea la V2 en el primer arranque, con `DB_API_PASSWORD`.
+
+### Arranque en frío
+
+El plan gratuito de App Service no permite *Always On*: después de un rato sin pedidos la
+aplicación se detiene, y el primer pedido siguiente la vuelve a levantar. Ese pedido tarda más:
+la plataforma inicia el contenedor y Spring Boot tarda entre 15 y 30 segundos en arrancar. Los
+pedidos siguientes responden normalmente.
 
 ---
 
