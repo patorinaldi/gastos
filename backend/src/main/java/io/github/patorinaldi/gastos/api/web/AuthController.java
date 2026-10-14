@@ -7,6 +7,7 @@ import io.github.patorinaldi.gastos.api.service.auth.IssuedToken;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.CurrentUserResponse;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,9 +33,13 @@ class AuthController {
         this.authService = authService;
     }
 
+    // getRemoteAddr es la dirección del cliente y no la del proxy de Azure porque
+    // server.forward-headers-strategy la toma de X-Forwarded-For. Sin eso, todos los intentos
+    // parecerían llegar desde el proxy y compartirían el límite por dirección.
     @PostMapping("/login")
-    LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        IssuedToken issued = authService.login(request.email(), request.password());
+    LoginResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        String clientIp = ClientAddress.withoutPort(http.getRemoteAddr());
+        IssuedToken issued = authService.login(request.email(), request.password(), clientIp);
         return new LoginResponse(issued.token(), issued.expiresAt());
     }
 

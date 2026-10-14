@@ -32,6 +32,11 @@ management:
 
 server:
   port: 8080
+  # En Azure la petición llega a través de un proxy, que pasa la dirección del cliente en
+  # X-Forwarded-For. Con native, Tomcat la toma de ahí para getRemoteAddr, de la que depende el
+  # límite de intentos de login. Solo confía en el header si la conexión viene de una dirección
+  # interna: un cliente que lo mande directo no puede elegir su propia dirección.
+  forward-headers-strategy: native
 
 # La implementación de EmailSender la elige gastos.email.sender (variable EMAIL_SENDER).
 # A propósito no tiene valor por defecto: "console" escribe los correos en el log, con sus
@@ -51,6 +56,11 @@ gastos:
   jwt:
     secret: ${JWT_SECRET:}
     ttl: 7d
+  # Límite de intentos fallidos de login (RNF-06). Ver LoginAttemptLimiter.
+  login-limit:
+    window: 15m
+    max-per-email-and-ip: 10
+    max-per-ip: 50
   # Orígenes del cliente web, separados por coma. Vacío: ningún otro origen puede llamar a la API.
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
