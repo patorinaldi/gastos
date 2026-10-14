@@ -10,25 +10,16 @@
   flex-direction: column;
 }
 
-.brand {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-}
-
 /* ---------- navegación ---------- */
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-half);
 }
 
 .navLink {
-  padding: 9px 12px;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--text-md);
   font-weight: 500;
@@ -54,38 +45,40 @@
   top: 0;
   z-index: 10;
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: var(--border-width) solid var(--color-divider);
 }
 
 .topbarRow {
-  height: 56px;
+  height: var(--topbar-height);
   padding: 0 var(--gutter);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
+/* El área táctil es más grande que el ícono; el margen negativo alinea el ícono con el borde. */
 .menuButton {
-  width: 40px;
-  height: 40px;
-  margin-right: -10px;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  margin-right: calc((var(--touch-target) - var(--icon-size-sm)) / -2);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   border-radius: var(--radius-sm);
 }
 
-.menuButton span {
-  width: 18px;
-  height: 2px;
-  border-radius: 1px;
+.bar {
+  width: var(--icon-size-sm);
+  height: var(--stroke-width);
+  border-radius: var(--border-width);
   background: var(--color-ink);
 }
 
+/* El padding de los links ya separa del borde; se descuenta del margen lateral de la pantalla. */
 .mobileNav {
-  padding: 0 calc(var(--gutter) - 12px) var(--space-3);
+  padding: 0 calc(var(--gutter) - var(--space-3)) var(--space-3);
 }
 
 .content {
@@ -94,12 +87,14 @@
   padding: var(--space-5) var(--gutter) var(--space-6);
 }
 
+/* env() solo tiene valor con viewport-fit=cover en index.html: deja libre la zona del gesto de
+   inicio en los teléfonos sin botones. */
 .actionbar {
   position: sticky;
   bottom: 0;
-  padding: 14px var(--gutter) max(18px, env(safe-area-inset-bottom));
+  padding: var(--space-4) var(--gutter) max(var(--space-5), env(safe-area-inset-bottom));
   background: var(--color-surface);
-  border-top: 1px solid var(--color-divider);
+  border-top: var(--border-width) solid var(--color-divider);
 }
 
 .sidebar {
@@ -124,16 +119,16 @@
     width: var(--sidebar-width);
     height: 100dvh;
     flex: none;
-    padding: 26px var(--space-4);
+    padding: var(--space-6) var(--space-4);
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
     background: var(--color-surface-sunken);
-    border-right: 1px solid var(--color-divider);
+    border-right: var(--border-width) solid var(--color-divider);
   }
 
-  .sidebar .brand {
-    padding: 0 12px;
+  .sidebarBrand {
+    padding: 0 var(--space-3);
   }
 
   .spacer {
@@ -143,6 +138,6 @@
   .content {
     width: 100%;
     max-width: var(--content-max-width);
-    padding: 26px var(--space-8);
+    padding: var(--space-6) var(--space-8);
   }
 }

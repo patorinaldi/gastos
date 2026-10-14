@@ -1,0 +1,14 @@
+/*
+ * Estilos de texto que comparten varios componentes. Se usan con composes desde el .module.css de
+ * cada uno, así hay una sola definición y no copias que empiezan a diferir.
+ */
+
+/* Etiqueta en mayúsculas y monoespaciada: la marca, el texto sobre un título, un encabezado chico. */
+.monoLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}

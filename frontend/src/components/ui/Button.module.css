@@ -17,9 +17,11 @@
   cursor: default;
 }
 
-/* Acción principal: tinta, no ámbar. */
+/* Acción principal: tinta, no ámbar. El borde transparente la hace medir igual que la secundaria,
+   que tiene borde visible, sin compensarlo con otro padding. */
 .primary {
-  padding: 9px 15px;
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid transparent;
   background: var(--color-ink);
   color: var(--color-ink-inverse);
 }
@@ -29,10 +31,10 @@
 }
 
 .secondary {
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-4);
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
 }
 
 .secondary:hover:not(:disabled) {
@@ -53,7 +55,7 @@
 /* Botón grande de ancho completo: la acción fija de la pantalla en móvil. */
 .large {
   width: 100%;
-  height: 52px;
+  height: var(--control-height-lg);
   border-radius: var(--radius-lg);
   font-size: var(--text-lg);
   box-shadow: var(--shadow-button);

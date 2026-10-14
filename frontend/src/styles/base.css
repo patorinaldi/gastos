@@ -51,11 +51,12 @@ svg {
 
 /* El foco solo se marca al navegar con teclado, y siempre con el mismo trazo. */
 :focus-visible {
-  outline: 2px solid var(--color-accent-text);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--color-accent-text);
+  outline-offset: var(--focus-ring-width);
 }
 
-/* Visible solo para lectores de pantalla. */
+/* Visible solo para lectores de pantalla. El 1px no es una medida de diseño sino parte de la
+   técnica: el elemento tiene que ocupar algo para que los lectores no lo descarten. */
 .visually-hidden {
   position: absolute;
   width: 1px;

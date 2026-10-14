@@ -46,7 +46,13 @@
   --text-xl: 20px;
   --text-display: 34px;
 
-  /* Espaciado, en una escala de 4 px */
+  /* Etiquetas en mayúsculas y monoespaciadas: la marca, los encabezados chicos. */
+  --tracking-label: 0.12em;
+  /* Títulos: un poco más juntos que el texto corrido. */
+  --tracking-tight: -0.01em;
+
+  /* Espaciado, en una escala de 4 px; --space-half es el paso mínimo, para separaciones finas. */
+  --space-half: 2px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -69,7 +75,26 @@
   --shadow-card: 0 18px 44px -18px rgba(30, 29, 24, 0.35), 0 0 0 1px rgba(30, 29, 24, 0.07);
   --shadow-button: 0 8px 20px -10px rgba(30, 29, 24, 0.7);
 
-  /* Disposición. El umbral entre móvil y escritorio lo fija M7 en modulos.md. */
+  /* Bordes y foco */
+  --border-width: 1px;
+  --stroke-width: 2px;
+  --focus-ring-width: 2px;
+  --focus-ring-spread: 3px;
+
+  /* Tamaños de controles e íconos */
+  --touch-target: 40px;
+  --control-height-lg: 52px;
+  --icon-size-sm: 18px;
+  --icon-size-md: 24px;
+  --icon-size-lg: 40px;
+
+  /*
+   * Disposición. El umbral entre móvil y escritorio lo fija M7 en modulos.md: 768 px. Va escrito
+   * en cada @media porque CSS no admite variables en las media queries.
+   */
+  --topbar-height: 56px;
   --sidebar-width: 248px;
   --content-max-width: 960px;
+  --auth-card-max-width: 400px;
+  --catalog-column-min: 220px;
 }

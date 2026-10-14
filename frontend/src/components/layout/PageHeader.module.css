@@ -8,24 +8,22 @@
 }
 
 .eyebrow {
+  composes: monoLabel from '../../styles/typography.module.css';
   display: block;
   margin-bottom: var(--space-1);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
 }
 
 .title {
   font-size: var(--text-xl);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-tight);
 }
 
+/* Si las acciones no entran en una línea, pasan a la siguiente. Nunca se cortan: en una pantalla
+   de 360 px, html no deja desplazarse en horizontal (RNF-15), así que lo que no entra no se vería. */
 .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }
