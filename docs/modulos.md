@@ -86,6 +86,14 @@ el token: incrementar la versión invalida de una vez todas las sesiones del usu
 dispositivos. Es lo que hace el restablecimiento de contraseña (RNF-29). Cerrar sesión en un solo
 dispositivo es descartar el token del lado del cliente.
 
+El límite de intentos de login (RNF-06) cuenta en memoria, en dos contadores de ventana fija:
+el correo desde cada dirección IP y la dirección con cualquier correo. Contar solo por correo le
+permitiría a cualquiera bloquear la cuenta de otro probando contraseñas, y contar solo por
+dirección no frenaría un ataque sobre un correo repartido entre varias. En memoria alcanza con la
+única instancia del despliegue; con más de una, cada instancia contaría por su lado. La dirección
+sale de `X-Forwarded-For` (`server.forward-headers-strategy: native`), porque en Azure toda
+petición llega a través de un proxy.
+
 El registro y la creación del hogar son una
 sola transacción (RN-11): el alta crea el hogar, fija su identificador en el contexto de la
 transacción y recién entonces siembra el catálogo inicial de M4, que se inserta bajo las políticas

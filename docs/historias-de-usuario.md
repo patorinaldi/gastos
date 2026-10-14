@@ -111,16 +111,26 @@ Escenario: Cuenta sin verificar
   Entonces el sistema rechaza el acceso e indica que debo confirmar mi correo
 
 Escenario: Límite de intentos
-  Dado que fallé 10 veces seguidas la contraseña con el mismo correo
-  Cuando intento nuevamente
-  Entonces el sistema rechaza el intento durante 15 minutos
+  Dado que fallé 10 veces la contraseña con el mismo correo desde la misma dirección en 15 minutos
+  Cuando intento nuevamente desde esa dirección
+  Entonces el sistema rechaza el intento hasta que se cumplan 15 minutos desde el primero
   Y no revela si el correo existe
 
 Escenario: El límite no revela qué correos están registrados
   Dado que el correo "nadie@ejemplo.com" no tiene cuenta
-  Y fallé 10 veces seguidas con ese correo
+  Y fallé 10 veces con ese correo desde la misma dirección
   Cuando intento nuevamente
   Entonces el sistema responde igual que para una cuenta bloqueada
+
+Escenario: El bloqueo de un correo no alcanza al dueño desde otra dirección
+  Dado que alguien falló 10 veces con mi correo desde otra dirección
+  Cuando ingreso mis credenciales correctas desde la mía
+  Entonces el sistema me devuelve un token de sesión
+
+Escenario: Límite por dirección
+  Dado que desde una dirección se fallaron 50 intentos en 15 minutos, con cualquier correo
+  Cuando se intenta nuevamente desde esa dirección
+  Entonces el sistema rechaza el intento, sea cual sea el correo
 ```
 
 ### HU-04 · Recuperación de contraseña

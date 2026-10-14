@@ -83,40 +83,45 @@ usuario (RN-18).
 **Flujo principal**
 
 1. El integrante ingresa correo y contraseña.
-2. El sistema busca el usuario por correo, sin distinguir mayúsculas.
-3. El sistema verifica que el correo ingresado no esté bloqueado por intentos fallidos. Los
-   intentos se cuentan por correo ingresado, sin distinguir mayúsculas, y no por cuenta (RNF-06).
+2. El sistema verifica que el intento no supere el límite de intentos fallidos (RNF-06). Cuenta
+   dos cosas: los intentos con el correo ingresado desde la misma dirección IP, sin distinguir
+   mayúsculas y no por cuenta, y los intentos desde esa dirección con cualquier correo.
+3. El sistema busca el usuario por correo, sin distinguir mayúsculas.
 4. El sistema compara la contraseña contra el hash almacenado.
-5. El sistema verifica que el correo esté confirmado (RN-02).
-6. El sistema emite un token de sesión. Puede incluir el hogar del usuario como dato para el cliente
+5. El sistema reinicia el contador del correo desde esa dirección. El de la dirección no se
+   reinicia: si no, quien tenga una cuenta podría reiniciarlo entre intentos contra otras.
+6. El sistema verifica que el correo esté confirmado (RN-02).
+7. El sistema emite un token de sesión. Puede incluir el hogar del usuario como dato para el cliente
    (RF-05), pero el servidor no lo usa para decidir a qué hogar accede la petición.
-7. El sistema reinicia el contador de intentos fallidos del correo.
 
-**Flujo de excepción 2a. El correo no tiene cuenta**
+**Flujo de excepción 2a. Límite superado**
 
-- 2a.1. El caso continúa en el paso 3. El bloqueo se verifica igual que para un correo registrado.
-- 2a.2. En el paso 4, el sistema compara la contraseña contra un hash ficticio, para que el tiempo
-  de respuesta no delate que la cuenta no existe, y sigue por 4a.
-
-**Flujo de excepción 3a. Correo bloqueado**
-
-- 3a.1. Tras 10 intentos fallidos con el mismo correo, el sistema rechaza los intentos durante 15
-  minutos (RNF-06).
-- 3a.2. El sistema informa el bloqueo temporal sin precisar cuántos intentos restan.
-- 3a.3. Como el conteo es por correo ingresado, un correo sin cuenta también se bloquea. La
+- 2a.1. Tras 10 intentos fallidos con el mismo correo desde una dirección, o 50 desde una
+  dirección con cualquier correo, el sistema rechaza los intentos hasta que se cumplan 15 minutos
+  desde el primero (RNF-06). No busca el usuario ni compara la contraseña.
+- 2a.2. El sistema informa el bloqueo temporal sin precisar cuántos intentos restan ni qué límite
+  se superó, e indica cuándo se puede volver a intentar.
+- 2a.3. Como el conteo es por correo ingresado, un correo sin cuenta también se bloquea. La
   respuesta es la misma en los dos casos, así que el bloqueo no revela qué correos están
   registrados.
+- 2a.4. El bloqueo de un correo no alcanza a otras direcciones: quien prueba contraseñas ajenas no
+  le impide el acceso al dueño de la cuenta.
+
+**Flujo de excepción 3a. El correo no tiene cuenta**
+
+- 3a.1. En el paso 4, el sistema compara la contraseña contra un hash ficticio, para que el tiempo
+  de respuesta no delate que la cuenta no existe, y sigue por 4a.
 
 **Flujo de excepción 4a. Credenciales inválidas**
 
-- 4a.1. El sistema incrementa el contador de intentos fallidos del correo ingresado.
+- 4a.1. El intento queda como fallido en los dos contadores.
 - 4a.2. El sistema responde con un mensaje genérico, idéntico al de correo inexistente, para no
   revelar qué correos están registrados.
 
-**Flujo de excepción 5a. Correo sin verificar**
+**Flujo de excepción 6a. Correo sin verificar**
 
-- 5a.1. El sistema rechaza el acceso e indica que debe confirmar el correo.
-- 5a.2. El sistema ofrece reenviar el enlace de verificación.
+- 6a.1. El sistema rechaza el acceso e indica que debe confirmar el correo.
+- 6a.2. El sistema ofrece reenviar el enlace de verificación.
 
 ---
 
