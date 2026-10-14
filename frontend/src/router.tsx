@@ -24,11 +24,12 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
 
 export const router = createBrowserRouter([
   {
-    // Las pantallas sin sesión no llevan el shell de la app.
+    // Las pantallas sin sesión, y la de dirección inexistente, no llevan el shell de la app.
     element: <AuthLayout />,
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
   {
@@ -43,5 +44,4 @@ export const router = createBrowserRouter([
       ...devRoutes,
     ],
   },
-  { path: '*', element: <NotFoundPage /> },
 ])
