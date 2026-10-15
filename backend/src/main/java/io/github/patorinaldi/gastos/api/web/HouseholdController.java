@@ -3,16 +3,21 @@ package io.github.patorinaldi.gastos.api.web;
 import io.github.patorinaldi.gastos.api.security.AuthenticatedUser;
 import io.github.patorinaldi.gastos.api.service.household.HouseholdService;
 import io.github.patorinaldi.gastos.api.service.household.HouseholdView;
+import io.github.patorinaldi.gastos.api.service.household.IssuedInvitation;
 import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.HouseholdResponse;
+import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.InvitationResponse;
 import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.MemberResponse;
 import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.RenameHouseholdRequest;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -49,6 +54,13 @@ class HouseholdController {
         return householdService.members(user).stream()
                 .map(member -> new MemberResponse(member.id(), member.name(), member.email()))
                 .toList();
+    }
+
+    @PostMapping("/invitations")
+    @ResponseStatus(HttpStatus.CREATED)
+    InvitationResponse createInvitation(@AuthenticationPrincipal AuthenticatedUser user) {
+        IssuedInvitation invitation = householdService.createInvitation(user);
+        return new InvitationResponse(invitation.code(), invitation.expiresAt());
     }
 
     private static HouseholdResponse response(HouseholdView household) {
