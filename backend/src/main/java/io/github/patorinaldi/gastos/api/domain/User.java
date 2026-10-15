@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -77,6 +78,14 @@ public class User {
         this.passwordHash = passwordHash;
         this.name = name;
         this.emailVerified = false;
+    }
+
+    /**
+     * Cambia al usuario de hogar (RN-18). Las condiciones del cambio —invitación válida, revocar sus
+     * automatizaciones, archivar el hogar que queda vacío— las aplica M2 en la misma transacción.
+     */
+    public void moveTo(UUID householdId) {
+        this.householdId = Objects.requireNonNull(householdId, "householdId");
     }
 
     /**

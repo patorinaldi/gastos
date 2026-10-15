@@ -36,4 +36,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<SessionUser> findSessionUser(UUID userId);
 
     List<User> findByHouseholdIdOrderByNameAsc(UUID householdId);
+
+    long countByHouseholdId(UUID householdId);
+
+    /**
+     * Lee y bloquea al usuario hasta el fin de la transacción. Serializa los canjes de una misma
+     * persona: el segundo lee el hogar que dejó el primero. {@code for no key update} por el mismo
+     * motivo que {@link HouseholdRepository#lockAll}: los gastos y los tokens que lo nombran toman
+     * {@code for key share} sobre su fila, y no tienen por qué esperar.
+     */
+    @Query(value = "select * from users where id = ?1 for no key update", nativeQuery = true)
+    Optional<User> lockById(UUID id);
 }
