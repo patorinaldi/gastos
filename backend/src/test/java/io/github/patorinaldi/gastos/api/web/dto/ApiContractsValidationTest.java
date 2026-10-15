@@ -5,6 +5,7 @@ import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.RegisterRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.CreateExpenseRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.ExpenseFilterRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.UpdateExpenseRequest;
+import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.InvitationPreviewRequest;
 import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.RedeemInvitationRequest;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -173,6 +174,29 @@ class ApiContractsValidationTest {
     @Test
     void redeemingWithConfirmationIsAccepted() {
         assertThat(validate(new RedeemInvitationRequest("GST-4K2P-9XZ", true))).isEmpty();
+    }
+
+    // El código se hashea completo antes de buscarlo: sin tope, cualquier sesión hace que el
+    // servidor procese cuerpos arbitrariamente grandes. 32 deja margen para lo que se tipea de más
+    // (espacios, guiones) sobre los 12 caracteres del formato.
+    @Test
+    void anOversizedInvitationCodeIsRejectedOnPreview() {
+        assertThat(validate(new InvitationPreviewRequest("G".repeat(33)))).contains("code");
+    }
+
+    @Test
+    void anOversizedInvitationCodeIsRejectedOnRedeem() {
+        assertThat(validate(new RedeemInvitationRequest("G".repeat(33), true))).contains("code");
+    }
+
+    @Test
+    void anInvitationCodeAtTheLimitIsAcceptedOnPreview() {
+        assertThat(validate(new InvitationPreviewRequest("G".repeat(32)))).isEmpty();
+    }
+
+    @Test
+    void anInvitationCodeAtTheLimitIsAcceptedOnRedeem() {
+        assertThat(validate(new RedeemInvitationRequest("G".repeat(32), true))).isEmpty();
     }
 
     // ── Ayudantes ───────────────────────────────────────────────────────────
