@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -18,7 +19,7 @@ import org.hibernate.annotations.CreationTimestamp;
  * Hogar: unidad de aislamiento del sistema. Todo dato de negocio pertenece a uno, y las
  * políticas RLS de la migración V2 filtran por su identificador.
  *
- * <p>Criterio de Lombok que siguen las cinco entidades:
+ * <p>Criterio de Lombok que siguen todas las entidades:
  * <ul>
  *   <li>{@code @Getter} a nivel de clase y {@code @Setter} por campo: el id, el hogar y las
  *       marcas de tiempo no tienen por qué ser mutables;</li>
@@ -63,6 +64,15 @@ public class Household {
 
     public Household(String name) {
         this.name = name;
+    }
+
+    /**
+     * Archiva el hogar porque lo dejó su último integrante (RN-18). Los datos se conservan; nadie
+     * vuelve a acceder, porque la sesión rechaza a quien tenga un hogar archivado.
+     */
+    public void archive(Instant at) {
+        this.archivedAt = Objects.requireNonNull(at, "at");
+        this.active = false;
     }
 
     // equals/hashCode a mano y no con Lombok: el patrón seguro para JPA necesita que ambos
