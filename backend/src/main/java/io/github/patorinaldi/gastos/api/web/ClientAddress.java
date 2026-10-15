@@ -7,9 +7,10 @@ import java.util.regex.Pattern;
  * Dirección IP del cliente, sin puerto.
  *
  * <p>Con {@code server.forward-headers-strategy: native}, Tomcat toma la dirección de
- * {@code X-Forwarded-For} tal como llega, y algunos proxies agregan el puerto del cliente
- * ({@code 203.0.113.7:54321}). Sin quitarlo, cada conexión parecería venir de
- * una dirección distinta, y el límite de intentos de login (RNF-06) no frenaría nada.
+ * {@code X-Forwarded-For} tal como llega, y el proxy de Azure App Service le agrega el puerto del
+ * cliente ({@code 203.0.113.7:54321}, verificado en el log de accesos del despliegue). Sin quitarlo,
+ * cada conexión parecería venir de una dirección distinta, y el límite de intentos de login
+ * (RNF-06) no frenaría nada.
  */
 final class ClientAddress {
 
