@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * Hogar: unidad de aislamiento del sistema. Todo dato de negocio pertenece a uno, y las
@@ -30,9 +31,14 @@ import org.hibernate.annotations.CreationTimestamp;
  *       por la que conviene no acostumbrarse a ponerlo;</li>
  *   <li>{@code equals} y {@code hashCode} escritos a mano — ver el detalle más abajo.</li>
  * </ul>
+ *
+ * <p>{@code @DynamicUpdate}: el update lleva solo las columnas que cambiaron. Renombrar y archivar
+ * tocan la misma fila desde transacciones distintas, y con la fila entera la que confirma última
+ * pisaría a la otra con lo que leyó al empezar: un renombre podía revivir un hogar archivado.
  */
 @Entity
 @Table(name = "households")
+@DynamicUpdate
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Household {
