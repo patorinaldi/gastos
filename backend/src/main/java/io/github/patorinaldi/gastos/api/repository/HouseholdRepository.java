@@ -18,10 +18,11 @@ public interface HouseholdRepository extends JpaRepository<Household, UUID> {
      * transacciones que bloquean los mismos hogares lo hacen en el mismo orden y no pueden quedar
      * esperándose mutuamente.
      *
-     * <p>{@code for no key update} y no {@code for update}: cambiar {@code users.household_id}
-     * toma {@code for key share} sobre el hogar al que apunta la clave foránea, y {@code for update}
-     * choca con él. Dos canjes cruzados —Ana pasa al hogar de Juan y Juan al de Ana— quedarían
-     * bloqueados entre sí. Archivar no cambia la clave, así que este bloqueo alcanza.
+     * <p>{@code for no key update} y no {@code for update}: toda escritura que referencia al hogar
+     * por clave foránea —cargar un gasto, crear una categoría, mover a un usuario— toma
+     * {@code for key share} sobre su fila, y {@code for update} choca con él. Con {@code for update},
+     * mientras dura un canje nadie podría cargar un gasto en ninguno de los dos hogares. Archivar
+     * no cambia la clave, así que este bloqueo alcanza para serializar los canjes entre sí.
      */
     @Query(value = "select * from households where id in (?1) order by id for no key update", nativeQuery = true)
     List<Household> lockAll(Collection<UUID> ids);
