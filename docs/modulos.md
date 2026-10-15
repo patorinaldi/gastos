@@ -32,7 +32,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
 | M5 Análisis | Juan | Pendiente |
 | M6 API de integración | Juan | Pendiente |
-| M7 Interfaz de usuario | Elian, Pato | Esqueleto implementado, pantallas pendientes |
+| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño y shell implementados, pantallas pendientes |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
 
 ---

@@ -1,0 +1,66 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: opacity 0.15s, background-color 0.15s, border-color 0.15s;
+}
+
+.button:disabled,
+.button[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Acción principal: tinta, no ámbar. El borde transparente la hace medir igual que la secundaria,
+   que tiene borde visible, sin compensarlo con otro padding. */
+.primary {
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid transparent;
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+
+.primary:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.secondary {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--color-text-tertiary);
+  color: var(--color-ink);
+}
+
+/* Acción de baja jerarquía, con aspecto de enlace. */
+.link {
+  padding: 0;
+  color: var(--color-accent-text);
+}
+
+.link:hover:not(:disabled) {
+  color: var(--color-accent-text-hover);
+}
+
+/* Botón grande de ancho completo: la acción fija de la pantalla en móvil. */
+.large {
+  width: 100%;
+  height: var(--control-height-lg);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-lg);
+  box-shadow: var(--shadow-button);
+}
+
+.block {
+  width: 100%;
+}

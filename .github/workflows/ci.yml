@@ -103,6 +103,10 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      - name: Pruebas
+        working-directory: frontend
+        run: npm test
+
   deploy:
     name: Despliegue del backend
     needs: [backend, frontend]

@@ -1,0 +1,29 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.eyebrow {
+  composes: monoLabel from '../../styles/typography.module.css';
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Si las acciones no entran en una línea, pasan a la siguiente. Nunca se cortan: en una pantalla
+   de 360 px, html no deja desplazarse en horizontal (RNF-15), así que lo que no entra no se vería. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}

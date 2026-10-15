@@ -1,0 +1,143 @@
+/*
+ * Dos disposiciones sobre el mismo marcado (M7): en móvil, barra superior, contenido y la acción
+ * fija abajo; desde 768 px, barra lateral y contenido. Lo decide CSS, no JavaScript, así no hay
+ * un parpadeo de la disposición equivocada al cargar.
+ */
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- navegación ---------- */
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+}
+
+.navLink {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.navLink:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+}
+
+.navLink[aria-current='page'] {
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+/* ---------- móvil ---------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-surface);
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.topbarRow {
+  height: var(--topbar-height);
+  padding: 0 var(--gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* El área táctil es más grande que el ícono; el margen negativo alinea el ícono con el borde. */
+.menuButton {
+  width: var(--touch-target);
+  height: var(--touch-target);
+  margin-right: calc((var(--touch-target) - var(--icon-size-sm)) / -2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.bar {
+  width: var(--icon-size-sm);
+  height: var(--stroke-width);
+  border-radius: var(--border-width);
+  background: var(--color-ink);
+}
+
+/* El padding de los links ya separa del borde; se descuenta del margen lateral de la pantalla. */
+.mobileNav {
+  padding: 0 calc(var(--gutter) - var(--space-3)) var(--space-3);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-5) var(--gutter) var(--space-6);
+}
+
+/* env() solo tiene valor con viewport-fit=cover en index.html: deja libre la zona del gesto de
+   inicio en los teléfonos sin botones. */
+.actionbar {
+  position: sticky;
+  bottom: 0;
+  padding: var(--space-4) var(--gutter) max(var(--space-5), env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: var(--border-width) solid var(--color-divider);
+}
+
+.sidebar {
+  display: none;
+}
+
+/* ---------- escritorio ---------- */
+
+@media (min-width: 768px) {
+  .shell {
+    flex-direction: row;
+  }
+
+  .topbar,
+  .actionbar {
+    display: none;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    width: var(--sidebar-width);
+    height: 100dvh;
+    flex: none;
+    padding: var(--space-6) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    background: var(--color-surface-sunken);
+    border-right: var(--border-width) solid var(--color-divider);
+  }
+
+  .sidebarBrand {
+    padding: 0 var(--space-3);
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .content {
+    width: 100%;
+    max-width: var(--content-max-width);
+    padding: var(--space-6) var(--space-8);
+  }
+}

@@ -1,0 +1,3 @@
+.brand {
+  composes: monoLabel from '../../styles/typography.module.css';
+}
