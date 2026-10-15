@@ -131,6 +131,11 @@ Escenario: Límite por dirección
   Dado que desde una dirección se fallaron 50 intentos en 15 minutos, con cualquier correo
   Cuando se intenta nuevamente desde esa dirección
   Entonces el sistema rechaza el intento, sea cual sea el correo
+
+Escenario: Límite por correo desde cualquier dirección
+  Dado que se fallaron 100 intentos con mi correo en 15 minutos, desde distintas direcciones
+  Cuando se intenta nuevamente con mi correo, desde cualquier dirección
+  Entonces el sistema rechaza el intento
 ```
 
 ### HU-04 · Recuperación de contraseña
