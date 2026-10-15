@@ -27,7 +27,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | Módulo | Responsable | Estado |
 |---|---|---|
 | M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Pendiente |
-| M2 Hogares | Elian | Pendiente |
+| M2 Hogares | Elian | Backend implementado, pantallas pendientes |
 | M3 Gastos | Elian | Pendiente |
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
 | M5 Análisis | Juan | Pendiente |
@@ -153,6 +153,34 @@ solo su hash, así que el valor en claro existe únicamente en la respuesta que 
 **Decisión de diseño.** El recurso es `/api/household`, en singular y sin identificador. El hogar
 del usuario autenticado es el único al que puede acceder, y nombrarlo en la ruta sugeriría que
 existe la posibilidad de pedir otro.
+
+**El código.** Formato `GST-XXXX-XXX`: siete caracteres aleatorios sobre un alfabeto de 31 símbolos
+sin los que se confunden al leerlos o dictarlos (`0`, `O`, `1`, `I`, `L`). Antes de calcular el
+hash se normaliza —mayúsculas, sin espacios ni guiones—, así que se encuentra aunque se tipee en
+minúsculas o se copie con espacios. Son unas 2,75 × 10¹⁰ combinaciones y `preview`/`redeem` no
+tienen límite de intentos: es un riesgo aceptado, porque adivinar un código vigente exige un volumen
+de peticiones que hoy no se espera, y cada código vive 7 días. Si hiciera falta, alargarlo no cambia
+ni el contrato ni el esquema.
+
+**Canjes simultáneos.** `redeem` bloquea las filas que toca, siempre en el mismo orden para que dos
+canjes no puedan esperarse mutuamente: primero el usuario, después la invitación y por último los
+dos hogares, ordenados por id. Cada bloqueo resuelve una carrera:
+
+| Bloqueo | Carrera que resuelve |
+|---|---|
+| Usuario | La misma persona canjea dos códigos a la vez. El segundo canje lee el hogar que dejó el primero, no el que tenía al empezar la petición. |
+| Invitación | Dos personas canjean el mismo código. La segunda la encuentra ya canjeada y recibe `410`, sin cambios. |
+| Hogares | Los dos últimos integrantes se van a la vez: sin el bloqueo, cada uno contaría al otro todavía adentro y el hogar quedaría activo y vacío. O alguien se suma a un hogar mientras su último integrante lo deja: sin el bloqueo, quedaría adentro de un hogar archivado. |
+
+Usuario y hogares se bloquean con `for no key update` y no con `for update`, que chocaría con el
+`for key share` que toma toda escritura que los referencia por clave foránea: mientras durara un
+canje, nadie podría cargar un gasto en esos hogares. Lo prueba `InvitationConcurrencyTest`, que
+fuerza cada carrera de forma determinística.
+
+Por la misma razón, `households` y `users` se actualizan escribiendo solo las columnas que cambiaron
+(`@DynamicUpdate`). Con la fila entera, entre dos transacciones concurrentes la última en confirmar
+pisaba a la otra con lo que había leído: un renombre podía revivir un hogar archivado, e invalidar
+las sesiones de un usuario podía devolverlo al hogar que dejó.
 
 Depende de M1 (identidad; el hogar se crea en el alta; revocación de tokens de cliente máquina) y
 M8 (aislamiento).
@@ -381,7 +409,7 @@ RNF-25, RNF-27, RNF-28.
 | Migraciones versionadas | Implementado | V1 esquema base, V2 rol y políticas de aislamiento, V2.5 índice de correo, V3 catálogo inicial, V4 baja lógica, V5 cambio de hogar y tablas de acceso, V6 versión de sesión. |
 | Rol de aplicación restringido | Implementado | `gastos_api`, sin privilegio de omisión de políticas ni de superusuario. |
 | Propagación del contexto de hogar | Implementado | Se fija al inicio de cada transacción, con alcance transaccional para que no se filtre entre peticiones al devolver la conexión al pool. |
-| Entidades y repositorios | Implementado | Cinco entidades validadas contra el esquema al arrancar. |
+| Entidades y repositorios | Implementado | Siete entidades validadas contra el esquema al arrancar. |
 | Pruebas de aislamiento | Implementado | Las tres tablas con aislamiento, por lectura, alta, modificación y baja, en los tres contextos: sin hogar activo, con el ajeno y con el propio. |
 | Emisor de correo | Implementado | Interfaz propia con implementación de desarrollo que escribe a consola. |
 | Migraciones complementarias | Implementado | Migración V5: tokens de verificación y restablecimiento, invitaciones y tokens de cliente máquina, guardados como hash y sin RLS por ser datos de acceso. Archivado de hogares y cambio de hogar conservando los gastos en el hogar anterior (RN-18). |

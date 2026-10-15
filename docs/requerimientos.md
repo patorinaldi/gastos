@@ -37,11 +37,11 @@ sacrificable), `Podría` (deseable).
 
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
-| RF-08 | El sistema debe permitir a un integrante generar un código de invitación para su hogar. | Debe | Pendiente |
-| RF-09 | El sistema debe permitir a un usuario registrado canjear un código de invitación e incorporarse al hogar correspondiente. | Debe | Pendiente |
-| RF-10 | El sistema debe listar los integrantes del hogar del usuario autenticado. | Debe | Pendiente |
-| RF-11 | El sistema debe permitir editar el nombre del hogar. | Debería | Pendiente |
-| RF-12 | El sistema debe invalidar un código de invitación una vez canjeado o vencido. | Debe | Pendiente |
+| RF-08 | El sistema debe permitir a un integrante generar un código de invitación para su hogar. | Debe | Implementado |
+| RF-09 | El sistema debe permitir a un usuario registrado canjear un código de invitación e incorporarse al hogar correspondiente. | Debe | Implementado |
+| RF-10 | El sistema debe listar los integrantes del hogar del usuario autenticado. | Debe | Implementado |
+| RF-11 | El sistema debe permitir editar el nombre del hogar. | Debería | Implementado |
+| RF-12 | El sistema debe invalidar un código de invitación una vez canjeado o vencido. | Debe | Implementado |
 
 ### M3. Gastos
 

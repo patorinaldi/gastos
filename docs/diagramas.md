@@ -492,6 +492,7 @@ sequenceDiagram
             W->>C: POST /api/household/invitations/redeem con confirm = true
             C->>S: canjear
             Note over S,DB: comienza la transacción
+            S->>DB: bloquea el usuario, la invitación y los dos hogares, en ese orden
             S->>DB: repite las validaciones de la invitación, con los mismos 410 y 409
             S->>DB: update users con el hogar de la invitación
             S->>DB: update household_invitations con redeemed_by y redeemed_at
@@ -500,7 +501,7 @@ sequenceDiagram
                 S->>DB: update households con active = false y archived_at
             end
             S->>DB: commit
-            Note over S,DB: si otra persona canjeó el código entretanto,<br/>rollback y 410, sin cambios a medias
+            Note over S,DB: si otra persona canjeó el código entretanto, el bloqueo<br/>la hace esperar y la encuentra canjeada: 410, sin cambios
             C-->>W: 200 householdId, householdName, previousHouseholdArchived
             W-->>U: ve los gastos del hogar nuevo
         end
