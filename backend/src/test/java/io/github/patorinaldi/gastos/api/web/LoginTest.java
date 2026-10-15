@@ -14,12 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.web.servlet.ResultActions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -128,11 +126,7 @@ class LoginTest extends AuthTestSupport {
     void unTokenVencidoEnElHeaderNoImpideIniciarSesion() throws Exception {
         String vencido = token(ana, Instant.now().minus(Duration.ofDays(8)));
 
-        mockMvc.perform(post("/api/auth/login")
-                        .header(AUTHORIZATION, "Bearer " + vencido)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "%s", "password": "%s"}""".formatted(email, PASSWORD)))
+        mockMvc.perform(loginRequest(email, PASSWORD).header(AUTHORIZATION, "Bearer " + vencido))
                 .andExpect(status().isOk());
     }
 
@@ -161,12 +155,5 @@ class LoginTest extends AuthTestSupport {
     void unCuerpoInvalidoResponde400() throws Exception {
         login("no-es-un-correo", PASSWORD)
                 .andExpect(status().isBadRequest());
-    }
-
-    private ResultActions login(String email, String password) throws Exception {
-        return mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                        {"email": "%s", "password": "%s"}""".formatted(email, password)));
     }
 }
