@@ -1,5 +1,6 @@
 package io.github.patorinaldi.gastos.api.service.household;
 
+import io.github.patorinaldi.gastos.api.config.InvitationLimitProperties;
 import io.github.patorinaldi.gastos.api.domain.Household;
 import io.github.patorinaldi.gastos.api.domain.HouseholdInvitation;
 import io.github.patorinaldi.gastos.api.domain.User;
@@ -47,6 +48,7 @@ public class HouseholdService {
     private final HouseholdInvitationRepository invitations;
     private final MachineTokenRepository machineTokens;
     private final InvitationCodes codes;
+    private final InvitationLimitProperties limits;
     private final Clock clock;
 
     public HouseholdService(HouseholdRepository households,
@@ -54,12 +56,14 @@ public class HouseholdService {
                             HouseholdInvitationRepository invitations,
                             MachineTokenRepository machineTokens,
                             InvitationCodes codes,
+                            InvitationLimitProperties limits,
                             Clock clock) {
         this.households = households;
         this.users = users;
         this.invitations = invitations;
         this.machineTokens = machineTokens;
         this.codes = codes;
+        this.limits = limits;
         this.clock = clock;
     }
 
@@ -90,11 +94,27 @@ public class HouseholdService {
      *
      * <p>El vencimiento se trunca a segundos: es lo que necesita quien lo lee, y así el valor
      * respondido coincide exactamente con el guardado.
+     *
+     * <p>Un hogar no puede tener más de {@link InvitationLimitProperties#maxActivePerHousehold()}
+     * invitaciones vigentes (RNF-30). El hogar se bloquea antes de contarlas: sin el bloqueo, dos
+     * pedidos simultáneos contarían las mismas y pasarían el tope los dos. Es {@code for no key
+     * update}, así que no frena la carga de gastos; ver {@link HouseholdRepository#lockAll}.
+     *
+     * @throws TooManyActiveInvitationsException si el hogar ya tiene el máximo
      */
     @Transactional
     public IssuedInvitation createInvitation(AuthenticatedUser user) {
+        Instant now = clock.instant();
+        households.lockAll(List.of(user.householdId()));
+        long active = invitations.countByHouseholdIdAndRedeemedAtIsNullAndExpiresAtAfter(user.householdId(), now);
+        if (active >= limits.maxActivePerHousehold()) {
+            log.info("Invitación rechazada para el usuario {}: el hogar {} ya tiene {} vigentes",
+                    user.userId(), user.householdId(), active);
+            throw new TooManyActiveInvitationsException(limits.maxActivePerHousehold());
+        }
+
         String code = codes.generate();
-        Instant expiresAt = clock.instant().truncatedTo(ChronoUnit.SECONDS).plus(INVITATION_VALIDITY);
+        Instant expiresAt = now.truncatedTo(ChronoUnit.SECONDS).plus(INVITATION_VALIDITY);
         HouseholdInvitation invitation = invitations.save(
                 new HouseholdInvitation(user.householdId(), user.userId(), codes.hash(code), expiresAt));
         log.info("Invitación {} generada por el usuario {} para el hogar {}",

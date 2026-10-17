@@ -1,6 +1,7 @@
 package io.github.patorinaldi.gastos.api.repository;
 
 import io.github.patorinaldi.gastos.api.domain.HouseholdInvitation;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,12 @@ public interface HouseholdInvitationRepository extends JpaRepository<HouseholdIn
 
     /** Por el índice único household_invitations_code_hash_key. */
     Optional<HouseholdInvitation> findByCodeHash(byte[] codeHash);
+
+    /**
+     * Invitaciones vigentes del hogar: sin canjear y que vencen después de {@code now}. Por el
+     * índice household_invitations_household_idx.
+     */
+    long countByHouseholdIdAndRedeemedAtIsNullAndExpiresAtAfter(UUID householdId, Instant now);
 
     /**
      * Como {@link #findByCodeHash}, bloqueando la fila hasta el fin de la transacción. Dos canjes
