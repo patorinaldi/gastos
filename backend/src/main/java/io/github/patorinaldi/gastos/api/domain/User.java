@@ -7,12 +7,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * Usuario. Pertenece a exactamente un hogar (la pertenencia a varios quedó fuera de alcance).
@@ -23,9 +25,16 @@ import org.hibernate.annotations.CreationTimestamp;
  * <p>El caso agudo de por qué no se usa {@code @Data}: generaría un {@code toString()} que
  * incluye {@code passwordHash}, y basta con registrar la entidad en un log para filtrar el
  * hash. Ver {@link Household} para el criterio completo.
+ *
+ * <p>{@code @DynamicUpdate}, por lo mismo que en {@link Household}: el update lleva solo las
+ * columnas que cambiaron. Cambiarse de hogar, invalidar las sesiones y editar la cuenta tocan la
+ * misma fila desde transacciones distintas, y con la fila entera la que confirma última pisaría a
+ * la otra: invalidar las sesiones podía devolver al usuario al hogar que dejó, y editar la cuenta
+ * podía revivir sesiones recién cerradas.
  */
 @Entity
 @Table(name = "users")
+@DynamicUpdate
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
@@ -69,6 +78,14 @@ public class User {
         this.passwordHash = passwordHash;
         this.name = name;
         this.emailVerified = false;
+    }
+
+    /**
+     * Cambia al usuario de hogar (RN-18). Las condiciones del cambio —invitación válida, revocar sus
+     * automatizaciones, archivar el hogar que queda vacío— las aplica M2 en la misma transacción.
+     */
+    public void moveTo(UUID householdId) {
+        this.householdId = Objects.requireNonNull(householdId, "householdId");
     }
 
     /**

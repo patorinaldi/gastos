@@ -31,7 +31,7 @@ public final class HouseholdContracts {
     public record InvitationResponse(String code, Instant expiresAt) {
     }
 
-    public record InvitationPreviewRequest(@NotBlank String code) {
+    public record InvitationPreviewRequest(@NotBlank @Size(max = 32) String code) {
     }
 
     /**
@@ -52,7 +52,7 @@ public final class HouseholdContracts {
      * porque deja los gastos cargados en el hogar anterior y eso no se deshace.
      */
     public record RedeemInvitationRequest(
-            @NotBlank String code,
+            @NotBlank @Size(max = 32) String code,
             @AssertTrue(message = "El canje exige confirmación explícita") boolean confirm) {
     }
 

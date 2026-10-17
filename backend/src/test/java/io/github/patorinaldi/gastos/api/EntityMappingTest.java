@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * y aborta el arranque si no coinciden — así que el solo hecho de que este contexto levante ya es
  * la verificación. Lo que agrega este test es descartar el falso verde: si las entidades
  * estuvieran fuera del paquete escaneado, no habría nada que validar y el contexto levantaría
- * igual. Acá se comprueba que las cinco llegaron efectivamente al metamodelo.
+ * igual. Acá se comprueba que todas llegaron efectivamente al metamodelo.
  */
 class EntityMappingTest extends IntegrationTest {
 
@@ -24,12 +24,13 @@ class EntityMappingTest extends IntegrationTest {
     private EntityManagerFactory entityManagerFactory;
 
     @Test
-    void lasCincoEntidadesDelEsquemaEstanMapeadasYValidadas() {
+    void lasEntidadesDelEsquemaEstanMapeadasYValidadas() {
         Set<String> mapeadas = entityManagerFactory.getMetamodel().getEntities().stream()
                 .map(EntityType::getName)
                 .collect(Collectors.toSet());
 
         assertThat(mapeadas).containsExactlyInAnyOrder(
-                "Household", "User", "Category", "CategoryRule", "Expense");
+                "Household", "User", "Category", "CategoryRule", "Expense",
+                "HouseholdInvitation", "MachineToken");
     }
 }

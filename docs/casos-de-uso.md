@@ -169,7 +169,7 @@ con sus datos conservados.
    b. marca la invitación como canjeada, registrando quién la canjeó y cuándo;
    c. revoca los tokens de cliente máquina del usuario asociados al hogar anterior;
    d. si el hogar anterior quedó sin integrantes, lo archiva.
-7. El sistema confirma la transacción y emite un token de sesión nuevo.
+7. El sistema confirma la transacción y responde con el hogar nuevo.
 8. El usuario ve los gastos ya cargados por los integrantes del hogar nuevo. Ninguno de los gastos
    que cargó en el hogar anterior aparece en él.
 
@@ -207,9 +207,11 @@ con sus datos conservados.
 - 6b.2. Ningún paso del cambio queda aplicado a medias: el usuario sigue en su hogar, con sus
   tokens vigentes.
 
-Nota sobre el token de sesión del paso 7: como el hogar de cada petición se resuelve desde el hogar
-actual del usuario y no desde el token (RN-18), un token emitido antes del cambio ya no da acceso
-al hogar anterior. El token nuevo solo actualiza el dato que muestra el cliente.
+Nota sobre el token de sesión: el canje no emite uno nuevo, porque no hace falta. Como el hogar de
+cada petición se resuelve desde el hogar actual del usuario y no desde el token (RN-18), el token
+emitido antes del cambio pasa a operar sobre el hogar nuevo y ya no da acceso al anterior. Lo único
+que queda desactualizado es el hogar que el token lleva como dato para el cliente, que por eso toma
+el hogar de `GET /api/auth/me`.
 
 ---
 

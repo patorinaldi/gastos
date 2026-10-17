@@ -86,6 +86,13 @@ public abstract class HouseholdTestSupport extends IntegrationTest {
     /**
      * Borra el hogar y todo lo suyo. Las tablas con RLS se limpian con el hogar en contexto,
      * porque sin él el delete no alcanzaría ninguna fila.
+     *
+     * <p>Las invitaciones y los tokens de máquina se borran también cuando solo los nombra un
+     * integrante del hogar —una invitación de otro hogar que canjeó, un token suyo en el hogar que
+     * dejó—, porque sus claves foráneas a users impedirían borrarlo.
+     *
+     * <p>Si alguien se cambió de hogar y dejó gastos en el anterior, hay que borrar primero el
+     * hogar anterior: esos gastos lo nombran como responsable.
      */
     protected void deleteHousehold(UUID household) {
         withHousehold(household, () -> {
@@ -93,6 +100,15 @@ public abstract class HouseholdTestSupport extends IntegrationTest {
             jdbcTemplate.update("delete from category_rules where household_id = ?", household);
             jdbcTemplate.update("delete from categories where household_id = ?", household);
         });
+        jdbcTemplate.update(
+                "delete from household_invitations where household_id = ?"
+                        + " or created_by in (select id from users where household_id = ?)"
+                        + " or redeemed_by in (select id from users where household_id = ?)",
+                household, household, household);
+        jdbcTemplate.update(
+                "delete from machine_tokens where household_id = ?"
+                        + " or user_id in (select id from users where household_id = ?)",
+                household, household);
         jdbcTemplate.update("delete from users where household_id = ?", household);
         jdbcTemplate.update("delete from households where id = ?", household);
     }
