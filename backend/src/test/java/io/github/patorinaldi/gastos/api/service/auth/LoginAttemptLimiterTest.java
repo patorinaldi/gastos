@@ -1,6 +1,7 @@
 package io.github.patorinaldi.gastos.api.service.auth;
 
 import io.github.patorinaldi.gastos.api.config.LoginLimitProperties;
+import io.github.patorinaldi.gastos.api.service.limit.TooManyAttemptsException;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
@@ -89,13 +90,6 @@ class LoginAttemptLimiterTest {
 
         assertBlocked(EMAIL, "2001:db8:1:2:ffff:ffff:ffff:ffff");
         assertAllowed(EMAIL, "2001:db8:1:3::1");
-    }
-
-    @Test
-    void laClaveDeUnaIpv6EsSuPrefijo64() {
-        assertThat(LoginAttemptLimiter.addressKey("2001:db8:1:2:aaaa:bbbb:cccc:dddd")).isEqualTo("2001:db8:1:2:0:0:0:0/64");
-        assertThat(LoginAttemptLimiter.addressKey("::ffff:203.0.113.7")).isEqualTo("203.0.113.7");
-        assertThat(LoginAttemptLimiter.addressKey("203.0.113.7")).isEqualTo("203.0.113.7");
     }
 
     @Test
@@ -214,7 +208,7 @@ class LoginAttemptLimiterTest {
 
     @Test
     void retryAfterNuncaEsCero() {
-        assertThat(new LoginBlockedException(Duration.ZERO).getHeaders().getFirst(HttpHeaders.RETRY_AFTER))
+        assertThat(new TooManyAttemptsException(Duration.ZERO).getHeaders().getFirst(HttpHeaders.RETRY_AFTER))
                 .isEqualTo("1");
     }
 
@@ -232,7 +226,7 @@ class LoginAttemptLimiterTest {
     }
 
     private void assertBlocked(String email, String ip) {
-        assertThatThrownBy(() -> limiter.start(email, ip)).isInstanceOf(LoginBlockedException.class);
+        assertThatThrownBy(() -> limiter.start(email, ip)).isInstanceOf(TooManyAttemptsException.class);
     }
 
     private void assertAllowed(String email, String ip) {
@@ -240,7 +234,7 @@ class LoginAttemptLimiterTest {
     }
 
     private String retryAfter(String email, String ip) {
-        LoginBlockedException blocked = catchThrowableOfType(LoginBlockedException.class,
+        TooManyAttemptsException blocked = catchThrowableOfType(TooManyAttemptsException.class,
                 () -> limiter.start(email, ip));
         return blocked.getHeaders().getFirst(HttpHeaders.RETRY_AFTER);
     }
