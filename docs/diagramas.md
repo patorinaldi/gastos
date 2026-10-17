@@ -587,25 +587,28 @@ Los rombos son decisiones, el círculo simple es el inicio y el doble, el fin.
 
 ### 5.1 Inicio de sesión (CU-02)
 
-Los intentos fallidos se cuentan por correo ingresado y no por cuenta, así que un correo sin cuenta
-también se bloquea. Ninguna respuesta permite deducir qué correos están registrados.
+Los intentos fallidos se cuentan por correo ingresado desde cada dirección IP, y no por cuenta, así
+que un correo sin cuenta también se bloquea. Ninguna respuesta permite deducir qué correos están
+registrados. Un segundo contador, por dirección y con cualquier correo, frena a quien prueba muchos
+correos desde un mismo lugar, y un tercero, por correo desde cualquier dirección y con el tope más
+alto, frena a quien reparte el ataque sobre una cuenta entre muchas direcciones.
 
 ```mermaid
 flowchart TD
     INI(("Inicio")) --> A1["Ingresa correo y contraseña"]
-    A1 --> D1{"¿El correo está bloqueado?<br/>10 fallos, 15 minutos"}
-    D1 -->|sí| R429["Rechaza: bloqueo temporal,<br/>sin indicar intentos restantes"]
+    A1 --> D1{"¿Superó un límite?<br/>10 fallos del correo desde la IP,<br/>50 de la IP o 100 del correo,<br/>en 15 minutos"}
+    D1 -->|sí| R429["429: bloqueo temporal,<br/>sin indicar intentos restantes"]
     D1 -->|no| D2{"¿Existe una cuenta<br/>con ese correo?"}
     D2 -->|sí| H1["Compara la contraseña<br/>con el hash bcrypt"]
     D2 -->|no| H2["Compara contra un hash ficticio<br/>para igualar el tiempo de respuesta"]
     H1 --> D3{"¿Coincide?"}
     H2 --> F1
-    D3 -->|no| F1["Incrementa el contador<br/>de fallos del correo"]
+    D3 -->|no| F1["Cuenta el fallo en<br/>los tres contadores"]
     F1 --> R401["401 con mensaje genérico"]
-    D3 -->|sí| D4{"¿Correo verificado?"}
+    D3 -->|sí| OK1["Reinicia el contador<br/>del correo desde la IP"]
+    OK1 --> D4{"¿Correo verificado?"}
     D4 -->|no| R403["403: debe confirmar el correo,<br/>ofrece reenviar el enlace"]
-    D4 -->|sí| OK1["Reinicia el contador de fallos"]
-    OK1 --> OK2["Emite el token de sesión firmado"]
+    D4 -->|sí| OK2["Emite el token de sesión firmado"]
     OK2 --> R200["200 con token y vencimiento"]
 
     R429 --> FIN((("Fin")))

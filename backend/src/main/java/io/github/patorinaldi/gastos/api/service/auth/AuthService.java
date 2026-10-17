@@ -23,6 +23,7 @@ public class AuthService {
     private final HouseholdRepository households;
     private final PasswordEncoder passwordEncoder;
     private final SessionTokenIssuer tokenIssuer;
+    private final LoginAttemptLimiter attemptLimiter;
 
     // Hash contra el que se compara cuando el correo no existe. Sin esta comparación, la
     // respuesta llega antes para un correo sin cuenta (no corre bcrypt), y la diferencia de
@@ -32,19 +33,23 @@ public class AuthService {
     public AuthService(UserRepository users,
                        HouseholdRepository households,
                        PasswordEncoder passwordEncoder,
-                       SessionTokenIssuer tokenIssuer) {
+                       SessionTokenIssuer tokenIssuer,
+                       LoginAttemptLimiter attemptLimiter) {
         this.users = users;
         this.households = households;
         this.passwordEncoder = passwordEncoder;
         this.tokenIssuer = tokenIssuer;
+        this.attemptLimiter = attemptLimiter;
         this.unknownUserHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     /**
      * Valida las credenciales y emite el token de sesión.
      *
-     * <p>El orden importa: primero la contraseña y recién después el estado de la cuenta. Al revés,
-     * cualquiera podría averiguar si una cuenta está verificada sin conocer su contraseña.
+     * <p>El orden importa. El límite de intentos va primero (RNF-06): un intento rechazado no busca
+     * el usuario ni corre bcrypt, y responde igual exista o no la cuenta. Después la contraseña, y
+     * recién después el estado de la cuenta: al revés, cualquiera podría averiguar si una cuenta
+     * está verificada sin conocer su contraseña.
      *
      * <p>A propósito no es {@code @Transactional}. Una transacción toma una conexión del pool al
      * empezar y la retiene hasta terminar, y bcrypt tarda del orden de 100 ms: muchos intentos de
@@ -52,18 +57,26 @@ public class AuthService {
      * resto de la API. Sin transacción, cada consulta toma la conexión solo mientras corre, y
      * bcrypt no retiene ninguna. Ni {@code users} ni {@code households} tienen RLS, así que no
      * hace falta el hogar en contexto.
+     *
+     * @param clientIp dirección desde la que llega el intento, sin puerto, para el límite de
+     *                 intentos
      */
-    public IssuedToken login(String email, String password) {
-        // Una contraseña de más de 72 bytes no llega acá: LoginRequest la rechaza con 400 antes
-        // de que bcrypt, que no admite más, responda con un error interno.
-        User user = users.findByEmailIgnoreCase(email).orElse(null);
-        if (user == null) {
-            passwordEncoder.matches(password, unknownUserHash);
-            throw new InvalidCredentialsException();
+    public IssuedToken login(String email, String password, String clientIp) {
+        LoginAttemptLimiter.Attempt attempt = attemptLimiter.start(email, clientIp);
+        User user;
+        try {
+            user = checkPassword(email, password);
+        } catch (InvalidCredentialsException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            // Falló otra cosa, como la base: la contraseña no se llegó a probar, así que el
+            // intento no cuenta como fallido.
+            attempt.discard();
+            throw e;
         }
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new InvalidCredentialsException();
-        }
+        // Con la contraseña correcta el intento no es fallido, aunque el login siga rechazándose
+        // por el estado de la cuenta.
+        attempt.succeeded();
         if (!user.isEmailVerified()) {
             throw new EmailNotVerifiedException();
         }
@@ -77,6 +90,20 @@ public class AuthService {
         }
 
         return tokenIssuer.issue(user);
+    }
+
+    private User checkPassword(String email, String password) {
+        // Una contraseña de más de 72 bytes no llega acá: LoginRequest la rechaza con 400 antes
+        // de que bcrypt, que no admite más, responda con un error interno.
+        User user = users.findByEmailIgnoreCase(email).orElse(null);
+        if (user == null) {
+            passwordEncoder.matches(password, unknownUserHash);
+            throw new InvalidCredentialsException();
+        }
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+        return user;
     }
 
     @Transactional(readOnly = true)
