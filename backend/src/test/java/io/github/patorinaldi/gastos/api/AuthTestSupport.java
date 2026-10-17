@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  */
 public abstract class AuthTestSupport extends HouseholdTestSupport {
 
-    private static final AtomicInteger NEXT_LOGIN_ADDRESS = new AtomicInteger();
+    private static final AtomicInteger NEXT_ADDRESS = new AtomicInteger();
 
     @Autowired
     protected MockMvc mockMvc;
@@ -69,21 +70,26 @@ public abstract class AuthTestSupport extends HouseholdTestSupport {
     }
 
     /**
-     * {@code POST /api/auth/login} desde una dirección distinta en cada llamada.
+     * La petición llega desde una dirección distinta en cada llamada.
      *
-     * <p>El límite de intentos guarda sus contadores en memoria, y el contexto de Spring se
-     * comparte entre clases de prueba. Desde una dirección fija, los fallos de todas las pruebas se
-     * sumarían y, pasado el tope por dirección, empezarían a aparecer 429 según el orden en que
-     * corran. Las pruebas del límite en sí fijan la dirección a mano.
+     * <p>Los límites de intentos (RNF-06, RNF-30) guardan sus contadores en memoria, y el contexto
+     * de Spring se comparte entre clases de prueba. Desde una dirección fija, los fallos de todas
+     * las pruebas se sumarían y, pasado el tope por dirección, empezarían a aparecer 429 según el
+     * orden en que corran. Las pruebas de los límites en sí fijan la dirección a mano.
      */
-    protected MockHttpServletRequestBuilder loginRequest(String email, String password) {
-        int n = NEXT_LOGIN_ADDRESS.incrementAndGet();
+    protected static RequestPostProcessor fromNewAddress() {
+        int n = NEXT_ADDRESS.incrementAndGet();
         String address = "10." + (n >> 16 & 0xff) + "." + (n >> 8 & 0xff) + "." + (n & 0xff);
+        return request -> {
+            request.setRemoteAddr(address);
+            return request;
+        };
+    }
+
+    /** {@code POST /api/auth/login} desde una dirección distinta en cada llamada. */
+    protected MockHttpServletRequestBuilder loginRequest(String email, String password) {
         return post("/api/auth/login")
-                .with(request -> {
-                    request.setRemoteAddr(address);
-                    return request;
-                })
+                .with(fromNewAddress())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"email": "%s", "password": "%s"}""".formatted(email, password));

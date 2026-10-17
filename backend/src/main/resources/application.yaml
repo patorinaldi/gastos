@@ -70,6 +70,13 @@ gastos:
     max-per-email-and-ip: 10
     max-per-ip: 50
     max-per-email: 100
+  # Límites sobre los códigos de invitación (RNF-30). Ver InvitationAttemptLimiter y
+  # HouseholdService.createInvitation.
+  invitation-limit:
+    window: 15m
+    max-failures-per-user: 10
+    max-failures-per-ip: 50
+    max-active-per-household: 10
   # Orígenes del cliente web, separados por coma. Vacío: ningún otro origen puede llamar a la API.
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
