@@ -132,6 +132,7 @@ Contratos principales:
 ```
 POST /api/household/invitations
   → 201 { "code": "GST-4K2P-9XZ", "expiresAt": "..." }
+  → 409 el hogar ya tiene el máximo de invitaciones vigentes (RNF-30)
 
 POST /api/household/invitations/preview
   { "code": "GST-4K2P-9XZ" }
@@ -139,6 +140,7 @@ POST /api/household/invitations/preview
           "machineTokensToRevoke": 2 }
   → 409 el código es del hogar que el usuario ya integra
   → 410 código inexistente, vencido, ya canjeado o de un hogar archivado (RN-05, RN-18)
+  → 429 superado el límite de códigos inválidos (RNF-30)
 
 POST /api/household/invitations/redeem
   { "code": "GST-4K2P-9XZ", "confirm": true }
@@ -147,6 +149,7 @@ POST /api/household/invitations/redeem
   → 400 falta la confirmación
   → 409 el código es del hogar que el usuario ya integra
   → 410 código inexistente, vencido, ya canjeado o de un hogar archivado (RN-05, RN-18)
+  → 429 superado el límite de códigos inválidos (RNF-30)
 ```
 
 **El canje es un cambio de hogar.** Por RN-11 todo usuario ya tiene un hogar, así que canjear un
@@ -172,10 +175,26 @@ existe la posibilidad de pedir otro.
 **El código.** Formato `GST-XXXX-XXX`: siete caracteres aleatorios sobre un alfabeto de 31 símbolos
 sin los que se confunden al leerlos o dictarlos (`0`, `O`, `1`, `I`, `L`). Antes de calcular el
 hash se normaliza —mayúsculas, sin espacios ni guiones—, así que se encuentra aunque se tipee en
-minúsculas o se copie con espacios. Son unas 2,75 × 10¹⁰ combinaciones y `preview`/`redeem` no
-tienen límite de intentos: es un riesgo aceptado, porque adivinar un código vigente exige un volumen
-de peticiones que hoy no se espera, y cada código vive 7 días. Si hiciera falta, alargarlo no cambia
-ni el contrato ni el esquema.
+minúsculas o se copie con espacios. Son unas 2,75 × 10¹⁰ combinaciones.
+
+**Límites contra el tanteo (RNF-30).** Acertar un código vigente es entrar a un hogar ajeno y ver
+todos sus gastos, así que dos límites acotan la probabilidad de lograrlo:
+
+- **Códigos inválidos.** `preview` y `redeem` cuentan juntos, porque los dos sirven para probar un
+  código: 10 por usuario y 50 por dirección IP cada 15 minutos. Es el mismo conteo en memoria, de
+  ventana fija, que el límite de login, y responde igual: `429` con `Retry-After`. Solo cuenta un
+  `410`. El `409` del código propio no revela nada, y un código válido no cuenta, pero tampoco
+  reinicia los contadores: si los reiniciara, quien tenga un código válido de otra cuenta propia
+  podría alternarlo con el tanteo. Durante el bloqueo, un código válido también se rechaza, para que
+  el bloqueo no avise en qué intento se acertó. El límite envuelve al servicio desde el controlador,
+  así que un intento rechazado no abre una transacción.
+- **Invitaciones vigentes.** Un hogar tiene a lo sumo 10 sin canjear ni vencer, porque cada una es
+  un código más para acertar. La undécima responde `409` hasta que alguna se use o venza. Para
+  contarlas, `createInvitation` bloquea el hogar con `for no key update`: sin el bloqueo, dos
+  pedidos simultáneos pasarían el tope los dos.
+
+Los valores están en `gastos.invitation-limit`. Si hiciera falta más margen, alargar el código no
+cambia ni el contrato ni el esquema.
 
 **Canjes simultáneos.** `redeem` bloquea las filas que toca, siempre en el mismo orden para que dos
 canjes no puedan esperarse mutuamente: primero el usuario, después la invitación y por último los

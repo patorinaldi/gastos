@@ -294,6 +294,11 @@ disparador de pertenencia, y es deliberado: quien canjea todavía no integra el 
 
 Disparador `household_invitations_creator_in_household`, sobre `created_by`.
 
+Disparador `household_invitations_redeemed_once` (V7): una vez fijados, `redeemed_by` y
+`redeemed_at` no cambian, ni para registrar otro canje ni para devolver la invitación a vigente
+(RN-05). Compara valores, así que reescribir los mismos, como hace Hibernate con la fila entera,
+sigue permitido.
+
 ### `machine_tokens`, tokens de cliente máquina
 
 | Columna | Tipo | Restricciones | Descripción |

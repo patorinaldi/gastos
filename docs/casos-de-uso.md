@@ -194,6 +194,14 @@ con sus datos conservados.
 - 2b.1. El sistema responde con el mismo mensaje que para un código vencido, para no permitir
   descubrir códigos válidos por tanteo.
 
+**Flujo de excepción 2c. Demasiados códigos inválidos**
+
+- 2c.1. Tras 10 códigos inválidos del mismo usuario, o 50 desde una misma dirección, en 15 minutos,
+  sumando la vista previa y el canje, el sistema rechaza los códigos sin buscarlos hasta que se
+  cumplan 15 minutos desde el primero (RNF-30). Un código válido también se rechaza.
+- 2c.2. El sistema informa el bloqueo temporal sin precisar cuántos intentos restan ni qué límite
+  se superó.
+
 **Flujo de excepción 3a. El código es del hogar que el usuario ya integra**
 
 - 3a.1. El sistema rechaza el canje e informa que ya integra ese hogar.
