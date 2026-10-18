@@ -26,7 +26,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 
 | Módulo | Responsable | Estado |
 |---|---|---|
-| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Pendiente |
+| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, inicio de sesión y sesión implementados; verificación de correo, restablecimiento de contraseña y tokens de cliente máquina pendientes |
 | M2 Hogares | Elian | Backend implementado, pantallas pendientes |
 | M3 Gastos | Elian | Pendiente |
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
