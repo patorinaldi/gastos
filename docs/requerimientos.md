@@ -199,7 +199,7 @@ queda sin módulo que lo implemente.
 | Módulo | Requisitos funcionales | Reglas de negocio | No funcionales críticos |
 |---|---|---|---|
 | M1 Identidad y acceso | RF-01 a RF-07 | RN-01, RN-02, RN-03, RN-11 | RNF-05, RNF-06, RNF-08, RNF-29 |
-| M2 Hogares | RF-08 a RF-12 | RN-04, RN-05 | RNF-01, RNF-02, RNF-30 |
+| M2 Hogares | RF-08 a RF-12 | RN-04, RN-05, RN-18 | RNF-01, RNF-02, RNF-30 |
 | M3 Gastos | RF-13 a RF-18 | RN-06, RN-07, RN-08, RN-16 | RNF-10, RNF-12, RNF-13 |
 | M4 Categorización | RF-19 a RF-24, RF-43 | RN-09, RN-10, RN-12, RN-13, RN-16, RN-17 | RNF-13 |
 | M5 Análisis | RF-25 a RF-29 | RN-08, RN-14, RN-16 | RNF-11, RNF-13 |

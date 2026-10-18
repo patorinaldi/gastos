@@ -7,9 +7,10 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.ErrorResponseException;
 
 /**
- * Se superó un límite de intentos fallidos. No dice cuántos intentos quedaban ni cuál de los
- * límites se superó (CU-02, 2a.2). El header {@code Retry-After} indica en segundos cuándo se
- * puede volver a intentar.
+ * Se superó un límite de intentos fallidos: de inicio de sesión (RNF-06) o de códigos de invitación
+ * (RNF-30). No dice cuántos intentos quedaban ni cuál de los límites se superó (CU-02, 2a.2;
+ * CU-03, 2c.2), para no orientar a quien prueba. El header {@code Retry-After} indica en segundos
+ * cuándo se puede volver a intentar.
  */
 public class TooManyAttemptsException extends ErrorResponseException {
 

@@ -46,6 +46,8 @@ Los identificadores `RN-xx` remiten a [reglas-de-negocio.md](reglas-de-negocio.m
 | V3 | `household_defaults` | Función que siembra el catálogo inicial de categorías y reglas de un hogar. |
 | V4 | `soft_delete` | Marca de baja en gastos y categorías, índice único parcial y disparador de limpieza de reglas. |
 | V5 | `household_switch_and_access_tables` | Cambio de hogar, archivado de hogares y las tres tablas de acceso. |
+| V6 | `users_session_version` | Versión de sesión de cada usuario, para invalidar de una vez los tokens emitidos antes (RNF-29). |
+| V7 | `household_invitations_redeemed_once` | Disparador que impide modificar el canje de una invitación ya canjeada (RN-05). |
 
 ---
 
