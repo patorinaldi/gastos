@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -21,12 +22,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Canjes simultáneos (CU-03, 6b; RN-05, RN-18).
+ * Canjes simultáneos (CU-03, 6b; RN-05, RN-18) e invitaciones generadas a la vez (RNF-30).
  *
  * <p>Para que la carrera ocurra siempre y no por suerte, una conexión aparte bloquea la fila en
- * disputa antes de lanzar los canjes, espera a que los dos estén detenidos en ella y recién ahí la
- * suelta. Los dos llegan a ese punto habiendo leído el mismo estado, que es justo la situación que
- * los bloqueos del canje tienen que resolver.
+ * disputa antes de lanzar las operaciones, espera a que las dos estén detenidas en ella y recién ahí
+ * la suelta. Las dos llegan a ese punto habiendo leído el mismo estado, que es justo la situación que
+ * los bloqueos tienen que resolver.
  */
 class InvitationConcurrencyTest extends AuthTestSupport {
 
@@ -128,17 +129,46 @@ class InvitationConcurrencyTest extends AuthTestSupport {
         }
     }
 
+    // Sin el bloqueo del hogar, las dos contarían 9 vigentes y el hogar quedaría con 11. Que la
+    // conexión aparte retenga el hogar no las frena por sí solo: la clave foránea del insert toma
+    // for key share, que convive con for no key update. Se detienen solo si createInvitation
+    // bloquea el hogar.
+    @Test
+    void dosInvitacionesGeneradasALaVezNoPasanElTope() throws Exception {
+        UUID bruno = createUser(casaDeAna, uniqueEmail("bruno"), "Bruno");
+        for (int i = 0; i < 9; i++) {
+            codigoDe(ana, casaDeAna);
+        }
+
+        List<String> resultados = simultaneos(
+                "select 1 from households where id = ? for no key update", casaDeAna,
+                List.of(() -> generar(ana, casaDeAna), () -> generar(bruno, casaDeAna)));
+
+        assertThat(resultados).containsExactlyInAnyOrder("201", "409");
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from household_invitations where household_id = ?", Integer.class, casaDeAna))
+                .isEqualTo(10);
+    }
+
     // ── Apoyo ───────────────────────────────────────────────────────────────────────────────
 
     private record Canje(UUID usuario, UUID hogar, String codigo) {
     }
 
-    /**
-     * Bloquea la fila con {@code sqlBloqueo} desde otra conexión, lanza los canjes en paralelo,
-     * espera a que estén todos detenidos en un bloqueo y la suelta. Devuelve, en el orden de los
-     * canjes, {@code "ok"} o el estado del rechazo.
-     */
+    /** Como {@link #simultaneos}, con canjes. Cada resultado es {@code "ok"} o el estado del rechazo. */
     private List<String> canjesSimultaneos(String sqlBloqueo, UUID fila, Canje... canjes) throws Exception {
+        return simultaneos(sqlBloqueo, fila, List.of(canjes).stream()
+                .<Callable<String>>map(canje -> () -> canjear(canje))
+                .toList());
+    }
+
+    /**
+     * Bloquea la fila con {@code sqlBloqueo} desde otra conexión, lanza las operaciones en paralelo,
+     * espera a que estén todas detenidas en un bloqueo y la suelta. Devuelve sus resultados en el
+     * orden de las operaciones.
+     */
+    private List<String> simultaneos(String sqlBloqueo, UUID fila, List<Callable<String>> operaciones)
+            throws Exception {
         try (Connection bloqueo = dataSource.getConnection()) {
             bloqueo.setAutoCommit(false);
             try (PreparedStatement ps = bloqueo.prepareStatement(sqlBloqueo)) {
@@ -146,10 +176,8 @@ class InvitationConcurrencyTest extends AuthTestSupport {
                 ps.executeQuery();
             }
 
-            List<Future<String>> enCurso = List.of(canjes).stream()
-                    .map(canje -> hilos.submit(() -> canjear(canje)))
-                    .toList();
-            esperarDetenidos(canjes.length);
+            List<Future<String>> enCurso = operaciones.stream().map(hilos::submit).toList();
+            esperarDetenidos(operaciones.size());
             bloqueo.rollback();
 
             return enCurso.stream().map(InvitationConcurrencyTest::resultado).toList();
@@ -163,6 +191,15 @@ class InvitationConcurrencyTest extends AuthTestSupport {
         } catch (InvitationUnavailableException ex) {
             return "410";
         } catch (AlreadyInHouseholdException ex) {
+            return "409";
+        }
+    }
+
+    private String generar(UUID usuario, UUID hogar) {
+        try {
+            householdService.createInvitation(new AuthenticatedUser(usuario, hogar));
+            return "201";
+        } catch (TooManyActiveInvitationsException ex) {
             return "409";
         }
     }
@@ -183,11 +220,11 @@ class InvitationConcurrencyTest extends AuthTestSupport {
         }
     }
 
-    private static String resultado(Future<String> canje) {
+    private static String resultado(Future<String> operacion) {
         try {
-            return canje.get(ESPERA_MAXIMA.toSeconds(), TimeUnit.SECONDS);
+            return operacion.get(ESPERA_MAXIMA.toSeconds(), TimeUnit.SECONDS);
         } catch (Exception ex) {
-            throw new AssertionError("El canje no terminó bien", ex);
+            throw new AssertionError("La operación no terminó bien", ex);
         }
     }
 
