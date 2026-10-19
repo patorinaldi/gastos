@@ -1,4 +1,4 @@
-package io.github.patorinaldi.gastos.api.service.auth;
+package io.github.patorinaldi.gastos.api.service.limit;
 
 import java.time.Duration;
 import org.springframework.http.HttpHeaders;
@@ -7,13 +7,14 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.ErrorResponseException;
 
 /**
- * Se superó el límite de intentos fallidos (RNF-06). No dice cuántos intentos quedaban ni cuál de
- * los dos límites se superó (CU-02, 2a.2): la respuesta es la misma tenga o no cuenta el correo.
- * El header {@code Retry-After} indica en segundos cuándo se puede volver a intentar.
+ * Se superó un límite de intentos fallidos: de inicio de sesión (RNF-06) o de códigos de invitación
+ * (RNF-30). No dice cuántos intentos quedaban ni cuál de los límites se superó (CU-02, 2a.2;
+ * CU-03, 2c.2), para no orientar a quien prueba. El header {@code Retry-After} indica en segundos
+ * cuándo se puede volver a intentar.
  */
-public class LoginBlockedException extends ErrorResponseException {
+public class TooManyAttemptsException extends ErrorResponseException {
 
-    public LoginBlockedException(Duration retryAfter) {
+    public TooManyAttemptsException(Duration retryAfter) {
         super(HttpStatus.TOO_MANY_REQUESTS,
                 ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS,
                         "Demasiados intentos fallidos. Esperá unos minutos y volvé a intentar."),

@@ -264,6 +264,7 @@ class InvitationRedeemTest extends AuthTestSupport {
 
     private ResultActions vistaPrevia(UUID usuario, String codigo) throws Exception {
         return mockMvc.perform(post("/api/household/invitations/preview")
+                .with(fromNewAddress())
                 .header(AUTHORIZATION, bearer(usuario))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -272,6 +273,7 @@ class InvitationRedeemTest extends AuthTestSupport {
 
     private ResultActions canjear(UUID usuario, String codigo, boolean confirmar) throws Exception {
         return mockMvc.perform(post("/api/household/invitations/redeem")
+                .with(fromNewAddress())
                 .header(AUTHORIZATION, bearer(usuario))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""

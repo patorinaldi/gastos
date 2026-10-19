@@ -470,6 +470,7 @@ sequenceDiagram
 
     U->>W: ingresa el código de invitación
     W->>C: POST /api/household/invitations/preview
+    Note over C: límite de códigos inválidos (RNF-30): superado,<br/>429 con Retry-After, sin llamar al servicio
     C->>S: vista previa
     S->>DB: busca la invitación por el hash del código
     S->>S: vigente, sin canjear, de un hogar activo y distinto del actual
@@ -490,6 +491,7 @@ sequenceDiagram
         else el integrante confirma
             U->>W: confirma
             W->>C: POST /api/household/invitations/redeem con confirm = true
+            Note over C: el mismo límite, que suma los 410 de las dos llamadas
             C->>S: canjear
             Note over S,DB: comienza la transacción
             S->>DB: bloquea el usuario, la invitación y los dos hogares, en ese orden

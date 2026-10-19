@@ -77,8 +77,9 @@ public class HouseholdInvitation {
     }
 
     /**
-     * Registra el canje. El motor no impide sobrescribir uno ya registrado (RN-05), así que lo
-     * impide esto: quien canjea verificó antes que la invitación siguiera libre, y llegar acá con
+     * Registra el canje. Un canje ya registrado no se sobrescribe (RN-05): lo rechaza esto y,
+     * aunque se escriba sin pasar por acá, el trigger {@code household_invitations_redeemed_once}
+     * (V7). Quien canjea verificó antes que la invitación siguiera libre, así que llegar acá con
      * una ya canjeada es un error de programación.
      */
     public void redeem(UUID userId, Instant at) {

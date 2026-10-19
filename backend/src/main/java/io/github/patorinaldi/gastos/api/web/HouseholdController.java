@@ -3,6 +3,7 @@ package io.github.patorinaldi.gastos.api.web;
 import io.github.patorinaldi.gastos.api.security.AuthenticatedUser;
 import io.github.patorinaldi.gastos.api.service.household.HouseholdService;
 import io.github.patorinaldi.gastos.api.service.household.HouseholdView;
+import io.github.patorinaldi.gastos.api.service.household.InvitationAttemptLimiter;
 import io.github.patorinaldi.gastos.api.service.household.InvitationPreview;
 import io.github.patorinaldi.gastos.api.service.household.IssuedInvitation;
 import io.github.patorinaldi.gastos.api.service.household.Redemption;
@@ -14,6 +15,7 @@ import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.MemberRespons
 import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.RedeemInvitationRequest;
 import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.RedeemInvitationResponse;
 import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.RenameHouseholdRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -39,9 +41,11 @@ import org.springframework.web.bind.annotation.RestController;
 class HouseholdController {
 
     private final HouseholdService householdService;
+    private final InvitationAttemptLimiter invitationAttempts;
 
-    HouseholdController(HouseholdService householdService) {
+    HouseholdController(HouseholdService householdService, InvitationAttemptLimiter invitationAttempts) {
         this.householdService = householdService;
+        this.invitationAttempts = invitationAttempts;
     }
 
     @GetMapping
@@ -69,10 +73,15 @@ class HouseholdController {
         return new InvitationResponse(invitation.code(), invitation.expiresAt());
     }
 
+    // El límite de intentos (RNF-30) envuelve al servicio en lugar de correr dentro de él: así un
+    // intento rechazado no llega a abrir una transacción, como en el login. La dirección del
+    // cliente se obtiene como en AuthController.login.
     @PostMapping("/invitations/preview")
     InvitationPreviewResponse previewInvitation(@AuthenticationPrincipal AuthenticatedUser user,
-                                                @Valid @RequestBody InvitationPreviewRequest request) {
-        InvitationPreview preview = householdService.preview(user, request.code());
+                                                @Valid @RequestBody InvitationPreviewRequest request,
+                                                HttpServletRequest http) {
+        InvitationPreview preview = invitationAttempts.guard(user.userId(), clientIp(http),
+                () -> householdService.preview(user, request.code()));
         return new InvitationPreviewResponse(
                 preview.householdName(), preview.currentHouseholdWillBeArchived(), preview.machineTokensToRevoke());
     }
@@ -80,10 +89,16 @@ class HouseholdController {
     /** Sin {@code "confirm": true} responde 400 antes de llegar al servicio. */
     @PostMapping("/invitations/redeem")
     RedeemInvitationResponse redeemInvitation(@AuthenticationPrincipal AuthenticatedUser user,
-                                              @Valid @RequestBody RedeemInvitationRequest request) {
-        Redemption redemption = householdService.redeem(user, request.code());
+                                              @Valid @RequestBody RedeemInvitationRequest request,
+                                              HttpServletRequest http) {
+        Redemption redemption = invitationAttempts.guard(user.userId(), clientIp(http),
+                () -> householdService.redeem(user, request.code()));
         return new RedeemInvitationResponse(
                 redemption.householdId(), redemption.householdName(), redemption.previousHouseholdArchived());
+    }
+
+    private static String clientIp(HttpServletRequest http) {
+        return ClientAddress.withoutPort(http.getRemoteAddr());
     }
 
     private static HouseholdResponse response(HouseholdView household) {

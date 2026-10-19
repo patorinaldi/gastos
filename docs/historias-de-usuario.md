@@ -196,7 +196,7 @@ Escenario: Revocar un token
 > **quiero** generar un código para invitar a quien convive conmigo
 > **para** que sus gastos aparezcan en la misma vista que los míos.
 
-*Requisitos: RF-08, RF-12 · Reglas: RN-05*
+*Requisitos: RF-08, RF-12 · Reglas: RN-05 · No funcionales: RNF-30*
 
 ```gherkin
 Escenario: Generar el código
@@ -208,6 +208,11 @@ Escenario: El código se canjea una sola vez
   Dado que alguien ya canjeó el código que generé
   Cuando otra persona intenta canjearlo
   Entonces el sistema lo rechaza por estar ya utilizado
+
+Escenario: Tope de invitaciones vigentes
+  Dado que mi hogar tiene 10 invitaciones sin canjear ni vencer
+  Cuando genero otra
+  Entonces el sistema la rechaza hasta que alguna se use o venza
 ```
 
 ### HU-06 · Unirse a un hogar
@@ -216,7 +221,7 @@ Escenario: El código se canjea una sola vez
 > **quiero** ingresar el código que me pasó mi conviviente
 > **para** sumarme a su hogar y que compartamos una sola vista de los gastos.
 
-*Requisitos: RF-09 · Reglas: RN-04, RN-05, RN-18*
+*Requisitos: RF-09 · Reglas: RN-04, RN-05, RN-18 · No funcionales: RNF-30*
 
 Por RN-11, al registrarme ya tengo un hogar propio, y puede que ya tenga gastos cargados. Al unirme
 a otro hogar dejo el anterior. Si era su único integrante, el hogar queda archivado: sus datos se
@@ -257,6 +262,11 @@ Escenario: Código vencido
   Dado que el código venció
   Cuando lo canjeo
   Entonces el sistema lo rechaza e indica que solicite uno nuevo
+
+Escenario: Límite de códigos inválidos
+  Dado que probé 10 códigos inválidos en 15 minutos
+  Cuando ingreso otro código, aunque sea válido
+  Entonces el sistema lo rechaza temporalmente sin indicar cuántos intentos me quedan
 ```
 
 ### HU-07 · Ver los integrantes

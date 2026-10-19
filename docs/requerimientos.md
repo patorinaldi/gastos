@@ -125,6 +125,7 @@ Cada RNF se expresa con una métrica verificable. Se evitan términos como "ráp
 | RNF-08 | Los tokens de verificación de correo y de restablecimiento de contraseña deben ser de un solo uso y vencer a las 24 horas de emitidos. | Prueba automatizada de reutilización y de vencimiento. |
 | RNF-09 | Los registros de la aplicación no deben contener contraseñas, hashes ni tokens en claro. | Revisión de código. Las entidades no exponen `toString()` con campos sensibles. |
 | RNF-29 | El token de sesión debe vencer a los 7 días de emitido, y las sesiones de un usuario deben poder invalidarse antes de su vencimiento: cambiar la contraseña cierra todas las abiertas, en todos los dispositivos. Siete días evitan pedir el inicio de sesión a diario desde el teléfono; la invalidación acota el daño de un token robado. | Prueba automatizada del vencimiento y de la invalidación por versión de sesión. |
+| RNF-30 | El sistema debe limitar los códigos de invitación inválidos que se prueban, sumando la vista previa y el canje, a 10 por usuario y a 50 por dirección IP en ventanas de 15 minutos, y no debe permitir más de 10 invitaciones vigentes por hogar. Superado un límite de intentos, rechaza las pruebas hasta que cierre la ventana, aun con un código válido. Acota la probabilidad de adivinar un código vigente y entrar a un hogar ajeno. | Prueba automatizada del limitador, de que durante el bloqueo un código válido tampoco entra, de que el código del hogar propio no cuenta como fallo, y del rechazo de la invitación que supera el tope. |
 
 ### 2.2 Rendimiento
 
@@ -198,7 +199,7 @@ queda sin módulo que lo implemente.
 | Módulo | Requisitos funcionales | Reglas de negocio | No funcionales críticos |
 |---|---|---|---|
 | M1 Identidad y acceso | RF-01 a RF-07 | RN-01, RN-02, RN-03, RN-11 | RNF-05, RNF-06, RNF-08, RNF-29 |
-| M2 Hogares | RF-08 a RF-12 | RN-04, RN-05 | RNF-01, RNF-02 |
+| M2 Hogares | RF-08 a RF-12 | RN-04, RN-05, RN-18 | RNF-01, RNF-02, RNF-30 |
 | M3 Gastos | RF-13 a RF-18 | RN-06, RN-07, RN-08, RN-16 | RNF-10, RNF-12, RNF-13 |
 | M4 Categorización | RF-19 a RF-24, RF-43 | RN-09, RN-10, RN-12, RN-13, RN-16, RN-17 | RNF-13 |
 | M5 Análisis | RF-25 a RF-29 | RN-08, RN-14, RN-16 | RNF-11, RNF-13 |

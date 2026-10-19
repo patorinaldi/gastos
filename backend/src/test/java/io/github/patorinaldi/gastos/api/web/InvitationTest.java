@@ -13,15 +13,18 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Invitaciones a un hogar: generación del código (HU-05; RF-08, RN-05).
+ * Invitaciones a un hogar: generación del código (HU-05; RF-08, RN-05, RNF-30).
  */
 class InvitationTest extends AuthTestSupport {
 
@@ -91,6 +94,67 @@ class InvitationTest extends AuthTestSupport {
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from household_invitations where household_id = ?", Integer.class, casa))
                 .isZero();
+    }
+
+    // ── Tope de invitaciones vigentes (RNF-30) ─────────────────────────────────────────────
+
+    @Test
+    void conDiezVigentesNoGeneraOtra() throws Exception {
+        generarVigentes(10);
+
+        generar(ana)
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value(
+                        "El hogar ya tiene 10 invitaciones vigentes. Podés generar otra cuando alguna se use o venza."));
+
+        assertThat(invitaciones()).isEqualTo(10);
+    }
+
+    // El tope es del hogar: otro integrante tampoco puede pasarlo.
+    @Test
+    void elTopeEsDelHogarYNoDeQuienLasGenera() throws Exception {
+        generarVigentes(10);
+        UUID bruno = createUser(casa, uniqueEmail("bruno"), "Bruno");
+
+        generar(bruno).andExpect(status().isConflict());
+    }
+
+    @Test
+    void unaInvitacionVencidaDejaDeContar() throws Exception {
+        generarVigentes(10);
+        jdbcTemplate.update("update household_invitations set expires_at = now() - interval '1 second'"
+                + " where id = (select id from household_invitations where household_id = ? limit 1)", casa);
+
+        generar(ana).andExpect(status().isCreated());
+    }
+
+    @Test
+    void unaInvitacionCanjeadaDejaDeContar() throws Exception {
+        generarVigentes(10);
+        UUID otraCasa = createHousehold("Casa de Carla");
+        UUID carla = createUser(otraCasa, uniqueEmail("carla"), "Carla");
+        try {
+            jdbcTemplate.update("update household_invitations set redeemed_by = ?, redeemed_at = now()"
+                    + " where id = (select id from household_invitations where household_id = ? limit 1)",
+                    carla, casa);
+
+            generar(ana).andExpect(status().isCreated());
+        } finally {
+            // También borra la invitación que canjeó Carla: su clave foránea impediría borrarla.
+            deleteHousehold(otraCasa);
+        }
+    }
+
+    private void generarVigentes(int cantidad) throws Exception {
+        for (int i = 0; i < cantidad; i++) {
+            generar(ana).andExpect(status().isCreated());
+        }
+    }
+
+    private int invitaciones() {
+        return jdbcTemplate.queryForObject(
+                "select count(*) from household_invitations where household_id = ?", Integer.class, casa);
     }
 
     private ResultActions generar(UUID usuario) throws Exception {
