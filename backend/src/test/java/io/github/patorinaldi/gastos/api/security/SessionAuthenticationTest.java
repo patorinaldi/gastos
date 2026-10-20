@@ -234,8 +234,8 @@ class SessionAuthenticationTest extends AuthTestSupport {
                 .andExpect(status().isOk());
     }
 
-    // M6 tendrá su propio canal de autenticación. La sesión web no habilita ni el punto de
-    // entrada ni nada que cuelgue de él.
+    // M6 tiene su propio canal de autenticación, el token de cliente máquina. La sesión web no
+    // habilita ni el punto de entrada ni nada que cuelgue de él.
     @Test
     void laSesionNoHabilitaLaCaptura() throws Exception {
         mockMvc.perform(post("/api/capture").header(AUTHORIZATION, bearer(ana)))
