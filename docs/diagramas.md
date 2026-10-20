@@ -533,6 +533,7 @@ sequenceDiagram
     alt token inexistente, revocado o de un hogar que su dueño dejó
         F-->>A: 401 sin indicar si el token existió
     else token válido
+        F->>DB: update machine_tokens con last_used_at
         F->>S: captura con el hogar en contexto
         S->>S: normaliza el importe a 1234.56
 
@@ -543,14 +544,15 @@ sequenceDiagram
             S->>M: resolver categoría de "Carrefour"
             M-->>S: Supermercado, o nula
             S->>DB: insert en expenses
-            S->>DB: update machine_tokens con last_used_at
             S-->>A: 201 id, amount "1234.56", merchant, categoryId, expenseDate
         end
     end
 ```
 
 El token solo habilita este punto de entrada. Usado contra cualquier otra ruta de la API, se
-rechaza (HU-17).
+ignora y la petición se rechaza por falta de sesión (HU-17). El último uso se registra al
+autenticar, aunque la captura falle después: es el dato que se muestra para decidir qué token
+revocar.
 
 ### 4.6 Intento de acceso a datos de otro hogar
 
