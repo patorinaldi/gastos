@@ -45,11 +45,12 @@ public interface MachineTokenRepository extends JpaRepository<MachineToken, UUID
     Optional<MachineTokenOwner> findOwner(byte[] tokenHash);
 
     /**
-     * Registra el último uso del token. La autenticación corre fuera de toda transacción, así que
-     * abre la suya.
+     * Registra el último uso del token, solo si sigue sin revocar. Devuelve 0 si se revocó desde
+     * que se leyó con {@link #findOwner}: un canje de invitación pudo revocarlo en el medio. La
+     * autenticación corre fuera de toda transacción, así que abre la suya.
      */
     @Transactional
     @Modifying
-    @Query("update MachineToken t set t.lastUsedAt = ?2 where t.id = ?1")
+    @Query("update MachineToken t set t.lastUsedAt = ?2 where t.id = ?1 and t.revokedAt is null")
     int markUsed(UUID tokenId, Instant at);
 }

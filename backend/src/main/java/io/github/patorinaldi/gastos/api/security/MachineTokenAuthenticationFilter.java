@@ -129,7 +129,9 @@ public class MachineTokenAuthenticationFilter extends OncePerRequestFilter {
             return rejected(owner, "el hogar está archivado");
         }
 
-        tokens.markUsed(owner.tokenId(), clock.instant());
+        if (tokens.markUsed(owner.tokenId(), clock.instant()) == 0) {
+            return rejected(owner, "se revocó mientras se autenticaba");
+        }
         return Optional.of(new AuthenticatedUser(owner.userId(), owner.tokenHouseholdId()));
     }
 
