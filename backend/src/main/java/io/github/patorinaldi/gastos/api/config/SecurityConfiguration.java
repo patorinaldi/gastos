@@ -23,6 +23,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -88,8 +89,10 @@ class SecurityConfiguration {
      * <p>El entry point del 401 se configura en tres lugares, y hacen falta los tres: el de
      * {@code exceptionHandling} atiende las peticiones que llegan sin credenciales, el del resource
      * server, los tokens de sesión inválidos, y el del filtro de los clientes máquina, sus tokens
-     * inválidos; cada filtro usa el suyo directamente. El handler del 403 va solo en
-     * {@code exceptionHandling}: ahí cubre todos los casos.
+     * inválidos; cada filtro usa el suyo directamente. Los dos primeros eligen según la ruta: en
+     * los puntos de entrada de M6, todo 401 es el del token de cliente máquina, también el de un
+     * {@code Bearer} que no vale, que es el error más común al configurar una automatización. El
+     * handler del 403 va solo en {@code exceptionHandling}: ahí cubre todos los casos.
      */
     @Bean
     SecurityFilterChain apiSecurityFilterChain(HttpSecurity http,
@@ -102,6 +105,9 @@ class SecurityConfiguration {
         ProblemDetailAuthenticationEntryPoint unauthorized = new ProblemDetailAuthenticationEntryPoint(problemDetails);
         MachineTokenAuthenticationEntryPoint machineUnauthorized =
                 new MachineTokenAuthenticationEntryPoint(problemDetails);
+        AuthenticationEntryPoint unauthorizedByEndpoint = (request, response, ex) ->
+                (MACHINE_ENDPOINTS.matches(request) ? machineUnauthorized : unauthorized)
+                        .commence(request, response, ex);
         ProblemDetailAccessDeniedHandler forbidden = new ProblemDetailAccessDeniedHandler(problemDetails);
         MachineTokenAuthenticationFilter machineTokenFilter = new MachineTokenAuthenticationFilter(
                 MACHINE_ENDPOINTS, machineTokens, machineTokenValues, machineUnauthorized, clock);
@@ -120,13 +126,11 @@ class SecurityConfiguration {
                         .requestMatchers(MACHINE_ENDPOINTS).hasRole(MachineTokenAuthenticationFilter.MACHINE_ROLE)
                         .anyRequest().hasRole(SessionAuthenticationConverter.SESSION_ROLE))
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint((request, response, ex) ->
-                                (MACHINE_ENDPOINTS.matches(request) ? machineUnauthorized : unauthorized)
-                                        .commence(request, response, ex))
+                        .authenticationEntryPoint(unauthorizedByEndpoint)
                         .accessDeniedHandler(forbidden))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .bearerTokenResolver(ignoringPublicEndpoints())
-                        .authenticationEntryPoint(unauthorized)
+                        .authenticationEntryPoint(unauthorizedByEndpoint)
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(new SessionAuthenticationConverter(users))))
                 .addFilterBefore(machineTokenFilter, BearerTokenAuthenticationFilter.class)
                 .addFilterAfter(new HouseholdContextFilter(), BearerTokenAuthenticationFilter.class)
