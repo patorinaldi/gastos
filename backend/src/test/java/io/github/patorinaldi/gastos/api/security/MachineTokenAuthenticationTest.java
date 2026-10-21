@@ -3,7 +3,9 @@ package io.github.patorinaldi.gastos.api.security;
 import io.github.patorinaldi.gastos.api.AuthTestSupport;
 import io.github.patorinaldi.gastos.api.domain.Category;
 import io.github.patorinaldi.gastos.api.repository.CategoryRepository;
+import io.github.patorinaldi.gastos.api.repository.MachineTokenRepository;
 import io.github.patorinaldi.gastos.api.service.auth.MachineTokenValues;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +45,9 @@ class MachineTokenAuthenticationTest extends AuthTestSupport {
 
     @Autowired
     private MachineTokenValues values;
+
+    @Autowired
+    private MachineTokenRepository machineTokens;
 
     private UUID casaA;
     private UUID casaB;
@@ -142,11 +147,39 @@ class MachineTokenAuthenticationTest extends AuthTestSupport {
         jdbcTemplate.update("update households set active = false, archived_at = now() where id = ?", casaA);
 
         rechazado(sonda(token));
+        assertThat(ultimoUso(token)).isNull();
+    }
+
+    // Si el token se revoca entre que se lee y que se registra su uso, la escritura no lo alcanza
+    // y el filtro rechaza la petición.
+    @Test
+    void elUltimoUsoNoSeRegistraEnUnTokenRevocado() {
+        String token = emitir(ana, casaA);
+        UUID id = jdbcTemplate.queryForObject(
+                "select id from machine_tokens where token_hash = ?", UUID.class, values.hash(token));
+        jdbcTemplate.update("update machine_tokens set revoked_at = now() where id = ?", id);
+
+        assertThat(machineTokens.markUsed(id, Instant.now())).isZero();
+        assertThat(ultimoUso(token)).isNull();
     }
 
     @Test
     void sinTokenLaCapturaPideElTokenDeLaAutomatizacion() throws Exception {
         rechazado(mockMvc.perform(get(CaptureProbe.PATH)));
+    }
+
+    // El error más común al configurar una automatización es mandar el token como Bearer. Ahí lo
+    // valida el filtro de la sesión, y el 401 tiene que seguir siendo el del canal: el de la
+    // sesión pediría iniciar sesión, que una automatización no puede hacer.
+    @Test
+    void conBearerLaCapturaRespondeElRechazoDelCanal() throws Exception {
+        String token = emitir(ana, casaA);
+        String sesionVencida = token(ana, Instant.now().minus(Duration.ofDays(30)));
+
+        for (String header : List.of("Bearer " + token, "Bearer no-es-un-jwt", "Bearer " + sesionVencida)) {
+            rechazado(mockMvc.perform(get(CaptureProbe.PATH).header(AUTHORIZATION, header)));
+        }
+        assertThat(ultimoUso(token)).isNull();
     }
 
     // HU-17: en cualquier otra ruta el token se ignora, y la petición queda sin autenticar.
