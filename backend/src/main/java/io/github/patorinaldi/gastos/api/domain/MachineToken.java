@@ -17,10 +17,10 @@ import org.hibernate.annotations.CreationTimestamp;
  * Token de cliente máquina (V5, RF-07): una automatización que carga gastos en un hogar a nombre de
  * un integrante.
  *
- * <p>Por ahora la usa solo M2, que al cambiar a un usuario de hogar revoca sus tokens del hogar
- * anterior (RN-18). La emisión y la autenticación son de M1 y M6, que suman acá el constructor y lo
- * que necesiten. Está mapeada completa para que {@code ddl-auto: validate} la compare contra la
- * tabla.
+ * <p>La usan M2, que al cambiar a un usuario de hogar revoca sus tokens del hogar anterior (RN-18),
+ * y la autenticación de los clientes máquina, que la lee por el hash y registra su último uso. La
+ * emisión es de M1, que suma acá el constructor. Está mapeada completa para que
+ * {@code ddl-auto: validate} la compare contra la tabla.
  *
  * <p>Guarda el hash SHA-256 del token, nunca el token. Sobre el uso de Lombok, ver
  * {@link Household}.

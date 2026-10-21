@@ -396,9 +396,15 @@ equivocado.
 
 **Decisión de diseño.** El canal de autenticación es propio y distinto del de la sesión web. El
 token es de larga duración, se guarda en un dispositivo y se puede revocar individualmente sin
-afectar la sesión de la persona. Solo habilita este punto de entrada, no el resto de la API. Al
-autenticarlo, el módulo exige que no esté revocado y que su hogar sea el hogar actual de su dueño
-(RN-18), así una automatización no sigue cargando gastos en un hogar que su dueño dejó.
+afectar la sesión de la persona. Solo habilita este punto de entrada, no el resto de la API: en
+otra ruta se ignora, y la petición se rechaza por falta de sesión. Al autenticarlo, el módulo exige
+que no esté revocado y que su hogar sea el hogar actual de su dueño (RN-18), así una automatización
+no sigue cargando gastos en un hogar que su dueño dejó.
+
+El token tiene la forma `gst_` seguida de 32 bytes aleatorios en base64url, y la base guarda solo
+su hash SHA-256. Con 256 bits no hace falta limitar los intentos, como sí con los códigos de
+invitación. Todo rechazo es el mismo 401, con `WWW-Authenticate: Token` y sin indicar el motivo.
+Al autenticarlo se registra su último uso.
 
 Depende de M1 (emisión y revocación de tokens), M3 y M4.
 

@@ -1,11 +1,16 @@
 package io.github.patorinaldi.gastos.api.config;
 
+import io.github.patorinaldi.gastos.api.repository.MachineTokenRepository;
 import io.github.patorinaldi.gastos.api.repository.UserRepository;
 import io.github.patorinaldi.gastos.api.security.HouseholdContextFilter;
+import io.github.patorinaldi.gastos.api.security.MachineTokenAuthenticationEntryPoint;
+import io.github.patorinaldi.gastos.api.security.MachineTokenAuthenticationFilter;
 import io.github.patorinaldi.gastos.api.security.ProblemDetailAccessDeniedHandler;
 import io.github.patorinaldi.gastos.api.security.ProblemDetailAuthenticationEntryPoint;
 import io.github.patorinaldi.gastos.api.security.SecurityProblemDetailWriter;
 import io.github.patorinaldi.gastos.api.security.SessionAuthenticationConverter;
+import io.github.patorinaldi.gastos.api.service.auth.MachineTokenValues;
+import java.time.Clock;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +23,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -43,6 +49,10 @@ import static org.springframework.security.web.servlet.util.matcher.PathPatternR
  *   <li>{@link HouseholdContextFilter} deja el hogar en {@code CurrentHousehold};</li>
  *   <li>{@code HouseholdTransactionListener} lo fija en Postgres al comenzar cada transacción.</li>
  * </ol>
+ *
+ * <p>Los clientes máquina tienen su propio canal, solo para los puntos de entrada de M6:
+ * {@link MachineTokenAuthenticationFilter} reemplaza a los dos primeros pasos, con el header
+ * {@code Authorization: Token}, y el resto es igual.
  */
 @Configuration
 @EnableWebSecurity
@@ -65,20 +75,42 @@ class SecurityConfiguration {
             pathPattern(HttpMethod.POST, "/api/auth/password/reset"));
 
     /**
+     * Los puntos de entrada de M6, los únicos que habilita un token de cliente máquina. Están
+     * definidos una sola vez porque cumplen tres funciones: el filtro de los clientes máquina solo
+     * actúa en estas rutas, se autorizan solo para ese rol, y su 401 anuncia el esquema
+     * {@code Token}. "/**" incluye también la ruta exacta.
+     */
+    private static final RequestMatcher MACHINE_ENDPOINTS = pathPattern("/api/capture/**");
+
+    /**
      * Los 401 y 403 que responde la propia cadena, antes de llegar a un controlador, salen como
      * {@code problem+json}, igual que el resto de los errores de la API (RF-40).
      *
-     * <p>El entry point del 401 se configura en dos lugares, y hacen falta los dos: el de
-     * {@code exceptionHandling} atiende las peticiones que llegan sin token, y el del resource
-     * server, los tokens inválidos, porque el filtro de Bearer usa el suyo directamente. El handler
-     * del 403 va solo en {@code exceptionHandling}: ahí cubre todos los casos.
+     * <p>El entry point del 401 se configura en tres lugares, y hacen falta los tres: el de
+     * {@code exceptionHandling} atiende las peticiones que llegan sin credenciales, el del resource
+     * server, los tokens de sesión inválidos, y el del filtro de los clientes máquina, sus tokens
+     * inválidos; cada filtro usa el suyo directamente. Los dos primeros eligen según la ruta: en
+     * los puntos de entrada de M6, todo 401 es el del token de cliente máquina, también el de un
+     * {@code Bearer} que no vale, que es el error más común al configurar una automatización. El
+     * handler del 403 va solo en {@code exceptionHandling}: ahí cubre todos los casos.
      */
     @Bean
-    SecurityFilterChain apiSecurityFilterChain(
-            HttpSecurity http, UserRepository users, ObjectMapper objectMapper) throws Exception {
+    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http,
+                                               UserRepository users,
+                                               MachineTokenRepository machineTokens,
+                                               MachineTokenValues machineTokenValues,
+                                               Clock clock,
+                                               ObjectMapper objectMapper) throws Exception {
         SecurityProblemDetailWriter problemDetails = new SecurityProblemDetailWriter(objectMapper);
         ProblemDetailAuthenticationEntryPoint unauthorized = new ProblemDetailAuthenticationEntryPoint(problemDetails);
+        MachineTokenAuthenticationEntryPoint machineUnauthorized =
+                new MachineTokenAuthenticationEntryPoint(problemDetails);
+        AuthenticationEntryPoint unauthorizedByEndpoint = (request, response, ex) ->
+                (MACHINE_ENDPOINTS.matches(request) ? machineUnauthorized : unauthorized)
+                        .commence(request, response, ex);
         ProblemDetailAccessDeniedHandler forbidden = new ProblemDetailAccessDeniedHandler(problemDetails);
+        MachineTokenAuthenticationFilter machineTokenFilter = new MachineTokenAuthenticationFilter(
+                MACHINE_ENDPOINTS, machineTokens, machineTokenValues, machineUnauthorized, clock);
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
@@ -88,18 +120,19 @@ class SecurityConfiguration {
                 .logout(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        // M6 se autentica con un token de cliente máquina, no con la sesión.
-                        // Hasta que exista ese canal, el punto de entrada y todo lo que cuelgue de
-                        // él quedan cerrados. "/**" incluye también la ruta exacta.
-                        .requestMatchers("/api/capture/**").denyAll()
+                        // M6 se autentica con un token de cliente máquina, no con la sesión: una
+                        // sesión válida acá recibe 403, igual que un token de máquina no llega
+                        // a autenticarse en el resto de la API.
+                        .requestMatchers(MACHINE_ENDPOINTS).hasRole(MachineTokenAuthenticationFilter.MACHINE_ROLE)
                         .anyRequest().hasRole(SessionAuthenticationConverter.SESSION_ROLE))
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint(unauthorized)
+                        .authenticationEntryPoint(unauthorizedByEndpoint)
                         .accessDeniedHandler(forbidden))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .bearerTokenResolver(ignoringPublicEndpoints())
-                        .authenticationEntryPoint(unauthorized)
+                        .authenticationEntryPoint(unauthorizedByEndpoint)
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(new SessionAuthenticationConverter(users))))
+                .addFilterBefore(machineTokenFilter, BearerTokenAuthenticationFilter.class)
                 .addFilterAfter(new HouseholdContextFilter(), BearerTokenAuthenticationFilter.class)
                 .build();
     }

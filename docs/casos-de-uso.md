@@ -377,13 +377,12 @@ está asociado a su hogar y a su usuario.
 1. El cliente envía importe y comercio al punto de captura, con su token en la cabecera.
 2. El sistema busca el token por su hash, ya que no guarda el valor en claro, y obtiene el hogar y
    el integrante asociados. Verifica que el token no esté revocado y que su hogar sea el hogar
-   actual del integrante (RN-18).
+   actual del integrante (RN-18), y registra en el token el momento de su último uso.
 3. El sistema normaliza el importe, aceptando formato local (`1.234,56`), anglosajón (`1,234.56`)
    o sin separadores (RF-32).
 4. El sistema valida el importe resultante contra RN-06 y el comercio contra RN-07.
 5. El sistema resuelve la categoría con el motor de reglas del hogar, igual que en CU-04 (RN-17).
 6. El sistema registra el gasto y devuelve su identificador y el importe normalizado.
-7. El sistema registra en el token el momento de su último uso.
 
 **Flujo de excepción 2a. Token inválido, revocado o de un hogar que su dueño dejó**
 
