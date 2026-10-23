@@ -9,6 +9,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 // perfil dev para que estas pruebas no arrastren el resto de la configuración de desarrollo.
 @SpringBootTest(properties = {
         "gastos.email.sender=console",
+        "gastos.email.console-allow-secrets=true",
         "gastos.jwt.secret=clave-de-pruebas-de-integracion-32+",
         "gastos.web.url=http://localhost:5173"
 })

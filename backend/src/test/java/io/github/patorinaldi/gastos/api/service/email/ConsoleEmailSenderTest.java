@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(OutputCaptureExtension.class)
 class ConsoleEmailSenderTest {
 
-    private final ConsoleEmailSender sender = new ConsoleEmailSender();
+    private final ConsoleEmailSender sender = new ConsoleEmailSender(true);
 
     @Test
     void writesRecipientSubjectAndBodyToLog(CapturedOutput output) {
@@ -26,5 +26,11 @@ class ConsoleEmailSenderTest {
         sender.send(new EmailMessage("ana@example.com", "Hola", "Primera linea\nINFO Cuenta verificada"));
 
         assertThat(output).contains("  | Primera linea", "  | INFO Cuenta verificada");
+    }
+
+    @Test
+    void acceptsSecretsOnlyWhenAllowed() {
+        assertThat(new ConsoleEmailSender(true).canSendSecrets()).isTrue();
+        assertThat(new ConsoleEmailSender(false).canSendSecrets()).isFalse();
     }
 }

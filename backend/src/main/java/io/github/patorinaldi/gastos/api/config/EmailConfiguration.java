@@ -25,7 +25,7 @@ class EmailConfiguration {
         }
 
         return switch (properties.sender()) {
-            case CONSOLE -> new ConsoleEmailSender();
+            case CONSOLE -> new ConsoleEmailSender(properties.consoleAllowSecrets());
         };
     }
 }

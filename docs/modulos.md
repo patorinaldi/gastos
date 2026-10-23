@@ -26,7 +26,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 
 | Módulo | Responsable | Estado |
 |---|---|---|
-| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, inicio de sesión, sesión, tokens de cliente máquina y restablecimiento de contraseña implementados; verificación de correo pendiente |
+| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, inicio de sesión, sesión, tokens de cliente máquina y restablecimiento de contraseña implementados; verificación de correo y pantallas del cliente web pendientes. El restablecimiento responde 503 en producción hasta que haya un proveedor de correo real |
 | M2 Hogares | Elian | Backend implementado, pantallas pendientes |
 | M3 Gastos | Elian | Pendiente |
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
@@ -76,10 +76,12 @@ POST /api/auth/password/forgot
   { "email": "ana@ejemplo.com" }
   → 202 sin cuerpo, exista o no la cuenta (CU-08, 1a)
   → 429 superado el límite de pedidos (RNF-32)
+  → 503 el envío de correos configurado no puede llevar el enlace (RNF-09)
 
 POST /api/auth/password/reset
   { "token": "...", "password": "..." }
-  → 204 contraseña cambiada; se cierran todas las sesiones del usuario (RNF-29)
+  → 204 contraseña cambiada; se cierran todas las sesiones del usuario (RNF-29), se revocan sus
+        tokens de cliente máquina y el correo queda verificado
   → 400 contraseña de menos de 8 caracteres o de más de 72 bytes; el enlace no se gasta
   → 410 enlace inexistente, vencido o ya usado (RN-03)
 ```
@@ -127,9 +129,20 @@ token y enviar el correo corren en segundo plano. Si corrieran dentro de la peti
 respuesta, que solo incluye el envío cuando la cuenta existe, o un error del proveedor de correo,
 revelarían qué correos están registrados. El enlace lleva el token en el fragmento
 (`/reset-password#token=...`), que el navegador no manda al servidor ni en el header `Referer`, y se
-arma con `WEB_URL`. El canje marca el token como usado con un update condicional, así que de dos
-canjes simultáneos solo uno cambia la contraseña; marca también como usados los demás enlaces que
-la persona haya pedido, e incrementa su versión de sesión. Los pedidos se limitan (RNF-32) a 5 por
+arma con `WEB_URL`. El canje bloquea primero al usuario y después marca el token como usado con un update
+condicional: de dos canjes simultáneos, del mismo enlace o de dos enlaces de la misma persona, solo
+uno cambia la contraseña, y el otro recibe `410`. Bloquear los tokens antes que al usuario dejaba a
+dos enlaces distintos esperándose entre sí. En la misma transacción marca como usados los demás
+enlaces que la persona haya pedido, incrementa su versión de sesión, revoca sus tokens de cliente
+máquina, que no vencen y pudieron emitirse con la contraseña comprometida, y da el correo por
+verificado, porque el enlace llegó a esa casilla: sin eso, una cuenta sin verificar quedaría con la
+contraseña nueva y el inicio de sesión rechazado igual (RN-02).
+
+El envío por consola escribe los correos en el log, y con ellos los enlaces de un solo uso. Por eso
+no acepta correos con tokens salvo que se habilite `gastos.email.console-allow-secrets`, como hacen
+el perfil dev y las pruebas. Un despliegue con `EMAIL_SENDER=console` responde `503` al pedido de
+restablecimiento hasta que haya un proveedor real. Los correos pendientes se envían antes de
+apagarse la aplicación (`spring.task.execution.shutdown`). Los pedidos se limitan (RNF-32) a 5 por
 correo y 20 por dirección por hora: cada pedido puede mandar un correo, y sin límite cualquiera
 podría llenar la casilla de otra persona. Se cuentan por el correo escrito, exista o no la cuenta,
 así que el `429` tampoco revela nada. El tope por correo permite que alguien le impida a otra

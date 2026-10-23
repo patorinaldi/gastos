@@ -5,9 +5,11 @@ import io.github.patorinaldi.gastos.api.domain.AuthToken;
 import io.github.patorinaldi.gastos.api.domain.AuthTokenPurpose;
 import io.github.patorinaldi.gastos.api.domain.User;
 import io.github.patorinaldi.gastos.api.repository.AuthTokenRepository;
+import io.github.patorinaldi.gastos.api.repository.MachineTokenRepository;
 import io.github.patorinaldi.gastos.api.repository.UserRepository;
 import io.github.patorinaldi.gastos.api.service.email.EmailMessage;
 import io.github.patorinaldi.gastos.api.service.email.EmailSender;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import org.slf4j.Logger;
@@ -31,9 +33,11 @@ public class PasswordResetService {
     private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
 
     private static final String PURPOSE = AuthTokenPurpose.PASSWORD_RESET.databaseValue();
+    private static final String VERIFICATION = AuthTokenPurpose.EMAIL_VERIFICATION.databaseValue();
 
     private final UserRepository users;
     private final AuthTokenRepository tokens;
+    private final MachineTokenRepository machineTokens;
     private final AuthTokenValues tokenValues;
     private final PasswordEncoder passwordEncoder;
     private final EmailSender emailSender;
@@ -44,6 +48,7 @@ public class PasswordResetService {
 
     public PasswordResetService(UserRepository users,
                                 AuthTokenRepository tokens,
+                                MachineTokenRepository machineTokens,
                                 AuthTokenValues tokenValues,
                                 PasswordEncoder passwordEncoder,
                                 EmailSender emailSender,
@@ -53,6 +58,7 @@ public class PasswordResetService {
                                 PlatformTransactionManager transactionManager) {
         this.users = users;
         this.tokens = tokens;
+        this.machineTokens = machineTokens;
         this.tokenValues = tokenValues;
         this.passwordEncoder = passwordEncoder;
         this.emailSender = emailSender;
@@ -71,10 +77,19 @@ public class PasswordResetService {
      * cuenta por el tiempo de respuesta, que solo incluye el envío cuando la cuenta existe, o por un
      * 500 que solo aparece si el proveedor de correo falla al enviar.
      *
+     * <p>Si el envío de correos no puede llevar tokens, como el de consola fuera de desarrollo, que
+     * los escribe en el log, el pedido se rechaza antes de contarlo: con el enlace en el log,
+     * cualquiera con acceso a él podría cambiar la contraseña de otra persona (RNF-09).
+     *
      * @param clientIp dirección del cliente, sin puerto, para el límite de pedidos
-     * @throws io.github.patorinaldi.gastos.api.service.limit.TooManyAttemptsException si se superó el límite de pedidos (RNF-32)
+     * @throws PasswordResetUnavailableException si el envío de correos no puede llevar el enlace
+     * @throws io.github.patorinaldi.gastos.api.service.limit.TooManyAttemptsException si se superó
+     *         el límite de pedidos (RNF-32)
      */
     public void requestReset(String email, String clientIp) {
+        if (!emailSender.canSendSecrets()) {
+            throw new PasswordResetUnavailableException();
+        }
         limiter.count(email, clientIp);
         executor.execute(() -> sendResetLink(email));
     }
@@ -116,8 +131,18 @@ public class PasswordResetService {
     }
 
     /**
-     * Cambia la contraseña con el token del enlace (CU-08, pasos 5 y 6). Cierra además todas las
-     * sesiones abiertas del usuario (RNF-29) y deja sin efecto los demás enlaces que haya pedido.
+     * Cambia la contraseña con el token del enlace (CU-08, pasos 5 y 6). Además, en la misma
+     * transacción:
+     *
+     * <ul>
+     *   <li>cierra todas las sesiones abiertas del usuario (RNF-29) y revoca sus tokens de cliente
+     *       máquina: quien restablece la contraseña suele sospechar que otra persona la tiene, y con
+     *       ella pudo haber emitido una automatización, que no vence;</li>
+     *   <li>deja sin efecto los demás enlaces de restablecimiento que haya pedido;</li>
+     *   <li>da el correo por verificado, porque el enlace llegó a esa casilla, y deja sin efecto los
+     *       enlaces de verificación pendientes. Sin esto, una cuenta sin verificar quedaría con la
+     *       contraseña nueva y el inicio de sesión rechazado igual (RN-02).</li>
+     * </ul>
      *
      * <p>El token se busca antes de correr bcrypt: un token inválido no cuesta más que una consulta.
      * bcrypt corre fuera de la transacción, por lo mismo que en el login: no retiene una conexión
@@ -134,14 +159,21 @@ public class PasswordResetService {
         String passwordHash = passwordEncoder.encode(newPassword);
 
         transactions.executeWithoutResult(status -> {
-            // Entre la búsqueda y acá, otro canje del mismo token pudo ganar.
+            // El usuario se bloquea primero, antes que cualquier token. Con dos enlaces distintos de la
+            // misma persona canjeados a la vez, cada canje tomaría el lock de su token y después
+            // esperaría el del otro para anularlo: Postgres abortaría uno con un deadlock. Así, el
+            // segundo espera acá y encuentra su token ya anulado por el primero.
+            User user = users.lockById(found.getUserId()).orElseThrow(ResetTokenUnavailableException::new);
+            // Entre la búsqueda y acá, otro canje pudo usar o anular este token.
             if (tokens.consume(found.getId()) == 0) {
                 throw new ResetTokenUnavailableException();
             }
-            User user = users.lockById(found.getUserId()).orElseThrow(ResetTokenUnavailableException::new);
             user.setPasswordHash(passwordHash);
+            user.setEmailVerified(true);
             user.invalidateSessions();
             tokens.consumeAll(user.getId(), PURPOSE);
+            tokens.consumeAll(user.getId(), VERIFICATION);
+            machineTokens.revokeAllActive(user.getId(), Instant.now());
         });
         log.info("Contraseña restablecida: usuario={}", found.getUserId());
     }

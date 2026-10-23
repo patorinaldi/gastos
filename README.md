@@ -202,7 +202,7 @@ La aplicación toma su configuración de las variables de entorno de App Service
 | `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD` | Rol con el que corren las migraciones (`gastos_admin`). Es dueño de la base y del esquema `public`, y tiene `CREATEROLE`, sin ser superusuario. |
 | `DB_API_USERNAME`, `DB_API_PASSWORD` | Rol con el que se conecta la aplicación (`gastos_api`). Lo crea la V2 en el primer arranque, con esta contraseña. |
 | `JWT_SECRET` | Clave de firma del token de sesión, de 32 caracteres o más |
-| `EMAIL_SENDER` | Implementación del envío de correos. Hoy solo existe `console`, que escribe los correos en el log: hay que reemplazarla por un proveedor real antes de habilitar el registro. |
+| `EMAIL_SENDER` | Implementación del envío de correos. Hoy solo existe `console`, que escribe los correos en el log: hay que reemplazarla por un proveedor real antes de habilitar el registro. Con `console` no se mandan correos con tokens, así que el restablecimiento de contraseña responde 503. |
 | `CORS_ALLOWED_ORIGINS` | Orígenes del cliente web, separados por coma. Vacía, ningún otro origen puede llamar a la API. |
 | `WEB_URL` | Dirección del cliente web, por ejemplo `https://gastos.pages.dev`. Con ella se arman los enlaces de los correos, como el de restablecimiento de contraseña. |
 | `WEBSITES_PORT` | `8080`, el puerto en el que escucha la aplicación |

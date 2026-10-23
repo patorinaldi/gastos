@@ -31,6 +31,6 @@ class EntityMappingTest extends IntegrationTest {
 
         assertThat(mapeadas).containsExactlyInAnyOrder(
                 "Household", "User", "Category", "CategoryRule", "Expense",
-                "HouseholdInvitation", "MachineToken");
+                "HouseholdInvitation", "MachineToken", "AuthToken");
     }
 }

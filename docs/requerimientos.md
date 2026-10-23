@@ -25,13 +25,13 @@ sacrificable), `Podría` (deseable).
 
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
-| RF-01 | El sistema debe permitir registrar un usuario con nombre, correo electrónico y contraseña. | Debe | Pendiente |
-| RF-02 | El sistema debe crear un hogar nuevo y asociar al usuario recién registrado como integrante, dentro de la misma transacción del alta. | Debe | Pendiente |
+| RF-01 | El sistema debe permitir registrar un usuario con nombre, correo electrónico y contraseña. | Debe | Implementado |
+| RF-02 | El sistema debe crear un hogar nuevo y asociar al usuario recién registrado como integrante, dentro de la misma transacción del alta. | Debe | Implementado |
 | RF-03 | El sistema debe enviar, al completarse el registro, un correo con un enlace de verificación que contiene un token de un solo uso. | Debe | Pendiente |
-| RF-04 | El sistema debe rechazar el inicio de sesión de una cuenta cuyo correo no fue verificado. | Debe | Pendiente |
-| RF-05 | El sistema debe autenticar a un usuario por correo y contraseña, y emitir un token de sesión que incluya el identificador de su hogar. | Debe | Pendiente |
-| RF-06 | El sistema debe permitir solicitar el restablecimiento de la contraseña mediante un token de un solo uso enviado por correo. | Debe | Pendiente |
-| RF-07 | El sistema debe permitir emitir y revocar tokens de larga duración para clientes automatizados, asociados a un hogar. | Debería | Pendiente |
+| RF-04 | El sistema debe rechazar el inicio de sesión de una cuenta cuyo correo no fue verificado. | Debe | Implementado |
+| RF-05 | El sistema debe autenticar a un usuario por correo y contraseña, y emitir un token de sesión que incluya el identificador de su hogar. | Debe | Implementado |
+| RF-06 | El sistema debe permitir solicitar el restablecimiento de la contraseña mediante un token de un solo uso enviado por correo. | Debe | Implementado |
+| RF-07 | El sistema debe permitir emitir y revocar tokens de larga duración para clientes automatizados, asociados a un hogar. | Debería | Implementado |
 
 ### M2. Hogares
 

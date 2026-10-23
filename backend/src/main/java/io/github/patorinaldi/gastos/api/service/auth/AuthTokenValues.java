@@ -1,8 +1,6 @@
 package io.github.patorinaldi.gastos.api.service.auth;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import io.github.patorinaldi.gastos.api.service.TokenHash;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.regex.Pattern;
@@ -37,10 +35,6 @@ public class AuthTokenValues {
 
     /** Hash SHA-256, 32 bytes. Es lo que se guarda y por lo que se busca. */
     public byte[] hash(String value) {
-        try {
-            return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.US_ASCII));
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 es obligatorio en toda JVM", ex);
-        }
+        return TokenHash.sha256(value);
     }
 }

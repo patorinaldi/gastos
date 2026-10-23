@@ -2,6 +2,8 @@
 gastos:
   email:
     sender: console
+    # En desarrollo los enlaces de los correos se leen del log.
+    console-allow-secrets: true
   jwt:
     # Solo para desarrollo local: cualquiera que lea el repositorio puede firmar tokens con ella.
     secret: clave-de-desarrollo-no-usar-en-produccion

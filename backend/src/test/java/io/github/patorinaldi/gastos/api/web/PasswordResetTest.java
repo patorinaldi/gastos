@@ -213,19 +213,71 @@ class PasswordResetTest extends AuthTestSupport {
         resetPassword(token, NEW_PASSWORD).andExpect(status().isNoContent());
     }
 
+    // RN-02: el enlace llegó a la casilla, así que la cuenta queda verificada y puede entrar.
+    @Test
+    void restablecerVerificaElCorreoDeUnaCuentaSinVerificar() throws Exception {
+        String correoSinVerificar = uniqueEmail("beto");
+        UUID beto = createUser(casa, correoSinVerificar, "Beto");
+        String verificacionPendiente = issue(beto, AuthTokenPurpose.EMAIL_VERIFICATION);
+
+        resetPassword(issue(beto, AuthTokenPurpose.PASSWORD_RESET), NEW_PASSWORD).andExpect(status().isNoContent());
+
+        login(correoSinVerificar, NEW_PASSWORD).andExpect(status().isOk());
+        assertThat(jdbcTemplate.queryForObject(
+                "select used_at is not null from auth_tokens where token_hash = ?",
+                Boolean.class, (Object) tokenValues.hash(verificacionPendiente)))
+                .as("el enlace de verificación pendiente queda sin efecto").isTrue();
+    }
+
+    // Una automatización emitida con la contraseña comprometida no vence: se revoca con las sesiones.
+    @Test
+    void restablecerRevocaLosTokensDeClienteMaquina() throws Exception {
+        jdbcTemplate.update("insert into machine_tokens (household_id, user_id, name, token_hash) values (?, ?, ?, ?)",
+                casa, ana, "Atajo del teléfono", tokenValues.hash(tokenValues.generate()));
+
+        resetPassword(issue(ana, AuthTokenPurpose.PASSWORD_RESET), NEW_PASSWORD).andExpect(status().isNoContent());
+
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from machine_tokens where user_id = ? and revoked_at is null", Integer.class, ana))
+                .isZero();
+    }
+
     // Un solo uso también con dos canjes a la vez: el update condicional deja pasar a uno.
     @Test
     void deDosCanjesSimultaneosDelMismoEnlaceSoloUnoCambiaLaContrasena() throws Exception {
         String token = issue(ana, AuthTokenPurpose.PASSWORD_RESET);
+
+        assertThat(simultaneousResets(token, token)).containsExactlyInAnyOrder(true, false);
+        assertThat(sessionVersion(ana)).isEqualTo(1);
+    }
+
+    // Dos enlaces distintos de la misma persona, a la vez: cada canje anula el enlace del otro.
+    // Bloqueando los tokens antes que al usuario, terminaban en un deadlock y uno respondía 500.
+    @Test
+    void deDosEnlacesDistintosCanjeadosALaVezUnoGanaYElOtroQuedaAnulado() throws Exception {
+        String primero = issue(ana, AuthTokenPurpose.PASSWORD_RESET);
+        String segundo = issue(ana, AuthTokenPurpose.PASSWORD_RESET);
+
+        assertThat(simultaneousResets(primero, segundo)).containsExactlyInAnyOrder(true, false);
+        assertThat(sessionVersion(ana)).isEqualTo(1);
+    }
+
+    // ── Ayudantes ───────────────────────────────────────────────────────────
+
+    /**
+     * Canjea los dos tokens a la vez, cada uno desde su hilo, y devuelve cuáles cambiaron la
+     * contraseña. Cualquier otra excepción, como un deadlock, hace fallar la prueba.
+     */
+    private List<Boolean> simultaneousResets(String first, String second) throws Exception {
         CyclicBarrier largada = new CyclicBarrier(2);
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
             List<Future<Boolean>> canjes = new ArrayList<>();
-            for (String password : List.of("contraseña-de-uno-1", "contraseña-de-otro-2")) {
+            for (String token : List.of(first, second)) {
                 canjes.add(pool.submit(() -> {
                     largada.await(5, TimeUnit.SECONDS);
                     try {
-                        passwordResetService.resetPassword(token, password);
+                        passwordResetService.resetPassword(token, "contraseña-simultanea-" + token.charAt(0));
                         return true;
                     } catch (ResetTokenUnavailableException e) {
                         return false;
@@ -236,16 +288,15 @@ class PasswordResetTest extends AuthTestSupport {
             for (Future<Boolean> canje : canjes) {
                 resultados.add(canje.get(WAIT_MS, TimeUnit.MILLISECONDS));
             }
-
-            assertThat(resultados).containsExactlyInAnyOrder(true, false);
+            return resultados;
         } finally {
             pool.shutdownNow();
         }
-        assertThat(jdbcTemplate.queryForObject("select session_version from users where id = ?", Integer.class, ana))
-                .isEqualTo(1);
     }
 
-    // ── Ayudantes ───────────────────────────────────────────────────────────
+    private int sessionVersion(UUID user) {
+        return jdbcTemplate.queryForObject("select session_version from users where id = ?", Integer.class, user);
+    }
 
     private ResultActions forgot(String address) throws Exception {
         return mockMvc.perform(post("/api/auth/password/forgot")
