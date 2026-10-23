@@ -2,48 +2,45 @@ package io.github.patorinaldi.gastos.api.web;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.patorinaldi.gastos.api.AuthTestSupport;
-import io.github.patorinaldi.gastos.api.service.auth.EmailAlreadyRegisteredException;
-import io.github.patorinaldi.gastos.api.service.auth.Registration;
-import io.github.patorinaldi.gastos.api.service.auth.RegistrationService;
+import io.github.patorinaldi.gastos.api.config.RegistrationLimitProperties;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.http.HttpHeaders.RETRY_AFTER;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Alta de cuenta (RF-01, RF-02, CU-01, HU-01).
+ * Alta de cuenta por HTTP (RF-01, RF-02, CU-01, HU-01, RNF-31).
  *
  * <p>Lo que importa no es solo que responda 201, sino que el alta deje las tres cosas que RN-11
- * exige juntas —usuario, hogar y catálogo— y ninguna de más cuando falla.
+ * exige juntas —usuario, hogar y catálogo—. Que no deje nada cuando falla, y la carrera entre dos
+ * altas, se prueban sobre el servicio en {@code RegistrationServiceTest}: por HTTP, la comprobación
+ * previa del correo frena el segundo intento antes de que haya nada que revertir.
  */
 class RegisterTest extends AuthTestSupport {
 
     private static final String CONTRASENA = "contrasena-de-prueba";
 
     @Autowired
-    private RegistrationService registrationService;
+    private RegistrationLimitProperties limits;
 
     private final List<UUID> households = new ArrayList<>();
-    private final ExecutorService hilos = Executors.newFixedThreadPool(2);
 
     @AfterEach
     void limpiar() {
-        hilos.shutdownNow();
         households.forEach(this::deleteHousehold);
     }
 
@@ -77,6 +74,18 @@ class RegisterTest extends AuthTestSupport {
         assertThat(ruleCount(householdId)).isPositive();
     }
 
+    // El índice único no distingue mayúsculas, así que no hace falta guardar el correo en
+    // minúsculas, y se le devuelve a la persona como lo escribió.
+    @Test
+    void elCorreoSeGuardaComoLoEscribioLaPersona() throws Exception {
+        String email = "Ana-" + UUID.randomUUID() + "@Ejemplo.TEST";
+
+        UUID userId = registerAndRecord("Ana", email);
+
+        assertThat(jdbcTemplate.queryForObject("select email from users where id = ?", String.class, userId))
+                .isEqualTo(email);
+    }
+
     // RN-02: el alta no habilita la cuenta. El 403 también comprueba que el hash guardado sirve,
     // porque la contraseña ya se validó para llegar hasta ahí.
     @Test
@@ -100,53 +109,6 @@ class RegisterTest extends AuthTestSupport {
                 .andExpect(jsonPath("$.detail").exists());
     }
 
-    // El alta rechazada no puede dejar el hogar creado: sería un hogar sin ningún integrante.
-    @Test
-    void unAltaRechazadaNoDejaHogarHuerfano() throws Exception {
-        String email = uniqueEmail("ana");
-        String nombre = "Ana " + UUID.randomUUID();
-        registerAndRecord(nombre, email);
-
-        register(nombre, email, CONTRASENA).andExpect(status().isConflict());
-
-        assertThat(householdCount(nombre)).isEqualTo(1);
-    }
-
-    /**
-     * Dos altas simultáneas con el mismo correo (RN-01). La comprobación previa no alcanza: las dos
-     * pueden pasarla antes de que cualquiera inserte, y ahí decide el índice único. El resultado
-     * tiene que ser el mismo por los dos caminos, así que la prueba no mira cuál actuó.
-     */
-    @Test
-    void dosAltasSimultaneasConElMismoCorreoDejanUnaSolaCuenta() throws Exception {
-        String email = uniqueEmail("ana");
-        String nombre = "Ana " + UUID.randomUUID();
-
-        Callable<Object> alta = () -> {
-            try {
-                return registrationService.register(nombre, email, CONTRASENA);
-            } catch (EmailAlreadyRegisteredException rechazada) {
-                return rechazada;
-            }
-        };
-        Future<Object> primera = hilos.submit(alta);
-        Future<Object> segunda = hilos.submit(alta);
-        List<Object> resultados = List.of(primera.get(), segunda.get());
-
-        List<Registration> altas = resultados.stream()
-                .filter(Registration.class::isInstance)
-                .map(Registration.class::cast)
-                .toList();
-        altas.forEach(registration -> recordHousehold(registration.householdId()));
-
-        assertThat(altas).hasSize(1);
-        assertThat(resultados).hasAtLeastOneElementOfType(EmailAlreadyRegisteredException.class);
-        assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from users where upper(email) = upper(?)", Integer.class, email))
-                .isEqualTo(1);
-        assertThat(householdCount(nombre)).isEqualTo(1);
-    }
-
     @Test
     void unaContrasenaCortaResponde400() throws Exception {
         register("Ana", uniqueEmail("ana"), "corta").andExpect(status().isBadRequest());
@@ -157,10 +119,52 @@ class RegisterTest extends AuthTestSupport {
         register("Ana", "ana-arroba-nada", CONTRASENA).andExpect(status().isBadRequest());
     }
 
+    // Postgres no puede guardar el carácter nulo en un texto. Sin la validación del nombre, llegaría
+    // al insert y volvería como error interno. El escape va doblado: lo que viaja en el JSON es la
+    // secuencia \u0000, que Jackson convierte en el carácter.
+    @Test
+    void unNombreConCaracteresDeControlResponde400() throws Exception {
+        register("Ana\\u0000", uniqueEmail("ana"), CONTRASENA).andExpect(status().isBadRequest());
+    }
+
+    /**
+     * RNF-31: superado el tope por dirección, el alta se rechaza con 429 y sin tocar la base. Cuentan
+     * todos los intentos, también los que terminan en 409: lo que se limita es el sondeo, y repetir un
+     * correo conocido es la forma de sondear.
+     */
+    @Test
+    void superadoElTopeDeAltasPorDireccionRespondeTooManyRequests() throws Exception {
+        RequestPostProcessor mismaDireccion = fromNewAddress();
+        String email = uniqueEmail("ana");
+        String body = register("Ana", email, CONTRASENA, mismaDireccion)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        recordHousehold(UUID.fromString(JsonPath.read(body, "$.householdId")));
+
+        // El primero ya contó: el resto del tope se agota con correos repetidos, que no corren bcrypt.
+        for (int intento = 2; intento <= limits.maxPerIp(); intento++) {
+            register("Ana", email, CONTRASENA, mismaDireccion).andExpect(status().isConflict());
+        }
+
+        String otroCorreo = uniqueEmail("beto");
+        register("Beto", otroCorreo, CONTRASENA, mismaDireccion)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists(RETRY_AFTER));
+        // El alta rechazada por el límite no creó nada.
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from users where upper(email) = upper(?)", Integer.class, otroCorreo))
+                .isZero();
+    }
+
     // ------------------------------------------------------------------
 
     private ResultActions register(String name, String email, String password) throws Exception {
-        return mockMvc.perform(registerRequest(name, email, password));
+        return register(name, email, password, fromNewAddress());
+    }
+
+    private ResultActions register(String name, String email, String password, RequestPostProcessor from)
+            throws Exception {
+        return mockMvc.perform(registerRequest(name, email, password).with(from));
     }
 
     private MockHttpServletRequestBuilder registerRequest(String name, String email, String password) {
@@ -192,11 +196,5 @@ class RegisterTest extends AuthTestSupport {
     private Integer ruleCount(UUID householdId) {
         return withHousehold(householdId, () -> jdbcTemplate.queryForObject(
                 "select count(*) from category_rules", Integer.class));
-    }
-
-    // households no tiene RLS: se cuenta por el nombre, que la prueba hace único.
-    private Integer householdCount(String name) {
-        return jdbcTemplate.queryForObject(
-                "select count(*) from households where name = ?", Integer.class, "Casa de " + name);
     }
 }

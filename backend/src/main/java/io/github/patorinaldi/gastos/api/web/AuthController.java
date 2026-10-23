@@ -41,19 +41,22 @@ class AuthController {
         this.registrationService = registrationService;
     }
 
+    // getRemoteAddr es la dirección del cliente y no la del proxy de Azure porque
+    // server.forward-headers-strategy la toma de X-Forwarded-For. Sin eso, todos los intentos
+    // parecerían llegar desde el proxy y compartirían el límite por dirección. Vale para el alta y
+    // para el login.
+
     /** RF-01. La cuenta queda creada pero sin verificar: todavía no puede iniciar sesión (RN-02). */
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
+    RegisterResponse register(@Valid @RequestBody RegisterRequest request, HttpServletRequest http) {
+        String clientIp = ClientAddress.withoutPort(http.getRemoteAddr());
         Registration registration =
-                registrationService.register(request.name(), request.email(), request.password());
+                registrationService.register(request.name(), request.email(), request.password(), clientIp);
         return new RegisterResponse(
                 registration.userId(), registration.householdId(), registration.emailVerified());
     }
 
-    // getRemoteAddr es la dirección del cliente y no la del proxy de Azure porque
-    // server.forward-headers-strategy la toma de X-Forwarded-For. Sin eso, todos los intentos
-    // parecerían llegar desde el proxy y compartirían el límite por dirección.
     @PostMapping("/login")
     LoginResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         String clientIp = ClientAddress.withoutPort(http.getRemoteAddr());

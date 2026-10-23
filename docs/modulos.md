@@ -63,6 +63,7 @@ POST /api/auth/register
   { "name": "Ana", "email": "ana@ejemplo.com", "password": "..." }
   → 201 { "userId": "...", "householdId": "...", "emailVerified": false }
   → 409 si el correo ya está registrado (RN-01)
+  → 429 superado el límite de altas por dirección (RNF-31)
 
 POST /api/auth/login
   { "email": "ana@ejemplo.com", "password": "..." }
@@ -85,6 +86,15 @@ migración V6). Esa misma consulta por petición la compara con la vigente, y si
 el token: incrementar la versión invalida de una vez todas las sesiones del usuario, en todos sus
 dispositivos. Es lo que hace el restablecimiento de contraseña (RNF-29). Cerrar sesión en un solo
 dispositivo es descartar el token del lado del cliente.
+
+El alta de cuenta tiene su propio límite por dirección (RNF-31): 20 por hora. A diferencia del de
+login, **cuentan todos los intentos**, también los que terminan bien, porque lo que se limita es el
+alta en sí y no hay una contraseña que acertar. Hace falta por dos motivos: cada alta que llega a
+correr bcrypt cuesta del orden de 100 ms de procesador, y el 409 de un correo ya registrado es parte
+del contrato y no se puede callar, así que el alta permite averiguar qué correos tienen cuenta. El
+límite no lo impide, lo encarece. No hay contador por correo: repetir un correo solo devuelve 409, y
+bloquearlo le permitiría a un tercero dejar sin alta a su dueño. El orden dentro del alta va de lo
+barato a lo caro: el límite, la comprobación de que el correo esté libre, y recién al final bcrypt.
 
 El límite de intentos de login (RNF-06) cuenta en memoria, en tres contadores de ventana fija:
 el correo desde cada dirección IP, la dirección con cualquier correo y el correo desde cualquier

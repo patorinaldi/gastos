@@ -6,10 +6,6 @@ import io.github.patorinaldi.gastos.api.service.limit.AddressKey;
 import io.github.patorinaldi.gastos.api.service.limit.AttemptCounter;
 import io.github.patorinaldi.gastos.api.service.limit.PendingAttempt;
 import io.github.patorinaldi.gastos.api.service.limit.TooManyAttemptsException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,22 +70,13 @@ public class LoginAttemptLimiter {
         PendingAttempt attempt = PendingAttempt.start(
                 byEmailAndIp.slot(pairKey, () -> log.warn(
                         "Límite de intentos de login por correo y dirección: correo={} ip={}",
-                        hash(emailKey), ipKey)),
+                        LogHash.of(emailKey), ipKey)),
                 byIp.slot(ipKey, () -> log.warn(
                         "Límite de intentos de login por dirección: ip={}", ipKey)),
                 byEmail.slot(emailKey, () -> log.warn(
                         "Límite de intentos de login por correo, desde cualquier dirección: correo={}",
-                        hash(emailKey))));
+                        LogHash.of(emailKey))));
         return new Attempt(attempt);
-    }
-
-    private static String hash(String value) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest, 0, 8);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 es obligatorio en toda JVM", e);
-        }
     }
 
     /**

@@ -5,7 +5,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionExecution;
 import org.springframework.transaction.TransactionExecutionListener;
@@ -19,10 +18,10 @@ public class HouseholdTransactionListener implements TransactionExecutionListene
 
     private static final Logger log = LoggerFactory.getLogger(HouseholdTransactionListener.class);
 
-    private final JdbcTemplate jdbcTemplate;
+    private final HouseholdContext householdContext;
 
-    public HouseholdTransactionListener(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public HouseholdTransactionListener(HouseholdContext householdContext) {
+        this.householdContext = householdContext;
     }
 
     @Override
@@ -38,9 +37,7 @@ public class HouseholdTransactionListener implements TransactionExecutionListene
         }
 
         try {
-            jdbcTemplate.queryForObject(
-                    "select set_config('app.current_household', ?, true)",
-                    String.class, household.get().toString());
+            householdContext.bind(household.get());
         } catch (DataAccessException ex) {
             // Lanzar desde acá dejaría la transacción abierta y asociada al hilo. Se marca
             // para rollback; Postgres además ya la dejó abortada, así que la próxima

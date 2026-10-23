@@ -77,6 +77,11 @@ gastos:
     max-failures-per-user: 10
     max-failures-per-ip: 50
     max-active-per-household: 10
+  # Límite de altas de cuenta por dirección IP (RNF-31). Cuentan todos los intentos que llegan al
+  # alta, no solo los fallidos. Ver RegistrationAttemptLimiter.
+  registration-limit:
+    window: 1h
+    max-per-ip: 20
   # Orígenes del cliente web, separados por coma. Vacío: ningún otro origen puede llamar a la API.
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}

@@ -3,6 +3,7 @@ package io.github.patorinaldi.gastos.api.web.dto;
 import io.github.patorinaldi.gastos.api.web.dto.validation.MaxUtf8Bytes;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.UUID;
@@ -27,9 +28,16 @@ public final class AuthContracts {
     private AuthContracts() {
     }
 
-    /** El alta crea también el hogar y siembra su catálogo, en una sola transacción (RN-11). */
+    /**
+     * El alta crea también el hogar y siembra su catálogo, en una sola transacción (RN-11).
+     *
+     * <p>El nombre no admite caracteres de control. Postgres no puede guardar el carácter nulo en un
+     * texto, y sin este control un nombre con uno llegaría al insert y volvería como error interno.
+     */
     public record RegisterRequest(
-            @NotBlank @Size(max = 200) String name,
+            @NotBlank @Size(max = 200)
+            @Pattern(regexp = "[^\\p{Cntrl}]*", message = "no puede contener caracteres de control")
+            String name,
             @NotBlank @Email @Size(max = 320) String email,
             @NotBlank @Size(min = 8) @MaxUtf8Bytes(BCRYPT_MAX_BYTES) String password) {
     }
