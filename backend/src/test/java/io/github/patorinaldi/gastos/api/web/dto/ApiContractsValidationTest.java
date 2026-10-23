@@ -136,6 +136,22 @@ class ApiContractsValidationTest {
                 .contains("email");
     }
 
+    // Postgres no puede guardar el carácter nulo en un texto: sin este control, un nombre con uno
+    // llegaría al insert y volvería como error interno.
+    @Test
+    void aNameWithControlCharactersIsRejected() {
+        assertThat(validate(new RegisterRequest("Ana\0", "ana@ejemplo.com", "contrasena-larga")))
+                .contains("name");
+        assertThat(validate(new RegisterRequest("Ana\nPerez", "ana@ejemplo.com", "contrasena-larga")))
+                .contains("name");
+    }
+
+    @Test
+    void aNameWithAccentsAndSpacesIsAccepted() {
+        assertThat(validate(new RegisterRequest("María José Núñez", "ana@ejemplo.com", "contrasena-larga")))
+                .isEmpty();
+    }
+
     // 72 caracteres ASCII son 72 bytes: es lo máximo que bcrypt lee, y entra justo.
     @Test
     void aPasswordOfSeventyTwoAsciiCharactersIsAccepted() {
