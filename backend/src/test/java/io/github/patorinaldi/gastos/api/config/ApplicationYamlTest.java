@@ -1,5 +1,6 @@
 package io.github.patorinaldi.gastos.api.config;
 
+import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -30,7 +31,8 @@ class ApplicationYamlTest {
                 .withPropertyValues(
                         "EMAIL_SENDER=console",
                         "JWT_SECRET=una-clave-de-treinta-y-dos-caracteres",
-                        "CORS_ALLOWED_ORIGINS=https://gastos.ejemplo,https://otro.ejemplo")
+                        "CORS_ALLOWED_ORIGINS=https://gastos.ejemplo,https://otro.ejemplo",
+                        "WEB_URL=https://gastos.ejemplo")
                 .run(context -> {
                     assertThat(context.getBean(EmailProperties.class).sender())
                             .isEqualTo(EmailProperties.Sender.CONSOLE);
@@ -38,6 +40,8 @@ class ApplicationYamlTest {
                             .isEqualTo("una-clave-de-treinta-y-dos-caracteres");
                     assertThat(context.getBean(CorsProperties.class).allowedOrigins())
                             .isEqualTo(List.of("https://gastos.ejemplo", "https://otro.ejemplo"));
+                    assertThat(context.getBean(WebUrlProperties.class).url())
+                            .isEqualTo(URI.create("https://gastos.ejemplo"));
                 });
     }
 
@@ -47,14 +51,30 @@ class ApplicationYamlTest {
     void sinEmailSenderLaAplicacionNoArranca() {
         contextRunner
                 .withUserConfiguration(EmailConfiguration.class)
-                .withPropertyValues("JWT_SECRET=una-clave-de-treinta-y-dos-caracteres")
+                .withPropertyValues(
+                        "JWT_SECRET=una-clave-de-treinta-y-dos-caracteres",
+                        "WEB_URL=https://gastos.ejemplo")
                 .run(context -> assertThat(context)
                         .hasFailed()
                         .getFailure()
                         .hasStackTraceContaining("EMAIL_SENDER"));
     }
 
-    @EnableConfigurationProperties({EmailProperties.class, JwtProperties.class, CorsProperties.class})
+    // Sin WEB_URL tampoco: los enlaces de los correos no apuntarían al cliente web.
+    @Test
+    void sinWebUrlLaAplicacionNoArranca() {
+        contextRunner
+                .withPropertyValues(
+                        "EMAIL_SENDER=console",
+                        "JWT_SECRET=una-clave-de-treinta-y-dos-caracteres")
+                .run(context -> assertThat(context)
+                        .hasFailed()
+                        .getFailure()
+                        .hasStackTraceContaining("gastos.web"));
+    }
+
+    @EnableConfigurationProperties({
+            EmailProperties.class, JwtProperties.class, CorsProperties.class, WebUrlProperties.class})
     static class PropertiesConfiguration {
     }
 }

@@ -1,7 +1,9 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ForgotPasswordRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.RegisterRequest;
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ResetPasswordRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.CreateExpenseRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.ExpenseFilterRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.UpdateExpenseRequest;
@@ -177,6 +179,25 @@ class ApiContractsValidationTest {
     @Test
     void aShortPasswordIsNotRejectedAtLogin() {
         assertThat(validate(new LoginRequest("ana@ejemplo.com", "corta"))).isEmpty();
+    }
+
+    @Test
+    void anOversizedEmailIsRejectedWhenAskingForAReset() {
+        String email = "a".repeat(310) + "@ejemplo.com";
+
+        assertThat(validate(new ForgotPasswordRequest(email))).contains("email");
+    }
+
+    // El token se hashea antes de buscarlo, igual que un código de invitación: lleva tope.
+    @Test
+    void anOversizedResetTokenIsRejected() {
+        assertThat(validate(new ResetPasswordRequest("t".repeat(65), "contrasena-larga")))
+                .contains("token");
+    }
+
+    @Test
+    void aResetWithAShortPasswordIsRejected() {
+        assertThat(validate(new ResetPasswordRequest("t".repeat(43), "corta"))).contains("password");
     }
 
     // ── Hogares ─────────────────────────────────────────────────────────────

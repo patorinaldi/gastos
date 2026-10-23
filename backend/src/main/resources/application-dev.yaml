@@ -8,3 +8,5 @@ gastos:
   cors:
     # Servidor de desarrollo de Vite.
     allowed-origins: http://localhost:5173
+  web:
+    url: http://localhost:5173

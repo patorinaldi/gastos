@@ -204,9 +204,10 @@ La aplicación toma su configuración de las variables de entorno de App Service
 | `JWT_SECRET` | Clave de firma del token de sesión, de 32 caracteres o más |
 | `EMAIL_SENDER` | Implementación del envío de correos. Hoy solo existe `console`, que escribe los correos en el log: hay que reemplazarla por un proveedor real antes de habilitar el registro. |
 | `CORS_ALLOWED_ORIGINS` | Orígenes del cliente web, separados por coma. Vacía, ningún otro origen puede llamar a la API. |
+| `WEB_URL` | Dirección del cliente web, por ejemplo `https://gastos.pages.dev`. Con ella se arman los enlaces de los correos, como el de restablecimiento de contraseña. |
 | `WEBSITES_PORT` | `8080`, el puerto en el que escucha la aplicación |
 
-Si falta `EMAIL_SENDER` o `JWT_SECRET`, la aplicación no arranca, a propósito. Cada variable se
+Si falta `EMAIL_SENDER`, `JWT_SECRET` o `WEB_URL`, la aplicación no arranca, a propósito. Cada variable se
 mapea de forma explícita en `application.yaml`: una variable que no esté mapeada ahí no la lee
 nadie, aunque esté definida en App Service.
 
