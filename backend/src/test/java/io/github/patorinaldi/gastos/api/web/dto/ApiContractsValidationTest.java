@@ -1,5 +1,6 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.CreateMachineTokenRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ForgotPasswordRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.RegisterRequest;
@@ -179,6 +180,13 @@ class ApiContractsValidationTest {
     @Test
     void aShortPasswordIsNotRejectedAtLogin() {
         assertThat(validate(new LoginRequest("ana@ejemplo.com", "corta"))).isEmpty();
+    }
+
+    // Como el nombre del alta: un NUL llegaría a la base y volvería como 500.
+    @Test
+    void aMachineTokenNameWithControlCharactersIsRejected() {
+        assertThat(validate(new CreateMachineTokenRequest("Atajo\u0000"))).contains("name");
+        assertThat(validate(new CreateMachineTokenRequest("Atajo del teléfono"))).isEmpty();
     }
 
     @Test

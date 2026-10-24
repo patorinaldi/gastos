@@ -1,0 +1,104 @@
+package io.github.patorinaldi.gastos.api.service.auth;
+
+import io.github.patorinaldi.gastos.api.config.MachineTokenLimitProperties;
+import io.github.patorinaldi.gastos.api.domain.MachineToken;
+import io.github.patorinaldi.gastos.api.domain.User;
+import io.github.patorinaldi.gastos.api.repository.MachineTokenRepository;
+import io.github.patorinaldi.gastos.api.repository.UserRepository;
+import io.github.patorinaldi.gastos.api.security.AuthenticatedUser;
+import java.time.Clock;
+import java.util.List;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Tokens de cliente máquina (RF-07, HU-17): los emite y los revoca la persona, desde su sesión. Con
+ * uno, una automatización carga gastos en su hogar a su nombre por la API de integración (M6), y
+ * solo ahí: el resto de la API exige sesión.
+ *
+ * <p>Cada persona ve y revoca solo los suyos, aunque comparta hogar: un token es una credencial de
+ * quien lo emitió, y los gastos que carga quedan a su nombre.
+ */
+@Service
+public class MachineTokenService {
+
+    private static final Logger log = LoggerFactory.getLogger(MachineTokenService.class);
+
+    private final MachineTokenRepository tokens;
+    private final UserRepository users;
+    private final MachineTokenValues values;
+    private final MachineTokenLimitProperties limits;
+    private final Clock clock;
+
+    public MachineTokenService(MachineTokenRepository tokens,
+                               UserRepository users,
+                               MachineTokenValues values,
+                               MachineTokenLimitProperties limits,
+                               Clock clock) {
+        this.tokens = tokens;
+        this.users = users;
+        this.values = values;
+        this.limits = limits;
+        this.clock = clock;
+    }
+
+    /**
+     * Emite un token para el hogar actual de la persona y devuelve su valor en claro, que no se puede
+     * volver a obtener.
+     *
+     * <p>La fila del usuario se bloquea primero, igual que en el canje de invitaciones. Así una
+     * emisión y un cambio de hogar simultáneos no se cruzan: o el token se emite antes y el canje lo
+     * revoca, o se emite después, ya para el hogar nuevo. El hogar sale de esa fila bloqueada y no de
+     * la sesión, que se leyó antes. El bloqueo también serializa dos emisiones de la misma persona,
+     * para que no pasen las dos el tope con un lugar libre.
+     *
+     * @throws TooManyActiveMachineTokensException si ya tiene el máximo vigente (RNF-33)
+     */
+    @Transactional
+    public IssuedMachineToken issue(AuthenticatedUser principal, String name) {
+        User user = users.lockById(principal.userId()).orElseThrow(InvalidSessionException::new);
+        UUID household = user.getHouseholdId();
+        long active = tokens.countByUserIdAndHouseholdIdAndRevokedAtIsNull(user.getId(), household);
+        if (active >= limits.maxActivePerUser()) {
+            log.info("Token de cliente máquina rechazado para el usuario {}: ya tiene {} vigentes", user.getId(), active);
+            throw new TooManyActiveMachineTokensException(limits.maxActivePerUser());
+        }
+
+        String token = values.generate();
+        // saveAndFlush: la fecha de creación se completa al insertar, y va en la respuesta.
+        MachineToken saved = tokens.saveAndFlush(new MachineToken(household, user.getId(), name.strip(), values.hash(token)));
+        log.info("Token de cliente máquina {} emitido por el usuario {} para el hogar {}",
+                saved.getId(), user.getId(), household);
+        return new IssuedMachineToken(saved.getId(), saved.getName(), token, saved.getCreatedAt());
+    }
+
+    /** Los tokens de la persona en su hogar actual, vigentes y revocados, del más nuevo al más viejo. */
+    @Transactional(readOnly = true)
+    public List<MachineTokenView> list(AuthenticatedUser principal) {
+        return tokens.findByUserIdAndHouseholdIdOrderByCreatedAtDescIdAsc(principal.userId(), principal.householdId())
+                .stream()
+                .map(t -> new MachineTokenView(t.getId(), t.getName(), t.getCreatedAt(), t.getLastUsedAt(), t.getRevokedAt()))
+                .toList();
+    }
+
+    /**
+     * Revoca uno de los tokens de la persona. Revocar uno ya revocado no hace nada y no es un error:
+     * el resultado que se pidió ya se cumple. Las capturas que lleguen con él se rechazan desde ahora,
+     * y la sesión web sigue activa (HU-17).
+     *
+     * @throws MachineTokenNotFoundException si el token no existe o es de otra persona
+     */
+    @Transactional
+    public void revoke(AuthenticatedUser principal, UUID tokenId) {
+        if (tokens.revoke(tokenId, principal.userId(), clock.instant()) > 0) {
+            log.info("Token de cliente máquina {} revocado por el usuario {}", tokenId, principal.userId());
+            return;
+        }
+        if (!tokens.existsByIdAndUserId(tokenId, principal.userId())) {
+            throw new MachineTokenNotFoundException();
+        }
+    }
+}
