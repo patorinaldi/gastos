@@ -66,11 +66,11 @@ public final class AuthContracts {
     }
 
     /** La respuesta es la misma exista o no el correo, para no permitir enumerar cuentas (RN-03). */
-    public record ForgotPasswordRequest(@NotBlank @Email String email) {
+    public record ForgotPasswordRequest(@NotBlank @Email @Size(max = 320) String email) {
     }
 
     public record ResetPasswordRequest(
-            @NotBlank String token,
+            @NotBlank @Size(max = 64) String token,
             @NotBlank @Size(min = 8) @MaxUtf8Bytes(BCRYPT_MAX_BYTES) String password) {
     }
 

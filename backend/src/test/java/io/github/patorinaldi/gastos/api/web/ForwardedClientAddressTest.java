@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "gastos.email.sender=console",
         "gastos.jwt.secret=clave-de-pruebas-de-integracion-32+",
+        "gastos.web.url=http://localhost:5173",
         "server.tomcat.remoteip.internal-proxies=127\\.0\\.0\\.1"
 })
 @Import(ContainersConfig.class)

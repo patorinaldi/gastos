@@ -18,6 +18,14 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  # Los correos se envían en segundo plano (ver PasswordResetService). Al apagarse, la aplicación
+  # espera a que salgan los pendientes: si no, un reinicio o un despliegue los descartaría sin
+  # aviso, después de haberle respondido 202 a quien los pidió.
+  task:
+    execution:
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
 
 # Solo /actuator/health queda expuesto, y sin detalle de componentes: el detalle
 # revela nombres de host, esquemas y estado interno de las dependencias.
@@ -52,6 +60,8 @@ server:
 # fallar al arrancar y no quedar registrando tokens. En desarrollo la fija el perfil dev
 # (application-dev.yaml) y en las pruebas de integración, IntegrationTest.
 #
+# WEB_URL, la dirección del cliente web para los enlaces de los correos, también.
+#
 # La clave de firma del token de sesión sigue el mismo criterio: vacía si falta JWT_SECRET, y
 # JwtProperties rechaza el arranque con una clave vacía o corta (RNF-07).
 #
@@ -82,6 +92,15 @@ gastos:
   registration-limit:
     window: 1h
     max-per-ip: 20
+  # Límite de pedidos de restablecimiento de contraseña (RNF-32). Ver PasswordResetLimiter.
+  password-reset-limit:
+    window: 1h
+    max-per-email: 5
+    max-per-ip: 20
+  # Dirección del cliente web, para los enlaces de los correos. Sin valor por defecto, como
+  # EMAIL_SENDER: un despliegue que no la defina no arranca, en lugar de mandar enlaces a localhost.
+  web:
+    url: ${WEB_URL:}
   # Orígenes del cliente web, separados por coma. Vacío: ningún otro origen puede llamar a la API.
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}

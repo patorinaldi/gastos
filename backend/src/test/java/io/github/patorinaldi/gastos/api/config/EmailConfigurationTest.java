@@ -19,6 +19,17 @@ class EmailConfigurationTest {
                 .run(context -> assertThat(context).getBean(EmailSender.class).isInstanceOf(ConsoleEmailSender.class));
     }
 
+    // Lo que pasa en un despliegue con EMAIL_SENDER=console: no puede mandar enlaces de un solo uso.
+    @Test
+    void theConsoleSenderRefusesSecretsUnlessAllowed() {
+        contextRunner
+                .withPropertyValues("gastos.email.sender=console")
+                .run(context -> assertThat(context.getBean(EmailSender.class).canSendSecrets()).isFalse());
+        contextRunner
+                .withPropertyValues("gastos.email.sender=console", "gastos.email.console-allow-secrets=true")
+                .run(context -> assertThat(context.getBean(EmailSender.class).canSendSecrets()).isTrue());
+    }
+
     @Test
     void doesNotStartWithoutTheProperty() {
         contextRunner.run(context -> assertThat(context)

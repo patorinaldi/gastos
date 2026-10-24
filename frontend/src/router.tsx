@@ -9,6 +9,7 @@ import { LoginPage } from './pages/LoginPage.tsx'
 import { NewExpensePage } from './pages/NewExpensePage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { RegisterPage } from './pages/RegisterPage.tsx'
+import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
 
 // El catálogo del sistema de diseño solo existe en desarrollo. Se carga con un import dinámico
 // dentro de la rama de desarrollo: en el build de producción la rama desaparece, y con ella la
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

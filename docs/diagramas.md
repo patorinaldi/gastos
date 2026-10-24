@@ -774,7 +774,7 @@ flowchart TB
 | Nodo | Artefacto | Configuración |
 |---|---|---|
 | Cloudflare Pages | Build estático de `frontend/` (`npm run build`) | `VITE_API_URL`, fijada en el momento del build. Un build de producción sin ella falla al cargar. |
-| Servicio de aplicaciones | Jar ejecutable de `backend/` (`./mvnw package`) | `DB_URL`, `DB_API_USERNAME`, `DB_API_PASSWORD`, `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD`, `EMAIL_SENDER`. La rama de autenticación suma `JWT_SECRET` y `CORS_ALLOWED_ORIGINS`. |
+| Servicio de aplicaciones | Jar ejecutable de `backend/` (`./mvnw package`) | `DB_URL`, `DB_API_USERNAME`, `DB_API_PASSWORD`, `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD`, `EMAIL_SENDER`. La rama de autenticación suma `JWT_SECRET` y `CORS_ALLOWED_ORIGINS`, y el restablecimiento de contraseña, `WEB_URL`. |
 | PostgreSQL gestionado | Esquema creado por las migraciones V1 a V5 | Copias de seguridad automáticas del proveedor (RNF-20) y conexión cifrada. |
 
 Ningún secreto se versiona. Todos se inyectan como variables de entorno del servicio (RNF-07). Si

@@ -30,6 +30,14 @@ public interface MachineTokenRepository extends JpaRepository<MachineToken, UUID
     int revokeActive(UUID userId, UUID householdId, Instant at);
 
     /**
+     * Revoca todos los tokens vigentes de un usuario, en cualquier hogar: al restablecer su
+     * contraseña. Devuelve cuántos revocó.
+     */
+    @Modifying
+    @Query("update MachineToken t set t.revokedAt = ?2 where t.userId = ?1 and t.revokedAt is null")
+    int revokeAllActive(UUID userId, Instant at);
+
+    /**
      * El token con ese hash, junto con el hogar actual de su dueño y si sigue activo, en una sola
      * consulta. Corre en cada petición de un cliente máquina, por el índice único
      * machine_tokens_token_hash_key. Ninguna de las tres tablas tiene RLS, así que funciona antes

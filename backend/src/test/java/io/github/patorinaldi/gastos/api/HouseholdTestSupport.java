@@ -109,6 +109,9 @@ public abstract class HouseholdTestSupport extends IntegrationTest {
                 "delete from machine_tokens where household_id = ?"
                         + " or user_id in (select id from users where household_id = ?)",
                 household, household);
+        jdbcTemplate.update(
+                "delete from auth_tokens where user_id in (select id from users where household_id = ?)",
+                household);
         jdbcTemplate.update("delete from users where household_id = ?", household);
         jdbcTemplate.update("delete from households where id = ?", household);
     }

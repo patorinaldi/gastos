@@ -25,13 +25,13 @@ sacrificable), `Podría` (deseable).
 
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
-| RF-01 | El sistema debe permitir registrar un usuario con nombre, correo electrónico y contraseña. | Debe | Pendiente |
-| RF-02 | El sistema debe crear un hogar nuevo y asociar al usuario recién registrado como integrante, dentro de la misma transacción del alta. | Debe | Pendiente |
+| RF-01 | El sistema debe permitir registrar un usuario con nombre, correo electrónico y contraseña. | Debe | Implementado |
+| RF-02 | El sistema debe crear un hogar nuevo y asociar al usuario recién registrado como integrante, dentro de la misma transacción del alta. | Debe | Implementado |
 | RF-03 | El sistema debe enviar, al completarse el registro, un correo con un enlace de verificación que contiene un token de un solo uso. | Debe | Pendiente |
-| RF-04 | El sistema debe rechazar el inicio de sesión de una cuenta cuyo correo no fue verificado. | Debe | Pendiente |
-| RF-05 | El sistema debe autenticar a un usuario por correo y contraseña, y emitir un token de sesión que incluya el identificador de su hogar. | Debe | Pendiente |
-| RF-06 | El sistema debe permitir solicitar el restablecimiento de la contraseña mediante un token de un solo uso enviado por correo. | Debe | Pendiente |
-| RF-07 | El sistema debe permitir emitir y revocar tokens de larga duración para clientes automatizados, asociados a un hogar. | Debería | Pendiente |
+| RF-04 | El sistema debe rechazar el inicio de sesión de una cuenta cuyo correo no fue verificado. | Debe | Implementado |
+| RF-05 | El sistema debe autenticar a un usuario por correo y contraseña, y emitir un token de sesión que incluya el identificador de su hogar. | Debe | Implementado |
+| RF-06 | El sistema debe permitir solicitar el restablecimiento de la contraseña mediante un token de un solo uso enviado por correo. | Debe | Implementado |
+| RF-07 | El sistema debe permitir emitir y revocar tokens de larga duración para clientes automatizados, asociados a un hogar. | Debería | Implementado |
 
 ### M2. Hogares
 
@@ -127,6 +127,7 @@ Cada RNF se expresa con una métrica verificable. Se evitan términos como "ráp
 | RNF-29 | El token de sesión debe vencer a los 7 días de emitido, y las sesiones de un usuario deben poder invalidarse antes de su vencimiento: cambiar la contraseña cierra todas las abiertas, en todos los dispositivos. Siete días evitan pedir el inicio de sesión a diario desde el teléfono; la invalidación acota el daño de un token robado. | Prueba automatizada del vencimiento y de la invalidación por versión de sesión. |
 | RNF-30 | El sistema debe limitar los códigos de invitación inválidos que se prueban, sumando la vista previa y el canje, a 10 por usuario y a 50 por dirección IP en ventanas de 15 minutos, y no debe permitir más de 10 invitaciones vigentes por hogar. Superado un límite de intentos, rechaza las pruebas hasta que cierre la ventana, aun con un código válido. Acota la probabilidad de adivinar un código vigente y entrar a un hogar ajeno. | Prueba automatizada del limitador, de que durante el bloqueo un código válido tampoco entra, de que el código del hogar propio no cuenta como fallo, y del rechazo de la invitación que supera el tope. |
 | RNF-31 | El sistema debe limitar las altas de cuenta a 20 por dirección IP en ventanas de 1 hora, contando todos los intentos que llegan al alta, tengan éxito o no. Superado el límite, rechaza el alta con 429 hasta que cierre la ventana, sin consultar ni escribir en la base. Acota el costo de las llamadas al alta, que corren bcrypt, y el sondeo de qué correos tienen cuenta, que el 409 del alta no puede ocultar (RN-01). | Prueba automatizada del limitador y del rechazo por HTTP, incluido que el alta rechazada no crea nada. |
+| RNF-32 | El sistema debe limitar los pedidos de restablecimiento de contraseña a 5 por correo ingresado y a 20 por dirección IP en ventanas de una hora, exista o no una cuenta con ese correo. Superado un límite, rechaza el pedido indicando cuándo se puede volver a intentar. | Prueba automatizada que supera el límite y recibe el rechazo. |
 
 ### 2.2 Rendimiento
 
@@ -199,7 +200,7 @@ queda sin módulo que lo implemente.
 
 | Módulo | Requisitos funcionales | Reglas de negocio | No funcionales críticos |
 |---|---|---|---|
-| M1 Identidad y acceso | RF-01 a RF-07 | RN-01, RN-02, RN-03, RN-11 | RNF-05, RNF-06, RNF-08, RNF-29, RNF-31 |
+| M1 Identidad y acceso | RF-01 a RF-07 | RN-01, RN-02, RN-03, RN-11 | RNF-05, RNF-06, RNF-08, RNF-29, RNF-31, RNF-32 |
 | M2 Hogares | RF-08 a RF-12 | RN-04, RN-05, RN-18 | RNF-01, RNF-02, RNF-30 |
 | M3 Gastos | RF-13 a RF-18 | RN-06, RN-07, RN-08, RN-16 | RNF-10, RNF-12, RNF-13 |
 | M4 Categorización | RF-19 a RF-24, RF-43 | RN-09, RN-10, RN-12, RN-13, RN-16, RN-17 | RNF-13 |
