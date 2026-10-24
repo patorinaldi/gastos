@@ -3,6 +3,7 @@ package io.github.patorinaldi.gastos.api.repository;
 import io.github.patorinaldi.gastos.api.domain.MachineToken;
 import io.github.patorinaldi.gastos.api.security.MachineTokenOwner;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,6 +19,19 @@ public interface MachineTokenRepository extends JpaRepository<MachineToken, UUID
 
     /** Tokens vigentes de un usuario en un hogar: los que un cambio de hogar revocaría. */
     long countByUserIdAndHouseholdIdAndRevokedAtIsNull(UUID userId, UUID householdId);
+
+    /** Los tokens de un usuario en un hogar, vigentes y revocados, del más nuevo al más viejo. */
+    List<MachineToken> findByUserIdAndHouseholdIdOrderByCreatedAtDescIdAsc(UUID userId, UUID householdId);
+
+    boolean existsByIdAndUserId(UUID tokenId, UUID userId);
+
+    /**
+     * Revoca un token, solo si es del usuario y sigue vigente. Devuelve 0 si no es suyo o si ya
+     * estaba revocado, que conserva su momento de revocación.
+     */
+    @Modifying
+    @Query("update MachineToken t set t.revokedAt = ?3 where t.id = ?1 and t.userId = ?2 and t.revokedAt is null")
+    int revoke(UUID tokenId, UUID userId, Instant at);
 
     /**
      * Revoca los tokens vigentes de un usuario en un hogar (RN-18). Los ya revocados conservan su

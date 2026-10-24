@@ -85,7 +85,10 @@ public final class AuthContracts {
     }
 
     /** El nombre es para poder revocar el correcto cuando hay varios dispositivos. */
-    public record CreateMachineTokenRequest(@NotBlank @Size(max = 100) String name) {
+    public record CreateMachineTokenRequest(
+            @NotBlank @Size(max = 100)
+            @Pattern(regexp = "[^\\p{Cntrl}]*", message = "no puede contener caracteres de control")
+            String name) {
     }
 
     /**
