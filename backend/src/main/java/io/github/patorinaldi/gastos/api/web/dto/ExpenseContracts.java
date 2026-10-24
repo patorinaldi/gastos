@@ -34,7 +34,8 @@ public final class ExpenseContracts {
     /** Valor de {@code categoryId} que pide la bandeja de no categorizados (RF-22). */
     public static final String UNCATEGORIZED = "uncategorized";
 
-    private static final String UUID_OR_UNCATEGORIZED =
+    // También la usa el filtro del análisis (RF-29).
+    static final String UUID_OR_UNCATEGORIZED =
             "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|"
                     + UNCATEGORIZED + ")$";
 

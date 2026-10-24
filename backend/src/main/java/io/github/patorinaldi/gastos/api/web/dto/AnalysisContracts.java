@@ -1,10 +1,14 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.format.annotation.DateTimeFormat;
 
 /**
  * Contratos de M5, análisis (RF-25 a RF-29).
@@ -21,7 +25,37 @@ import java.util.UUID;
  */
 public final class AnalysisContracts {
 
+    /** Cuántos comercios devuelve el ranking si no se pide otra cantidad, y el máximo. */
+    public static final int DEFAULT_MERCHANTS = 10;
+    public static final int MAX_MERCHANTS = 50;
+
     private AnalysisContracts() {
+    }
+
+    /**
+     * Los mismos filtros que el listado de gastos, sin la paginación (RF-29). Viajan como parámetros
+     * de la URL y todos son opcionales: sin ninguno, el análisis abarca toda la historia del hogar.
+     * Las fechas van en ISO ({@code 2026-09-01}): sin {@code @DateTimeFormat}, Spring las leería en el
+     * formato corto del idioma del servidor. Una categoría o un integrante de otro hogar no dan error:
+     * no hay gastos que coincidan, y el resultado es el de un período vacío.
+     */
+    public record AnalysisFilterRequest(
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @Pattern(regexp = ExpenseContracts.UUID_OR_UNCATEGORIZED,
+                    message = "debe ser un identificador de categoría o " + ExpenseContracts.UNCATEGORIZED)
+            String categoryId,
+            UUID ownerId,
+            PaymentMethodValue paymentMethod) {
+
+        @AssertTrue(message = "from no puede ser posterior a to")
+        public boolean isPeriodOrdered() {
+            return from == null || to == null || !from.isAfter(to);
+        }
+
+        public boolean isUncategorized() {
+            return ExpenseContracts.UNCATEGORIZED.equals(categoryId);
+        }
     }
 
     public record SummaryResponse(
