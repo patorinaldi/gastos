@@ -30,7 +30,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | M2 Hogares | Elian | Backend implementado, pantallas pendientes |
 | M3 Gastos | Elian | Pendiente |
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
-| M5 Análisis | Juan | Pendiente |
+| M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
 | M6 API de integración | Juan | Pendiente |
 | M7 Interfaz de usuario | Elian, Pato | Sistema de diseño y shell implementados, pantallas pendientes |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
@@ -403,12 +403,42 @@ GET /api/expenses/summary?from=2026-09-01&to=2026-09-30
       "byOwner":         [ { "ownerId": "...", "name": "Ana", "total": "91200.00" } ],
       "byPaymentMethod": [ { "paymentMethod": "Tarjeta", "total": "120000.00" } ]
     }
+
+GET /api/expenses/monthly
+  → 200 { "months": [ { "month": "2026-09", "total": "154320.00" } ], "average": "131870.50" }
+
+GET /api/expenses/merchants?from=2026-09-01&to=2026-09-30&limit=10
+  → 200 [ { "merchant": "Carrefour", "total": "30000.00", "expenses": 3 } ]
 ```
+
+Los tres aceptan los mismos filtros que el listado de gastos, sin la paginación (RF-29): `from` y
+`to` (fechas ISO, inclusive), `categoryId` (un identificador o `uncategorized`), `ownerId` y
+`paymentMethod`. Todos son opcionales y se combinan; sin ninguno, el análisis abarca toda la historia
+del hogar. Un período invertido o un filtro mal formado responde `400`. Una categoría o un integrante
+de otro hogar no da error: no hay gastos que coincidan, y la respuesta es la de un período vacío.
+`limit` va de 1 a 50, y por defecto es 10.
+
+Cada lista va de mayor a menor total. Un período sin gastos responde `"0.00"` y listas vacías, nunca
+nulos. Los gastos dados de baja no cuentan (RN-16). Las categorías dadas de baja sí: sus gastos
+siguen siendo gasto del período en que se hicieron. Los gastos sin categoría forman una fila de
+`byCategory` con `categoryId` y `name` nulos. Quien se cambió de hogar sigue figurando en `byOwner`
+con los gastos que dejó (RN-18).
+
+La serie mensual tiene un punto por cada mes con gasto, y la media se calcula solo sobre esos meses
+(RN-14). Se redondea a centavos con redondeo bancario (`HALF_EVEN`), que no sesga los promedios
+hacia arriba. El ranking de comercios agrupa sin distinguir mayúsculas ni espacios en los extremos,
+porque el comercio se tipea a mano o llega de una notificación del banco: "Carrefour" y "CARREFOUR "
+son el mismo, y se muestra la forma que más se repite.
 
 **Decisión de diseño.** Las agregaciones se resuelven con consultas que agrupan en la base, no
 trayendo los gastos a memoria. El volumen crece con el uso y el cálculo en la aplicación dejaría de
 sostenerse (RNF-11). Las políticas de aislamiento alcanzan también a estas consultas, de modo que
-los totales nunca pueden mezclar hogares.
+los totales nunca pueden mezclar hogares. Las consultas no nombran el hogar: corren dentro de una
+transacción, que fija el hogar de la sesión, y RLS deja fuera las filas de cualquier otro. Como
+`app_current_household()` es `stable`, el planificador usa igual los índices que empiezan por
+`household_id`. El desglose por categoría va dentro de `/summary`, en lugar de un `/categories`
+aparte como preveía el cronograma: es la misma consulta con los mismos filtros, y la pantalla lo
+pide junto con el resto del resumen.
 
 Depende de M3 (los datos que agrega) y M8.
 
