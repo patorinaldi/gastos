@@ -1,6 +1,6 @@
 package io.github.patorinaldi.gastos.api.service.auth;
 
-import io.github.patorinaldi.gastos.api.config.PasswordResetLimitProperties;
+import io.github.patorinaldi.gastos.api.config.EmailLinkLimitProperties;
 import io.github.patorinaldi.gastos.api.service.limit.TooManyAttemptsException;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
  * El limitador en sí, con un reloj controlado por la prueba. El recorrido por HTTP lo cubre
  * {@code PasswordResetTest}.
  */
-class PasswordResetLimiterTest {
+class EmailLinkLimiterTest {
 
     private static final Duration WINDOW = Duration.ofHours(1);
     private static final int MAX_PER_EMAIL = 3;
@@ -26,8 +26,8 @@ class PasswordResetLimiterTest {
     private static final String OTRA_IP = "198.51.100.20";
 
     private final AtomicLong nanos = new AtomicLong();
-    private final PasswordResetLimiter limiter = new PasswordResetLimiter(
-            new PasswordResetLimitProperties(WINDOW, MAX_PER_EMAIL, MAX_PER_IP), nanos::get);
+    private final EmailLinkLimiter limiter = new EmailLinkLimiter(
+            new EmailLinkLimitProperties(WINDOW, MAX_PER_EMAIL, MAX_PER_IP), nanos::get);
 
     // Es lo que protege la casilla de quien recibe: cambiar de dirección no permite seguir.
     @Test

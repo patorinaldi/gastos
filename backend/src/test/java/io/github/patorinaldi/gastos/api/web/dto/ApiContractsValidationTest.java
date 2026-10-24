@@ -3,7 +3,9 @@ package io.github.patorinaldi.gastos.api.web.dto;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ForgotPasswordRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.RegisterRequest;
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ResendVerificationRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ResetPasswordRequest;
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.VerifyEmailRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.CreateExpenseRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.ExpenseFilterRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.UpdateExpenseRequest;
@@ -179,6 +181,16 @@ class ApiContractsValidationTest {
     @Test
     void aShortPasswordIsNotRejectedAtLogin() {
         assertThat(validate(new LoginRequest("ana@ejemplo.com", "corta"))).isEmpty();
+    }
+
+    @Test
+    void anOversizedVerificationTokenIsRejected() {
+        assertThat(validate(new VerifyEmailRequest("t".repeat(65)))).contains("token");
+    }
+
+    @Test
+    void anOversizedEmailIsRejectedWhenAskingToResendTheVerification() {
+        assertThat(validate(new ResendVerificationRequest("a".repeat(310) + "@ejemplo.com"))).contains("email");
     }
 
     @Test

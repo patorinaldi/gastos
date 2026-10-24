@@ -32,7 +32,12 @@ class ApplicationYamlTest {
                         "EMAIL_SENDER=console",
                         "JWT_SECRET=una-clave-de-treinta-y-dos-caracteres",
                         "CORS_ALLOWED_ORIGINS=https://gastos.ejemplo,https://otro.ejemplo",
-                        "WEB_URL=https://gastos.ejemplo")
+                        "WEB_URL=https://gastos.ejemplo",
+                        "EMAIL_FROM=no-responder@gastos.ejemplo",
+                        "MAIL_HOST=smtp.ejemplo",
+                        "MAIL_PORT=2525",
+                        "MAIL_USERNAME=usuario-smtp",
+                        "MAIL_PASSWORD=clave-smtp")
                 .run(context -> {
                     assertThat(context.getBean(EmailProperties.class).sender())
                             .isEqualTo(EmailProperties.Sender.CONSOLE);
@@ -40,6 +45,12 @@ class ApplicationYamlTest {
                             .isEqualTo("una-clave-de-treinta-y-dos-caracteres");
                     assertThat(context.getBean(CorsProperties.class).allowedOrigins())
                             .isEqualTo(List.of("https://gastos.ejemplo", "https://otro.ejemplo"));
+                    assertThat(context.getBean(EmailProperties.class).from())
+                            .isEqualTo("no-responder@gastos.ejemplo");
+                    assertThat(context.getEnvironment().getProperty("spring.mail.host")).isEqualTo("smtp.ejemplo");
+                    assertThat(context.getEnvironment().getProperty("spring.mail.port")).isEqualTo("2525");
+                    assertThat(context.getEnvironment().getProperty("spring.mail.username")).isEqualTo("usuario-smtp");
+                    assertThat(context.getEnvironment().getProperty("spring.mail.password")).isEqualTo("clave-smtp");
                     assertThat(context.getBean(WebUrlProperties.class).url())
                             .isEqualTo(URI.create("https://gastos.ejemplo"));
                 });
