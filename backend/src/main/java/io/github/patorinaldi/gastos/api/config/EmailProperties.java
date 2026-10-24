@@ -11,13 +11,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param consoleAllowSecrets si el envío por consola acepta correos con tokens de un solo uso, que
  *                            quedan escritos en el log. Solo para desarrollo y pruebas; por defecto,
  *                            no
+ * @param from                remitente de los correos enviados por SMTP
  */
 @ConfigurationProperties("gastos.email")
-record EmailProperties(Sender sender, boolean consoleAllowSecrets) {
+record EmailProperties(Sender sender, boolean consoleAllowSecrets, String from) {
 
     enum Sender {
 
         /** Solo desarrollo: escribe los correos en el log en lugar de enviarlos. */
-        CONSOLE
+        CONSOLE,
+
+        /** Envío real, por el servidor SMTP de {@code spring.mail.*}. */
+        SMTP
     }
 }

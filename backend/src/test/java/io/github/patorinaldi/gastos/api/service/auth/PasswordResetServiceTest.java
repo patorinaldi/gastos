@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 class PasswordResetServiceTest {
 
     private final EmailSender emailSender = mock(EmailSender.class);
-    private final PasswordResetLimiter limiter = mock(PasswordResetLimiter.class);
+    private final EmailLinkLimiter limiter = mock(EmailLinkLimiter.class);
     private final Executor executor = mock(Executor.class);
     private final UserRepository users = mock(UserRepository.class);
 
@@ -44,7 +44,7 @@ class PasswordResetServiceTest {
         when(emailSender.canSendSecrets()).thenReturn(false);
 
         assertThatThrownBy(() -> service.requestReset("ana@ejemplo.test", "203.0.113.7"))
-                .isInstanceOf(PasswordResetUnavailableException.class);
+                .isInstanceOf(EmailDeliveryUnavailableException.class);
 
         verifyNoInteractions(limiter, executor, users);
     }
