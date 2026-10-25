@@ -54,7 +54,7 @@ Requisitos: RF-01 a RF-07. Reglas: RN-01, RN-02, RN-03, RN-11, RN-18.
 | `POST` | `/api/auth/password/reset` | Cambia la contraseña con un token válido. | No |
 | `GET` | `/api/auth/me` | Devuelve el usuario autenticado y su hogar. | Sesión |
 | `POST` | `/api/auth/machine-tokens` | Emite un token de larga duración para un cliente automatizado. | Sesión |
-| `GET` | `/api/auth/machine-tokens` | Lista los tokens propios, vigentes y revocados. | Sesión |
+| `GET` | `/api/auth/machine-tokens` | Lista los tokens propios: los vigentes y los revocados en los últimos 30 días. | Sesión |
 | `DELETE` | `/api/auth/machine-tokens/{id}` | Revoca un token de cliente automatizado. | Sesión |
 
 Contratos principales:
@@ -87,17 +87,19 @@ POST /api/auth/password/reset
   → 410 enlace inexistente, vencido o ya usado (RN-03)
 
 POST /api/auth/machine-tokens
-  { "name": "Atajo del teléfono" }
+  { "name": "Atajo del teléfono", "password": "..." }
   → 201 { "id": "...", "name": "...", "token": "gst_...", "createdAt": "..." }
         el token en claro va solo en esta respuesta
+  → 403 la contraseña no es la de la cuenta
   → 409 ya tiene el máximo de tokens vigentes (RNF-33)
+  → 429 superado el límite de pedidos de emisión (RNF-33)
 
 GET /api/auth/machine-tokens
   → 200 [ { "id": "...", "name": "...", "createdAt": "...", "lastUsedAt": "...", "revokedAt": null } ]
 
 DELETE /api/auth/machine-tokens/{id}
   → 204 revocado, o ya lo estaba
-  → 404 no existe o es de otra persona
+  → 404 no existe, es de otra persona o de un hogar anterior
 ```
 
 **Decisiones de diseño.** El token de sesión identifica al usuario, y el hogar de cada petición se
@@ -169,6 +171,14 @@ emisión bloquea primero la fila del usuario, como el canje de invitaciones, y t
 fila: una emisión y un cambio de hogar simultáneos no se cruzan, y el token nunca queda emitido
 para el hogar que la persona acaba de dejar. Cada persona tiene hasta 10 tokens vigentes (RNF-33):
 cada uno es una forma más de cargar gastos a su nombre, y no vence.
+
+Emitir pide la contraseña actual: sin ella, una sesión robada alcanzaría para convertirse en un
+acceso que no vence. Una contraseña incorrecta responde `403` y no `401`, porque la sesión sigue
+siendo válida. Los pedidos de emisión se limitan a 20 por persona por hora (RNF-33), salgan bien o
+no: sin ese tope, emitir y revocar en un bucle nunca llega al de vigentes y deja una fila revocada
+por vuelta, y cada pedido prueba una contraseña. Los revocados no se borran, así que el listado
+muestra solo los de los últimos 30 días. Revocar alcanza a los mismos tokens que muestra el
+listado, los del hogar actual: los de un hogar anterior ya los revocó el cambio de hogar (RN-18).
 
 El registro y la creación del hogar son una
 sola transacción (RN-11): el alta crea el hogar, fija su identificador en el contexto de la
