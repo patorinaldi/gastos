@@ -91,7 +91,12 @@ public class PasswordResetService {
             throw new EmailDeliveryUnavailableException();
         }
         limiter.count(email, clientIp);
-        executor.execute(() -> sendResetLink(email));
+        try {
+            executor.execute(() -> sendResetLink(email));
+        } catch (RuntimeException e) {
+            // La respuesta es la misma pase lo que pase en segundo plano: un 500 acá la distinguiría.
+            log.error("No se pudo programar el envío del restablecimiento: correo={}", LogHash.ofEmail(email), e);
+        }
     }
 
     void sendResetLink(String email) {
@@ -108,7 +113,8 @@ public class PasswordResetService {
             log.info("Enlace de restablecimiento enviado: usuario={}", user.getId());
         } catch (RuntimeException e) {
             // Nadie espera este resultado: la respuesta ya salió. Queda en el log.
-            log.error("No se pudo enviar el enlace de restablecimiento: correo={}", LogHash.ofEmail(email), e);
+            log.error("No se pudo enviar el enlace de restablecimiento: correo={}, causa={}",
+                    LogHash.ofEmail(email), LogCause.of(e));
         }
     }
 

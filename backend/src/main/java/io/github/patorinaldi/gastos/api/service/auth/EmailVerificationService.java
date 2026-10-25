@@ -82,15 +82,23 @@ public class EmailVerificationService {
      * Manda el enlace en segundo plano. El alta lo llama después de confirmar la transacción: un
      * proveedor de correo lento o caído no demora ni hace fallar el alta. Si el correo no sale, queda
      * en el log, y la persona puede pedir que se lo reenvíen.
+     *
+     * <p>Tampoco lanza si el ejecutor rechaza la tarea, saturado o apagándose: la cuenta ya está
+     * creada, y un 500 haría que la persona reintente y reciba "correo ya registrado".
      */
     public void sendLater(String email, String name, String token) {
-        executor.execute(() -> {
-            try {
-                emailSender.send(verificationMessage(email, name, token));
-            } catch (RuntimeException e) {
-                log.error("No se pudo enviar el enlace de verificación: correo={}", LogHash.ofEmail(email), e);
-            }
-        });
+        try {
+            executor.execute(() -> {
+                try {
+                    emailSender.send(verificationMessage(email, name, token));
+                } catch (RuntimeException e) {
+                    log.error("No se pudo enviar el enlace de verificación: correo={}, causa={}",
+                            LogHash.ofEmail(email), LogCause.of(e));
+                }
+            });
+        } catch (RuntimeException e) {
+            log.error("No se pudo programar el envío del enlace de verificación: correo={}", LogHash.ofEmail(email), e);
+        }
     }
 
     /**
@@ -109,9 +117,19 @@ public class EmailVerificationService {
             throw new EmailDeliveryUnavailableException();
         }
         limiter.count(email, clientIp);
-        executor.execute(() -> resend(email));
+        try {
+            executor.execute(() -> resend(email));
+        } catch (RuntimeException e) {
+            // La respuesta es la misma pase lo que pase en segundo plano: un 500 acá la distinguiría.
+            log.error("No se pudo programar el reenvío de verificación: correo={}", LogHash.ofEmail(email), e);
+        }
     }
 
+    /**
+     * Emite un enlace nuevo y, recién cuando salió, anula los anteriores: un reenvío deja un solo
+     * enlace vigente. Si el envío falla, se anula el nuevo, que nadie recibió, y los anteriores siguen
+     * sirviendo.
+     */
     void resend(String email) {
         try {
             Optional<User> found = users.findByEmailIgnoreCase(email);
@@ -124,11 +142,20 @@ public class EmailVerificationService {
                 log.info("Reenvío de verificación pedido para una cuenta ya verificada: usuario={}", user.getId());
                 return;
             }
-            String token = issueToken(user.getId());
-            emailSender.send(verificationMessage(user.getEmail(), user.getName(), token));
+            String token = tokenValues.generate();
+            AuthToken issued = tokens.save(
+                    new AuthToken(user.getId(), AuthTokenPurpose.EMAIL_VERIFICATION, tokenValues.hash(token)));
+            try {
+                emailSender.send(verificationMessage(user.getEmail(), user.getName(), token));
+            } catch (RuntimeException e) {
+                transactions.executeWithoutResult(status -> tokens.consume(issued.getId()));
+                throw e;
+            }
+            transactions.executeWithoutResult(status -> tokens.consumeAllExcept(user.getId(), PURPOSE, issued.getId()));
             log.info("Enlace de verificación reenviado: usuario={}", user.getId());
         } catch (RuntimeException e) {
-            log.error("No se pudo reenviar el enlace de verificación: correo={}", LogHash.ofEmail(email), e);
+            log.error("No se pudo reenviar el enlace de verificación: correo={}, causa={}",
+                    LogHash.ofEmail(email), LogCause.of(e));
         }
     }
 

@@ -16,11 +16,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mail.MailSendException;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.after;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -155,6 +158,21 @@ class EmailVerificationTest extends EmailTestSupport {
         login(correoDeBeto, PASSWORD).andExpect(status().isOk());
     }
 
+    // Un reenvío que no sale no deja vivo un enlace que nadie recibió, ni anula el que la persona ya
+    // tiene en su casilla.
+    @Test
+    void unReenvioQueNoSaleAnulaElEnlaceNuevoYDejaVigenteElAnterior() throws Exception {
+        String anterior = issue(beto, AuthTokenPurpose.EMAIL_VERIFICATION);
+        doThrow(new MailSendException("proveedor caído"))
+                .when(emailSender).send(argThat(m -> m != null && correoDeBeto.equals(m.to())));
+
+        resend(correoDeBeto).andExpect(status().isAccepted());
+
+        verify(emailSender, timeout(WAIT_MS)).send(argThat(m -> m != null && correoDeBeto.equals(m.to())));
+        awaitPendingVerificationTokens(beto, 1);
+        verifyEmail(anterior).andExpect(status().isNoContent());
+    }
+
     // Misma respuesta exista o no la cuenta, esté o no verificada, y sin correo de más.
     @Test
     void elReenvioRespondeIgualParaUnaCuentaVerificadaOInexistenteYNoMandaNada() throws Exception {
@@ -195,6 +213,22 @@ class EmailVerificationTest extends EmailTestSupport {
                 .andReturn().getResponse().getContentAsString();
         households.add(UUID.fromString(JsonPath.read(body, "$.householdId")));
         return UUID.fromString(JsonPath.read(body, "$.userId"));
+    }
+
+    /** Espera a que el reenvío en segundo plano termine de anular tokens y deje {@code expected} vigentes. */
+    private void awaitPendingVerificationTokens(UUID user, int expected) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + WAIT_MS;
+        int pending;
+        do {
+            pending = jdbcTemplate.queryForObject("""
+                    select count(*) from auth_tokens
+                    where user_id = ? and purpose = 'email_verification' and used_at is null""", Integer.class, user);
+            if (pending == expected) {
+                return;
+            }
+            Thread.sleep(50);
+        } while (System.currentTimeMillis() < deadline);
+        assertThat(pending).as("tokens de verificación vigentes").isEqualTo(expected);
     }
 
     private ResultActions verifyEmail(String token) throws Exception {
