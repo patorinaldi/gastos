@@ -39,7 +39,7 @@ class MachineTokenController {
     @ResponseStatus(HttpStatus.CREATED)
     CreatedMachineTokenResponse issue(@AuthenticationPrincipal AuthenticatedUser user,
                                       @Valid @RequestBody CreateMachineTokenRequest request) {
-        IssuedMachineToken issued = machineTokens.issue(user, request.name());
+        IssuedMachineToken issued = machineTokens.issue(user, request.name(), request.password());
         return new CreatedMachineTokenResponse(issued.id(), issued.name(), issued.token(), issued.createdAt());
     }
 

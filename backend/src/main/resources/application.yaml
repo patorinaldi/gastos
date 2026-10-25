@@ -97,9 +97,12 @@ gastos:
     window: 1h
     max-per-email: 5
     max-per-ip: 20
-  # Tope de tokens de cliente máquina vigentes por persona (RNF-33). Ver MachineTokenService.
+  # Tokens de cliente máquina (RNF-33): tope de vigentes por persona y de pedidos de emisión por
+  # persona y por ventana. Ver MachineTokenService y MachineTokenIssueLimiter.
   machine-token-limit:
     max-active-per-user: 10
+    window: 1h
+    max-issues-per-user: 20
   # Dirección del cliente web, para los enlaces de los correos. Sin valor por defecto, como
   # EMAIL_SENDER: un despliegue que no la defina no arranca, en lugar de mandar enlaces a localhost.
   web:

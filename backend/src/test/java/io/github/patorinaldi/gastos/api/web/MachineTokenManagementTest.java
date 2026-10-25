@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -21,6 +22,7 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,6 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code MachineTokenAuthenticationTest}; acá se comprueba con la misma consulta que usa ese filtro.
  */
 class MachineTokenManagementTest extends AuthTestSupport {
+
+    private static final String PASSWORD = "contraseña-de-prueba";
 
     @Autowired
     private MachineTokenRepository repository;
@@ -53,6 +57,10 @@ class MachineTokenManagementTest extends AuthTestSupport {
         beto = createUser(casa, uniqueEmail("beto"), "Beto");
         otraCasa = createHousehold("Casa de Carla");
         carla = createUser(otraCasa, uniqueEmail("carla"), "Carla");
+        String hash = passwordEncoder.encode(PASSWORD);
+        for (UUID user : List.of(ana, beto, carla)) {
+            jdbcTemplate.update("update users set password_hash = ? where id = ?", hash, user);
+        }
     }
 
     @AfterEach
@@ -100,6 +108,35 @@ class MachineTokenManagementTest extends AuthTestSupport {
         issue(ana, "   ").andExpect(status().isBadRequest());
     }
 
+    // Una sesión robada no alcanza para emitir un acceso que no vence. 403 y no 401: la sesión
+    // sigue siendo válida, y el cliente web no tiene que descartarla.
+    @Test
+    void conUnaContraseñaIncorrectaNoEmite() throws Exception {
+        issue(ana, "Atajo", "otra-contraseña").andExpect(status().isForbidden());
+        issue(ana, "Atajo", "").andExpect(status().isBadRequest());
+
+        assertThat(jdbcTemplate.queryForObject("select count(*) from machine_tokens where user_id = ?", Integer.class, ana))
+                .isZero();
+    }
+
+    // RNF-33: emitir y revocar en un bucle nunca llega al tope de vigentes, pero sí a este. También
+    // acota las pruebas de contraseña: las incorrectas cuentan igual.
+    @Test
+    void superadoElTopeDePedidosDeEmisionSeRechazaAunqueHayaLugar() throws Exception {
+        for (int i = 0; i < limits.maxIssuesPerUser(); i++) {
+            if (i % 2 == 0) {
+                revoke(ana, issuedId(ana)).andExpect(status().isNoContent());
+            } else {
+                issue(ana, "Atajo", "otra-contraseña").andExpect(status().isForbidden());
+            }
+        }
+
+        issue(ana, "Uno más")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+        issue(beto, "De Beto").andExpect(status().isCreated());
+    }
+
     // RNF-33. Revocar uno libera el lugar.
     @Test
     void superadoElTopeDeVigentesNoEmiteHastaRevocarUno() throws Exception {
@@ -133,6 +170,20 @@ class MachineTokenManagementTest extends AuthTestSupport {
                 .andExpect(jsonPath("$[1].name").value("Primero"));
         list(beto).andExpect(jsonPath("$", hasSize(1)));
         list(carla).andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    // Los revocados no se borran: sin un corte, el listado crecería sin límite.
+    @Test
+    void elListadoMuestraLosRevocadosRecientesPeroNoLosViejos() throws Exception {
+        UUID reciente = issuedId(ana);
+        UUID viejo = issuedId(ana);
+        revoke(ana, reciente).andExpect(status().isNoContent());
+        revoke(ana, viejo).andExpect(status().isNoContent());
+        jdbcTemplate.update("update machine_tokens set revoked_at = now() - interval '31 days' where id = ?", viejo);
+
+        list(ana)
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(reciente.toString()));
     }
 
     // ── Revocación ──────────────────────────────────────────────────────────
@@ -179,13 +230,24 @@ class MachineTokenManagementTest extends AuthTestSupport {
                 .isNull();
     }
 
+    // Revocar alcanza a los mismos tokens que muestra el listado: los de un hogar anterior responden
+    // como uno inexistente.
+    @Test
+    void unTokenDeUnHogarAnteriorRespondeComoInexistente() throws Exception {
+        UUID id = issuedId(ana);
+        jdbcTemplate.update("update users set household_id = ? where id = ?", otraCasa, ana);
+
+        list(ana).andExpect(jsonPath("$", hasSize(0)));
+        revoke(ana, id).andExpect(status().isNotFound());
+    }
+
     // ── Autenticación ───────────────────────────────────────────────────────
 
     @Test
     void sinSesionNadaResponde() throws Exception {
         mockMvc.perform(get("/api/auth/machine-tokens")).andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/auth/machine-tokens").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Atajo\"}")).andExpect(status().isUnauthorized());
+                .content("{\"name\": \"Atajo\", \"password\": \"x\"}")).andExpect(status().isUnauthorized());
         mockMvc.perform(delete("/api/auth/machine-tokens/{id}", UUID.randomUUID())).andExpect(status().isUnauthorized());
     }
 
@@ -204,11 +266,15 @@ class MachineTokenManagementTest extends AuthTestSupport {
     // ── Ayudantes ───────────────────────────────────────────────────────────
 
     private ResultActions issue(UUID user, String name) throws Exception {
+        return issue(user, name, PASSWORD);
+    }
+
+    private ResultActions issue(UUID user, String name, String password) throws Exception {
         return mockMvc.perform(post("/api/auth/machine-tokens")
                 .header(AUTHORIZATION, bearer(user))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"name": "%s"}""".formatted(name)));
+                        {"name": "%s", "password": "%s"}""".formatted(name, password)));
     }
 
     private UUID issuedId(UUID user) throws Exception {

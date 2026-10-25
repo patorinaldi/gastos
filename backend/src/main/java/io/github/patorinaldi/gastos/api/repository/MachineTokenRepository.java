@@ -20,18 +20,27 @@ public interface MachineTokenRepository extends JpaRepository<MachineToken, UUID
     /** Tokens vigentes de un usuario en un hogar: los que un cambio de hogar revocaría. */
     long countByUserIdAndHouseholdIdAndRevokedAtIsNull(UUID userId, UUID householdId);
 
-    /** Los tokens de un usuario en un hogar, vigentes y revocados, del más nuevo al más viejo. */
-    List<MachineToken> findByUserIdAndHouseholdIdOrderByCreatedAtDescIdAsc(UUID userId, UUID householdId);
+    /**
+     * Los tokens de un usuario en un hogar, del más nuevo al más viejo: los vigentes y los revocados
+     * después de {@code revokedSince}.
+     */
+    @Query("""
+            select t from MachineToken t
+            where t.userId = ?1 and t.householdId = ?2 and (t.revokedAt is null or t.revokedAt > ?3)
+            order by t.createdAt desc, t.id asc""")
+    List<MachineToken> findListed(UUID userId, UUID householdId, Instant revokedSince);
 
-    boolean existsByIdAndUserId(UUID tokenId, UUID userId);
+    boolean existsByIdAndUserIdAndHouseholdId(UUID tokenId, UUID userId, UUID householdId);
 
     /**
-     * Revoca un token, solo si es del usuario y sigue vigente. Devuelve 0 si no es suyo o si ya
-     * estaba revocado, que conserva su momento de revocación.
+     * Revoca un token, solo si es del usuario, del hogar indicado y sigue vigente. Devuelve 0 si no
+     * cumple alguna de las tres, también si ya estaba revocado, que conserva su momento de revocación.
      */
     @Modifying
-    @Query("update MachineToken t set t.revokedAt = ?3 where t.id = ?1 and t.userId = ?2 and t.revokedAt is null")
-    int revoke(UUID tokenId, UUID userId, Instant at);
+    @Query("""
+            update MachineToken t set t.revokedAt = ?4
+            where t.id = ?1 and t.userId = ?2 and t.householdId = ?3 and t.revokedAt is null""")
+    int revoke(UUID tokenId, UUID userId, UUID householdId, Instant at);
 
     /**
      * Revoca los tokens vigentes de un usuario en un hogar (RN-18). Los ya revocados conservan su
