@@ -1,0 +1,48 @@
+/*
+ * Estilos de las pantallas de cuenta: inicio de sesión, registro y confirmación de correo. Las tres
+ * van dentro de la tarjeta de AuthLayout y comparten encabezado, formulario y pie, así que comparten
+ * este módulo en lugar de repetir las mismas reglas en tres.
+ */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* El título recibe el foco al cambiar de estado, para que el lector de pantalla lo anuncie; no es
+   un control, así que no lleva el trazo del foco. */
+.title:focus {
+  outline: none;
+}
+
+.lede {
+  color: var(--color-text-secondary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.footer {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.link {
+  font-weight: 600;
+  color: var(--color-accent-text);
+}
+
+.link:hover {
+  color: var(--color-accent-text-hover);
+}

@@ -6,7 +6,7 @@ están en el [README principal](../README.md#frontend).
 | Ruta | Contenido |
 |---|---|
 | `src/router.tsx` | Rutas de la aplicación |
-| `src/layouts/` | Shell de la app: `AppLayout` para las pantallas autenticadas y `AuthLayout` para registro e inicio de sesión |
+| `src/layouts/` | Shell de la app: `AppLayout` para las pantallas autenticadas, `AuthLayout` para registro, inicio de sesión y confirmación de correo, y `RequireSession`, que manda al login sin sesión |
 | `src/pages/` | Una pantalla por ruta |
 | `src/components/ui/` | Primitivos: `Button`, `ButtonLink`, `TextField`, `Notice` |
 | `src/components/states/` | Estados de carga, vacío y error de toda pantalla que consulta el servidor (RNF-16) |
@@ -14,6 +14,9 @@ están en el [README principal](../README.md#frontend).
 | `src/styles/` | `tokens.css` con las variables del sistema de diseño, `base.css` con el reset y el foco, y `typography.module.css` con estilos de texto compartidos |
 | `src/format.ts` | Formato de importes y fechas para Argentina, con sus pruebas en `format.test.ts` |
 | `src/types/api.ts` | Contratos de la API, espejo de los DTOs del backend |
+| `src/api/` | `client.ts`, por donde pasa toda llamada a la API: token, errores `problem+json` y tiempo de espera; y un archivo por módulo de la API con sus llamadas |
+| `src/session.ts` | La sesión: el token del login, dónde se guarda y cuándo se descarta |
+| `src/validation.ts` | Validaciones de los formularios de cuenta, espejo de las del backend |
 | `src/config.ts` | Configuración leída del entorno (`VITE_API_URL`) |
 
 ## Estilos
@@ -35,6 +38,23 @@ están en el [README principal](../README.md#frontend).
 - **Importes y fechas siempre por `src/format.ts`.** Los importes llegan como texto y se formatean
   sin pasar por `Number`. Las fechas sin hora no pasan por `Date`, que las correría un día en
   Argentina.
+
+## Sesión
+
+El token del login se guarda en `localStorage`, para que la sesión dure los 7 días del token
+(RNF-29) aunque el navegador del teléfono descarte la pestaña. Las rutas de la app pasan por
+`RequireSession`: sin sesión, o con una vencida, mandan al login, y después del login se vuelve a la
+pantalla pedida. Un 401 de la API descarta la sesión, y la app vuelve al login sola. Cerrar sesión
+descarta el token de este dispositivo; el servidor no guarda sesiones. El hogar no se lee del token,
+que queda desactualizado si el usuario se cambia de hogar: se pide a `GET /api/auth/me`.
+
+Las llamadas pasan siempre por `src/api/client.ts`, que convierte los errores en `ApiError`, y sus
+mensajes por `errorMessage`: usa el `detail` que el servidor escribe para el usuario, salvo en los
+400, la falta de conexión y los errores del servidor, que tienen mensaje propio (RNF-17).
+
+El enlace del correo de alta es `/verify-email#token=...`. El token va en el fragmento, como el del
+restablecimiento de contraseña, para que no llegue a ningún registro de acceso, y la pantalla lo
+borra de la dirección al leerlo.
 
 ## Pruebas
 

@@ -32,7 +32,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
 | M5 Análisis | Juan | Pendiente |
 | M6 API de integración | Juan | Pendiente |
-| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño y shell implementados, pantallas pendientes |
+| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión y confirmación de correo implementados; el resto de las pantallas pendiente |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
 
 ---
@@ -433,6 +433,11 @@ Requisitos: RF-33 a RF-38. No funcionales: RNF-14 a RNF-17, RNF-26.
 | Movimientos | Listado paginado con filtros combinables y alta, edición y baja de gastos. |
 | Bandeja de no categorizados | Gastos sin categoría y alta de reglas desde ahí (RF-22, RF-23). |
 | Hogar | Integrantes, generación y canje de códigos de invitación, ajustes (RF-38). |
+
+**Sesión.** El token del login se guarda en el navegador y dura sus 7 días (RNF-29). Sin sesión,
+las pantallas de la app mandan al login, y un 401 de la API la descarta. El enlace de confirmación
+que arma el backend es `/verify-email#token=...`, con el token en el fragmento como el del
+restablecimiento: el navegador no lo manda al servidor que sirve el cliente web.
 
 **Diseños.** Dos disposiciones sobre el mismo código. En móvil, pantalla única con botón fijo de
 alta. En escritorio, barra lateral y tabla. El umbral es 768 px.

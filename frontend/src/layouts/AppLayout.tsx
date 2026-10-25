@@ -2,6 +2,7 @@ import { useRef, useState, type KeyboardEvent } from 'react'
 import { NavLink, Outlet, useLocation, useMatch } from 'react-router'
 import { Brand } from '../components/layout/Brand.tsx'
 import { ButtonLink } from '../components/ui/Button.tsx'
+import { clearSession } from '../session.ts'
 import styles from './AppLayout.module.css'
 import { NEW_EXPENSE_PATH, SECTIONS } from './navigation.ts'
 
@@ -42,6 +43,13 @@ export function AppLayout() {
     </nav>
   )
 
+  // Cerrar sesión descarta el token, y RequireSession manda al login.
+  const logout = (
+    <button type="button" className={styles.logout} onClick={clearSession}>
+      Cerrar sesión
+    </button>
+  )
+
   const addExpense = (size: 'normal' | 'large') => (
     <ButtonLink to={NEW_EXPENSE_PATH} size={size} block>
       <span aria-hidden="true">+</span> Añadir gasto
@@ -54,6 +62,7 @@ export function AppLayout() {
         <Brand to="/" className={styles.sidebarBrand} />
         {navigation()}
         <div className={styles.spacer} />
+        {logout}
         {!addingExpense && addExpense('normal')}
       </aside>
 
@@ -78,6 +87,7 @@ export function AppLayout() {
             a la ruta actual no cambia la ruta, así que también cierra el menú al tocarlo. */}
         <div id="mobile-navigation" className={styles.mobileNav} hidden={!menuOpen}>
           {navigation(closeMenu)}
+          {logout}
         </div>
       </header>
 

@@ -1,7 +1,9 @@
-import { useId, type InputHTMLAttributes } from 'react'
+import { useId, type InputHTMLAttributes, type Ref } from 'react'
 import styles from './TextField.module.css'
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
+  /** Llega al input, por ejemplo para enfocar el primer campo con error. */
+  ref?: Ref<HTMLInputElement>
   label: string
   /** Ayuda que se muestra mientras no hay error. */
   hint?: string
