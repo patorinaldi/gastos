@@ -66,6 +66,53 @@ class EmailConfigurationTest {
                         .hasStackTraceContaining("EMAIL_FROM"));
     }
 
+    // Con autenticación y sin credenciales, cada envío fallaría en segundo plano y el alta seguiría
+    // respondiendo 201: ninguna cuenta se podría verificar.
+    @Test
+    void theSmtpSenderDoesNotStartWithAuthAndWithoutCredentials() {
+        contextRunner
+                .withBean(JavaMailSender.class, JavaMailSenderImpl::new)
+                .withPropertyValues(
+                        "gastos.email.sender=smtp",
+                        "spring.mail.host=smtp.ejemplo",
+                        "spring.mail.properties.mail.smtp.auth=true",
+                        "spring.mail.username=gastos",
+                        "gastos.email.from=no-responder@gastos.ejemplo")
+                .run(context -> assertThat(context)
+                        .hasFailed()
+                        .getFailure()
+                        .hasStackTraceContaining("MAIL_PASSWORD"));
+    }
+
+    @Test
+    void theSmtpSenderStartsWithAuthAndCredentials() {
+        contextRunner
+                .withBean(JavaMailSender.class, JavaMailSenderImpl::new)
+                .withPropertyValues(
+                        "gastos.email.sender=smtp",
+                        "spring.mail.host=smtp.ejemplo",
+                        "spring.mail.properties.mail.smtp.auth=true",
+                        "spring.mail.username=gastos",
+                        "spring.mail.password=secreto-de-prueba",
+                        "gastos.email.from=no-responder@gastos.ejemplo")
+                .run(context -> assertThat(context).getBean(EmailSender.class).isInstanceOf(SmtpEmailSender.class));
+    }
+
+    // Con el servidor definido, la falta del JavaMailSender no es culpa de MAIL_HOST.
+    @Test
+    void theSmtpSenderBlamesTheMissingMailSenderAndNotTheServer() {
+        contextRunner
+                .withPropertyValues(
+                        "gastos.email.sender=smtp",
+                        "spring.mail.host=smtp.ejemplo",
+                        "gastos.email.from=no-responder@gastos.ejemplo")
+                .run(context -> assertThat(context)
+                        .hasFailed()
+                        .getFailure()
+                        .hasStackTraceContaining("JavaMailSender")
+                        .satisfies(failure -> assertThat(failure).rootCause().message().doesNotContain("MAIL_HOST")));
+    }
+
     @Test
     void doesNotStartWithoutTheProperty() {
         contextRunner.run(context -> assertThat(context)
