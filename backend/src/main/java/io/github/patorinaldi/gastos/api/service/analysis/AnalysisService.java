@@ -7,13 +7,16 @@ import io.github.patorinaldi.gastos.api.service.analysis.Summary.OwnerAmount;
 import io.github.patorinaldi.gastos.api.service.analysis.Summary.PaymentMethodAmount;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -31,26 +34,38 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Los gastos dados de baja no cuentan (RN-16). Las categorías dadas de baja sí: sus gastos siguen
  * siendo gasto del período en que se hicieron.
+ *
+ * <p>Sin período, el resumen y el ranking toman el mes en curso (RD-07, CU-06), en la hora de
+ * Argentina: un gasto del día 1 a la noche no puede caer en el mes anterior por mirar la fecha en
+ * UTC. Los métodos con más de una consulta corren en {@code REPEATABLE_READ}, así todas ven la misma
+ * foto de la base aunque otro integrante cargue un gasto en el medio.
  */
 @Service
 public class AnalysisService {
 
     private static final int MONEY_SCALE = 2;
 
-    private final NamedParameterJdbcTemplate jdbc;
+    /** Zona en la que se decide qué es "el mes en curso". */
+    static final ZoneId ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
 
-    public AnalysisService(NamedParameterJdbcTemplate jdbc) {
+    private final NamedParameterJdbcTemplate jdbc;
+    private final Clock clock;
+
+    public AnalysisService(NamedParameterJdbcTemplate jdbc, Clock clock) {
         this.jdbc = jdbc;
+        this.clock = clock;
     }
 
-    /** Total del período y su desglose por categoría, integrante y medio de pago (HU-13). */
-    @Transactional(readOnly = true)
+    /**
+     * Total del período y su desglose por categoría, integrante y medio de pago (HU-13). Sin
+     * período, el mes en curso (RD-07).
+     *
+     * <p>El total es la suma del desglose por medio de pago, que no admite nulos y tiene a lo sumo
+     * tres filas: coincide siempre con los desgloses, y ahorra una pasada sobre los gastos.
+     */
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Summary summary(AnalysisFilter filter) {
-        Where where = Where.of(filter);
-
-        BigDecimal total = jdbc.queryForObject(
-                "select coalesce(sum(e.amount), 0) from expenses e where " + where.sql(),
-                where.params(), BigDecimal.class);
+        Where where = Where.of(withCurrentMonthByDefault(filter));
 
         // left join: los gastos sin categoría forman su propia fila, con id y nombre nulos.
         List<CategoryAmount> byCategory = jdbc.query("""
@@ -88,19 +103,42 @@ public class AnalysisService {
                         PaymentMethod.fromDatabaseValue(rs.getString("payment_method")),
                         money(rs.getBigDecimal("total"))));
 
+        BigDecimal total = byPaymentMethod.stream()
+                .map(PaymentMethodAmount::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         return new Summary(money(total), byCategory, byOwner, byPaymentMethod);
     }
 
     /**
-     * Serie mensual y media histórica (HU-14). Un punto por cada mes con gasto, del más viejo al más
-     * nuevo. La media es el promedio de esos meses (RN-14): los meses sin gasto no cuentan como cero.
+     * Serie mensual y media histórica (HU-14). Un punto por cada mes con gasto del período, del más
+     * viejo al más nuevo, incluido el mes en curso.
+     *
+     * <p>La media es lo habitual contra lo que se compara el mes: el promedio de los meses con gasto
+     * (RN-14), con los demás filtros pero sin el período, y sin el mes en curso. Con el período, mirar
+     * un solo mes daría una media igual a ese mes; con el mes en curso, unos pocos días de gasto
+     * contarían como un mes entero y la hundirían. Sin meses anteriores con gasto, la media es cero.
      * Se redondea a centavos con {@link RoundingMode#HALF_EVEN}, el redondeo bancario, que no sesga
      * los promedios hacia arriba.
      */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public MonthlySeries monthly(AnalysisFilter filter) {
-        Where where = Where.of(filter);
-        List<MonthAmount> months = jdbc.query("""
+        List<MonthAmount> months = monthTotals(Where.of(filter));
+
+        Where history = Where.of(filter.withoutPeriod());
+        history.params().addValue("currentMonth", YearMonth.from(today()).atDay(1));
+        List<MonthAmount> completed = monthTotals(
+                new Where(history.sql() + " and e.expense_date < :currentMonth", history.params()));
+
+        if (completed.isEmpty()) {
+            return new MonthlySeries(months, money(BigDecimal.ZERO));
+        }
+        BigDecimal sum = completed.stream().map(MonthAmount::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal average = sum.divide(BigDecimal.valueOf(completed.size()), MONEY_SCALE, RoundingMode.HALF_EVEN);
+        return new MonthlySeries(months, average);
+    }
+
+    private List<MonthAmount> monthTotals(Where where) {
+        return jdbc.query("""
                         select date_trunc('month', e.expense_date)::date as month, sum(e.amount) as total
                         from expenses e
                         where %s
@@ -109,33 +147,35 @@ public class AnalysisService {
                 where.params(),
                 (rs, row) -> new MonthAmount(
                         YearMonth.from(rs.getObject("month", LocalDate.class)), money(rs.getBigDecimal("total"))));
-
-        if (months.isEmpty()) {
-            return new MonthlySeries(months, money(BigDecimal.ZERO));
-        }
-        BigDecimal sum = months.stream().map(MonthAmount::total).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal average = sum.divide(BigDecimal.valueOf(months.size()), MONEY_SCALE, RoundingMode.HALF_EVEN);
-        return new MonthlySeries(months, average);
     }
 
     /**
-     * Los comercios con mayor gasto acumulado (HU-19), hasta {@code limit}.
+     * Los comercios con mayor gasto acumulado (HU-19), hasta {@code limit}. Sin período, el mes en
+     * curso (RD-07).
      *
-     * <p>El comercio se tipea a mano o llega de una notificación del banco, así que "Carrefour" y
-     * "CARREFOUR " son el mismo: se agrupa sin distinguir mayúsculas ni espacios en los extremos, y se
-     * muestra la forma que más se repite. A igual total, el orden es alfabético.
+     * <p>El comercio se tipea a mano o llega de una notificación del banco, así que "Carrefour",
+     * "CARREFOUR " y "Carrefour" con un espacio duro al final son el mismo. Se normalizan los espacios
+     * antes de agrupar: cualquier tira de espacios, tabulaciones, saltos de línea, espacios duros o de
+     * ancho cero pasa a ser un espacio, y se recortan los extremos. {@code trim()} de Postgres solo
+     * recorta el espacio ASCII. Se agrupa sin distinguir mayúsculas y se muestra la forma que más se
+     * repite. A igual total, el orden es alfabético.
      */
     @Transactional(readOnly = true)
     public List<MerchantAmount> topMerchants(AnalysisFilter filter, int limit) {
-        Where where = Where.of(filter);
+        Where where = Where.of(withCurrentMonthByDefault(filter));
         MapSqlParameterSource params = where.params().addValue("limit", limit);
         return jdbc.query("""
-                        select mode() within group (order by trim(e.merchant)) as merchant,
-                               sum(e.amount) as total,
+                        with normalized as (
+                            select btrim(regexp_replace(e.merchant, '[\\s\\u00A0\\u2007\\u202F\\u200B\\uFEFF]+', ' ', 'g'))
+                                       as merchant,
+                                   e.amount
+                            from expenses e
+                            where %s)
+                        select mode() within group (order by merchant) as merchant,
+                               sum(amount) as total,
                                count(*) as expenses
-                        from expenses e
-                        where %s
-                        group by lower(trim(e.merchant))
+                        from normalized
+                        group by lower(merchant)
                         order by total desc, merchant
                         limit :limit""".formatted(where.sql()),
                 params,
@@ -143,7 +183,16 @@ public class AnalysisService {
                         rs.getString("merchant"), money(rs.getBigDecimal("total")), rs.getInt("expenses")));
     }
 
-    // Las sumas de numeric(12, 2) ya vienen con dos decimales; solo el cero de coalesce viene sin ellos.
+    private AnalysisFilter withCurrentMonthByDefault(AnalysisFilter filter) {
+        YearMonth current = YearMonth.from(today());
+        return filter.withDefaultPeriod(current.atDay(1), current.atEndOfMonth());
+    }
+
+    private LocalDate today() {
+        return LocalDate.now(clock.withZone(ZONE));
+    }
+
+    // Las sumas de numeric(12, 2) ya vienen con dos decimales; solo el cero inicial viene sin ellos.
     private static BigDecimal money(BigDecimal value) {
         return value.setScale(MONEY_SCALE, RoundingMode.UNNECESSARY);
     }

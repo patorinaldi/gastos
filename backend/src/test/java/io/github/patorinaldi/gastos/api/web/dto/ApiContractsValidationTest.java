@@ -242,6 +242,19 @@ class ApiContractsValidationTest {
         return new CreateExpenseRequest(amount, merchant, null, null, null);
     }
 
+    // Las reglas del filtro son las mismas en el listado y en el análisis (RF-29).
+    @Test
+    void anInvertedPeriodIsRejectedInTheListingAsInTheAnalysis() {
+        java.time.LocalDate first = java.time.LocalDate.of(2026, 9, 1);
+        java.time.LocalDate last = java.time.LocalDate.of(2026, 9, 30);
+
+        assertThat(validate(new ExpenseFilterRequest(last, first, null, null, null, null, null)))
+                .contains("periodOrdered");
+        assertThat(validate(new AnalysisContracts.AnalysisFilterRequest(last, first, null, null, null)))
+                .contains("periodOrdered");
+        assertThat(validate(new ExpenseFilterRequest(first, last, null, null, null, null, null))).isEmpty();
+    }
+
     private static ExpenseFilterRequest filter(String categoryId, Integer page, Integer size) {
         return new ExpenseFilterRequest(null, null, categoryId, null, null, page, size);
     }

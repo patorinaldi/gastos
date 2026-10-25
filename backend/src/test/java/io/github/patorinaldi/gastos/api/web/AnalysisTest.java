@@ -3,6 +3,7 @@ package io.github.patorinaldi.gastos.api.web;
 import io.github.patorinaldi.gastos.api.AuthTestSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +30,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AnalysisTest extends AuthTestSupport {
 
     private static final LocalDate SEPTIEMBRE = LocalDate.of(2026, 9, 10);
+
+    // El mes en curso se decide en la hora de Argentina, como en AnalysisService.
+    private static final LocalDate HOY = LocalDate.now(ZoneId.of("America/Argentina/Buenos_Aires"));
 
     private UUID casa;
     private UUID ana;
@@ -107,6 +111,29 @@ class AnalysisTest extends AuthTestSupport {
                 .andExpect(jsonPath("$.byCategory", hasSize(0)))
                 .andExpect(jsonPath("$.byOwner", hasSize(0)))
                 .andExpect(jsonPath("$.byPaymentMethod", hasSize(0)));
+    }
+
+    // RD-07, CU-06: sin período, el tablero muestra el mes en curso, no toda la historia.
+    @Test
+    void sinPeriodoElResumenYElRankingTomanElMesEnCurso() throws Exception {
+        expense(casa, ana, supermercado, "Carrefour", "100.00", HOY.withDayOfMonth(1), "Tarjeta");
+        expense(casa, ana, supermercado, "Día", "999.00", HOY.withDayOfMonth(1).minusDays(1), "Tarjeta");
+
+        summary(ana, get("/api/expenses/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value("100.00"));
+        mockMvc.perform(authorized(get("/api/expenses/merchants"), ana))
+                .andExpect(jsonPath("$[*].merchant", contains("Carrefour")));
+    }
+
+    // El total sale del desglose por medio de pago: los dos coinciden siempre.
+    @Test
+    void elTotalCoincideConLosDesgloses() throws Exception {
+        sembrarSeptiembre();
+
+        summary(ana, septiembre())
+                .andExpect(jsonPath("$.total").value("3800.50"))
+                .andExpect(jsonPath("$.byPaymentMethod[*].total", contains("3000.00", "500.50", "300.00")));
     }
 
     // RN-16: dar de baja una categoría no borra el gasto que ya se hizo con ella.
@@ -200,6 +227,33 @@ class AnalysisTest extends AuthTestSupport {
                 .andExpect(jsonPath("$.average").value("100.67"));
     }
 
+    // HU-14: la media es lo habitual. El mes en curso, que no terminó, aparece en la serie pero no
+    // entra en la media, y mirar un solo mes no la convierte en ese mes.
+    @Test
+    void laMediaNoIncluyeElMesEnCursoNiDependeDelPeriodo() throws Exception {
+        expense(casa, ana, supermercado, "Carrefour", "100.00", LocalDate.of(2026, 3, 10), "Tarjeta");
+        expense(casa, ana, supermercado, "Carrefour", "300.00", LocalDate.of(2026, 4, 10), "Tarjeta");
+        expense(casa, ana, supermercado, "Carrefour", "5.00", HOY, "Tarjeta");
+
+        mockMvc.perform(authorized(get("/api/expenses/monthly"), ana))
+                .andExpect(jsonPath("$.months", hasSize(3)))
+                .andExpect(jsonPath("$.average").value("200.00"));
+        mockMvc.perform(authorized(get("/api/expenses/monthly"), ana)
+                        .param("from", "2026-04-01").param("to", "2026-04-30"))
+                .andExpect(jsonPath("$.months[*].month", contains("2026-04")))
+                .andExpect(jsonPath("$.average").value("200.00"));
+    }
+
+    // Los demás filtros sí cambian lo habitual: la media de una categoría es la de esa categoría.
+    @Test
+    void laMediaRespetaLosDemasFiltros() throws Exception {
+        expense(casa, ana, supermercado, "Carrefour", "100.00", LocalDate.of(2026, 3, 10), "Tarjeta");
+        expense(casa, ana, nafta, "Shell", "900.00", LocalDate.of(2026, 3, 10), "Tarjeta");
+
+        mockMvc.perform(authorized(get("/api/expenses/monthly"), ana).param("categoryId", supermercado.toString()))
+                .andExpect(jsonPath("$.average").value("100.00"));
+    }
+
     @Test
     void unHogarSinGastosDaUnaSerieVaciaYMediaCero() throws Exception {
         mockMvc.perform(get("/api/expenses/monthly").header(AUTHORIZATION, bearer(ana)))
@@ -237,8 +291,26 @@ class AnalysisTest extends AuthTestSupport {
         expense(casa, ana, nafta, "Shell", "200.00", SEPTIEMBRE, "Tarjeta");
         expense(casa, ana, null, "Farmacity", "100.00", SEPTIEMBRE, "Tarjeta");
 
-        mockMvc.perform(authorized(get("/api/expenses/merchants"), ana).param("limit", "2"))
+        mockMvc.perform(authorized(get("/api/expenses/merchants"), ana)
+                        .param("from", "2026-09-01").param("to", "2026-09-30").param("limit", "2"))
                 .andExpect(jsonPath("$[*].merchant", contains("Carrefour", "Shell")));
+    }
+
+    // trim() de Postgres solo recorta el espacio ASCII. Las notificaciones del banco traen espacios
+    // duros, saltos de línea o espacios repetidos, y son el mismo comercio.
+    @Test
+    void elRankingUnificaLasVariantesDeEspacios() throws Exception {
+        expense(casa, ana, supermercado, "Carrefour Express", "100.00", SEPTIEMBRE, "Tarjeta");
+        expense(casa, ana, supermercado, "Carrefour Express", "100.00", SEPTIEMBRE, "Tarjeta");
+        expense(casa, ana, supermercado, "carrefour  express\u00A0", "100.00", SEPTIEMBRE, "Tarjeta");
+        expense(casa, ana, supermercado, "Carrefour\tExpress\n", "100.00", SEPTIEMBRE, "Tarjeta");
+        expense(casa, ana, nafta, "Shell", "250.00", SEPTIEMBRE, "Tarjeta");
+
+        mockMvc.perform(authorized(get("/api/expenses/merchants"), ana)
+                        .param("from", "2026-09-01").param("to", "2026-09-30"))
+                .andExpect(jsonPath("$[*].merchant", contains("Carrefour Express", "Shell")))
+                .andExpect(jsonPath("$[0].total").value("400.00"))
+                .andExpect(jsonPath("$[0].expenses").value(4));
     }
 
     // ── Autenticación ───────────────────────────────────────────────────────

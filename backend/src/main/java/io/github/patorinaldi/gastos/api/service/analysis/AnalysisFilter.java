@@ -33,4 +33,17 @@ public record AnalysisFilter(
     public static AnalysisFilter none() {
         return new AnalysisFilter(null, null, null, false, null, null);
     }
+
+    /** Si no trae período, el mismo filtro con el período indicado; si trae, el mismo filtro. */
+    public AnalysisFilter withDefaultPeriod(LocalDate defaultFrom, LocalDate defaultTo) {
+        if (from != null || to != null) {
+            return this;
+        }
+        return new AnalysisFilter(defaultFrom, defaultTo, categoryId, uncategorized, ownerId, paymentMethod);
+    }
+
+    /** El mismo filtro sin período: la media histórica no depende del período que se mira. */
+    public AnalysisFilter withoutPeriod() {
+        return new AnalysisFilter(null, null, categoryId, uncategorized, ownerId, paymentMethod);
+    }
 }

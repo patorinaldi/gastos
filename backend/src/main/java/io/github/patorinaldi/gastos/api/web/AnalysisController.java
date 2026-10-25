@@ -54,7 +54,7 @@ class AnalysisController {
                         .map(o -> new OwnerTotal(o.ownerId(), o.name(), o.total()))
                         .toList(),
                 summary.byPaymentMethod().stream()
-                        .map(p -> new PaymentMethodTotal(PaymentMethodValue.valueOf(p.paymentMethod().name()), p.total()))
+                        .map(p -> new PaymentMethodTotal(toValue(p.paymentMethod()), p.total()))
                         .toList());
     }
 
@@ -80,10 +80,26 @@ class AnalysisController {
         UUID categoryId = request.categoryId() == null || request.isUncategorized()
                 ? null
                 : UUID.fromString(request.categoryId());
-        PaymentMethod paymentMethod = request.paymentMethod() == null
-                ? null
-                : PaymentMethod.valueOf(request.paymentMethod().name());
+        PaymentMethod paymentMethod = request.paymentMethod() == null ? null : toDomain(request.paymentMethod());
         return new AnalysisFilter(
                 request.from(), request.to(), categoryId, request.isUncategorized(), request.ownerId(), paymentMethod);
+    }
+
+    // Los dos enumerados están separados a propósito (RNF-22). Un switch sin default no compila si a
+    // uno le falta un caso; valueOf por nombre compilaría y fallaría en ejecución con un 500.
+    private static PaymentMethodValue toValue(PaymentMethod method) {
+        return switch (method) {
+            case EFECTIVO -> PaymentMethodValue.EFECTIVO;
+            case TARJETA -> PaymentMethodValue.TARJETA;
+            case TRANSFERENCIA -> PaymentMethodValue.TRANSFERENCIA;
+        };
+    }
+
+    private static PaymentMethod toDomain(PaymentMethodValue value) {
+        return switch (value) {
+            case EFECTIVO -> PaymentMethod.EFECTIVO;
+            case TARJETA -> PaymentMethod.TARJETA;
+            case TRANSFERENCIA -> PaymentMethod.TRANSFERENCIA;
+        };
     }
 }

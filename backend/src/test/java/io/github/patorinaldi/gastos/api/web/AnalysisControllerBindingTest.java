@@ -49,6 +49,11 @@ class AnalysisControllerBindingTest {
     void armar() {
         FormattingConversionService conversion = new org.springframework.format.support.DefaultFormattingConversionService();
         conversion.addConverter(String.class, PaymentMethodValue.class, PaymentMethodValue::from);
+        // Lo mismo que spring.mvc.format.date: iso, que el armado standalone no lee.
+        org.springframework.format.datetime.standard.DateTimeFormatterRegistrar iso =
+                new org.springframework.format.datetime.standard.DateTimeFormatterRegistrar();
+        iso.setUseIsoFormat(true);
+        iso.registerFormatters(conversion);
         mockMvc = MockMvcBuilders.standaloneSetup(new AnalysisController(analysis))
                 .setConversionService(conversion)
                 .build();
@@ -75,8 +80,9 @@ class AnalysisControllerBindingTest {
                 LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30), categoria, false, integrante, PaymentMethod.TARJETA));
     }
 
+    // El mes en curso por defecto (RD-07) lo decide el servicio, que tiene el reloj.
     @Test
-    void sinFiltrosAbarcaTodaLaHistoria() throws Exception {
+    void sinFiltrosElServicioRecibeUnFiltroVacio() throws Exception {
         mockMvc.perform(get("/api/expenses/summary")).andExpect(status().isOk());
 
         assertThat(summaryFilter()).isEqualTo(AnalysisFilter.none());
@@ -143,6 +149,21 @@ class AnalysisControllerBindingTest {
                 .andExpect(jsonPath("$[0].merchant").value("Carrefour"))
                 .andExpect(jsonPath("$[0].total").value("1500.50"))
                 .andExpect(jsonPath("$[0].expenses").value(3));
+    }
+
+    // El mapeo entre los dos enumerados es explícito: cada medio de pago llega y vuelve con su etiqueta.
+    @Test
+    void cadaMedioDePagoSeTraduceEnLosDosSentidos() throws Exception {
+        for (PaymentMethod method : PaymentMethod.values()) {
+            when(analysis.summary(any())).thenReturn(new Summary(new BigDecimal("1.00"), List.of(), List.of(),
+                    List.of(new PaymentMethodAmount(method, new BigDecimal("1.00")))));
+
+            mockMvc.perform(get("/api/expenses/summary").param("paymentMethod", method.databaseValue()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.byPaymentMethod[0].paymentMethod").value(method.databaseValue()));
+
+            assertThat(summaryFilter().paymentMethod()).isEqualTo(method);
+        }
     }
 
     private AnalysisFilter summaryFilter() {

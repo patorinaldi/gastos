@@ -34,7 +34,7 @@ public final class ExpenseContracts {
     /** Valor de {@code categoryId} que pide la bandeja de no categorizados (RF-22). */
     public static final String UNCATEGORIZED = "uncategorized";
 
-    // También la usa el filtro del análisis (RF-29).
+    /** Una categoría o la bandeja. La usan los dos filtros de gastos, el del listado y el del análisis (RF-29). */
     static final String UUID_OR_UNCATEGORIZED =
             "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|"
                     + UNCATEGORIZED + ")$";
@@ -116,15 +116,11 @@ public final class ExpenseContracts {
             UUID ownerId,
             PaymentMethodValue paymentMethod,
             @PositiveOrZero Integer page,
-            @Positive @Max(100) Integer size) {
+            @Positive @Max(100) Integer size) implements ExpenseFilter {
 
         public ExpenseFilterRequest {
             page = page == null ? 0 : page;
             size = size == null ? DEFAULT_PAGE_SIZE : size;
-        }
-
-        public boolean isUncategorized() {
-            return UNCATEGORIZED.equals(categoryId);
         }
     }
 
