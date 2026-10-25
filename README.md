@@ -205,14 +205,18 @@ La aplicación toma su configuración de las variables de entorno de App Service
 | `EMAIL_SENDER` | Implementación del envío de correos: `smtp`, el envío real, o `console`, que solo escribe los correos en el log. Con `console`, el alta y los pedidos de enlaces por correo responden 503, para que los enlaces de un solo uso no queden en el log. |
 | `EMAIL_FROM` | Con `smtp`: remitente de los correos, por ejemplo `Gastos <no-responder@gastos.ejemplo>`. Tiene que ser una dirección que el proveedor permita usar. |
 | `MAIL_HOST`, `MAIL_PORT` | Con `smtp`: servidor SMTP del proveedor y su puerto, `587` si no se indica. La conexión exige STARTTLS. |
-| `MAIL_USERNAME`, `MAIL_PASSWORD` | Con `smtp`: credenciales SMTP del proveedor. |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | Con `smtp`: credenciales SMTP del proveedor. Obligatorias: la conexión exige autenticación. |
 | `CORS_ALLOWED_ORIGINS` | Orígenes del cliente web, separados por coma. Vacía, ningún otro origen puede llamar a la API. |
 | `WEB_URL` | Dirección del cliente web, por ejemplo `https://gastos.pages.dev`. Con ella se arman los enlaces de los correos: verificación y restablecimiento de contraseña. |
 | `WEBSITES_PORT` | `8080`, el puerto en el que escucha la aplicación |
 
-Si falta `EMAIL_SENDER`, `JWT_SECRET` o `WEB_URL`, la aplicación no arranca, a propósito, y con `EMAIL_SENDER=smtp` tampoco si falta `MAIL_HOST` o `EMAIL_FROM`. Cada variable se
+Si falta `EMAIL_SENDER`, `JWT_SECRET` o `WEB_URL`, la aplicación no arranca, a propósito, y con `EMAIL_SENDER=smtp` tampoco si falta `MAIL_HOST`, `EMAIL_FROM`, `MAIL_USERNAME` o `MAIL_PASSWORD`. Cada variable se
 mapea de forma explícita en `application.yaml`: una variable que no esté mapeada ahí no la lee
 nadie, aunque esté definida en App Service.
+
+**Orden de despliegue.** Un despliegue que hoy corre con `EMAIL_SENDER=console` pasa a responder 503
+al alta de cuentas apenas se actualiza la aplicación. Antes de desplegar, hay que definir en App
+Service `EMAIL_SENDER=smtp`, `EMAIL_FROM`, `MAIL_HOST`, `MAIL_USERNAME` y `MAIL_PASSWORD`.
 
 ### Preparación de la base
 
