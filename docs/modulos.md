@@ -273,7 +273,7 @@ M8 (aislamiento).
 **Responsabilidad.** El registro del hecho económico: alta, edición, baja y consulta del gasto
 compartido del hogar.
 
-Requisitos: RF-13 a RF-18. Reglas: RN-06, RN-07, RN-08, RN-12.
+Requisitos: RF-13 a RF-18. Reglas: RN-06, RN-07, RN-08, RN-12, RN-16.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -324,7 +324,7 @@ Depende de M1, M4 (resolución de categoría) y M8.
 **Responsabilidad.** Convertir un nombre de comercio en una categoría, con un resultado
 reproducible y corregible por el usuario.
 
-Requisitos: RF-19 a RF-24, RF-43. Reglas: RN-09, RN-10, RN-12, RN-13.
+Requisitos: RF-19 a RF-24, RF-43. Reglas: RN-09, RN-10, RN-12, RN-13, RN-16, RN-17.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -385,7 +385,7 @@ Depende de M8 (esquema y siembra) y M3 (los gastos que clasifica).
 **Responsabilidad.** Responder las preguntas que motivan el sistema: cuánto se gastó, en qué, quién
 lo pagó y cómo evoluciona.
 
-Requisitos: RF-25 a RF-29. Reglas: RN-08, RN-14.
+Requisitos: RF-25 a RF-29. Reglas: RN-08, RN-14, RN-16, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -419,7 +419,7 @@ Depende de M3 (los datos que agrega) y M8.
 **Responsabilidad.** Permitir registrar un gasto desde fuera de la interfaz web, por ejemplo desde
 una automatización del teléfono o un atajo, en el orden de los segundos.
 
-Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07, RN-18.
+Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07, RN-17, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
