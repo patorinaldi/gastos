@@ -29,7 +29,7 @@ sacrificable), `Podría` (deseable).
 | RF-02 | El sistema debe crear un hogar nuevo y asociar al usuario recién registrado como integrante, dentro de la misma transacción del alta. | Debe | Implementado |
 | RF-03 | El sistema debe enviar, al completarse el registro, un correo con un enlace de verificación que contiene un token de un solo uso. | Debe | Pendiente |
 | RF-04 | El sistema debe rechazar el inicio de sesión de una cuenta cuyo correo no fue verificado. | Debe | Implementado |
-| RF-05 | El sistema debe autenticar a un usuario por correo y contraseña, y emitir un token de sesión que incluya el identificador de su hogar. | Debe | Implementado |
+| RF-05 | El sistema debe autenticar a un usuario por correo y contraseña, y emitir un token de sesión. El token puede llevar el identificador del hogar como dato de contexto para la interfaz, pero no se usa para autorizar: el hogar de cada petición se resuelve desde el usuario autenticado, porque puede haber cambiado desde que se emitió el token (RN-18). | Debe | Implementado |
 | RF-06 | El sistema debe permitir solicitar el restablecimiento de la contraseña mediante un token de un solo uso enviado por correo. | Debe | Implementado |
 | RF-07 | El sistema debe permitir emitir y revocar tokens de larga duración para clientes automatizados, asociados a un hogar. | Debería | Implementado |
 
@@ -200,12 +200,12 @@ queda sin módulo que lo implemente.
 
 | Módulo | Requisitos funcionales | Reglas de negocio | No funcionales críticos |
 |---|---|---|---|
-| M1 Identidad y acceso | RF-01 a RF-07 | RN-01, RN-02, RN-03, RN-11 | RNF-05, RNF-06, RNF-08, RNF-29, RNF-31, RNF-32 |
+| M1 Identidad y acceso | RF-01 a RF-07 | RN-01, RN-02, RN-03, RN-11, RN-18 | RNF-05, RNF-06, RNF-08, RNF-29, RNF-31, RNF-32 |
 | M2 Hogares | RF-08 a RF-12 | RN-04, RN-05, RN-18 | RNF-01, RNF-02, RNF-30 |
-| M3 Gastos | RF-13 a RF-18 | RN-06, RN-07, RN-08, RN-16 | RNF-10, RNF-12, RNF-13 |
+| M3 Gastos | RF-13 a RF-18 | RN-06, RN-07, RN-08, RN-12, RN-16 | RNF-10, RNF-12, RNF-13 |
 | M4 Categorización | RF-19 a RF-24, RF-43 | RN-09, RN-10, RN-12, RN-13, RN-16, RN-17 | RNF-13 |
-| M5 Análisis | RF-25 a RF-29 | RN-08, RN-14, RN-16 | RNF-11, RNF-13 |
-| M6 API de integración | RF-30 a RF-32 | RN-06, RN-07 | RNF-10 |
+| M5 Análisis | RF-25 a RF-29 | RN-08, RN-14, RN-16, RN-18 | RNF-11, RNF-13 |
+| M6 API de integración | RF-30 a RF-32 | RN-06, RN-07, RN-17, RN-18 | RNF-10 |
 | M7 Interfaz de usuario | RF-33 a RF-38 | ninguna | RNF-14 a RNF-17 |
 | M8 Plataforma y calidad | RF-39 a RF-42 | RN-15 | RNF-01 a RNF-04, RNF-18, RNF-19, RNF-22 a RNF-25 |
 

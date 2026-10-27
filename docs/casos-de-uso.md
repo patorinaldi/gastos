@@ -71,7 +71,7 @@ hogar. Se envió un correo con el enlace de verificación.
 
 ## CU-02. Iniciar sesión
 
-Actor principal: integrante. Módulo: M1. Requisitos: RF-04, RF-05. Reglas: RN-02.
+Actor principal: integrante. Módulo: M1. Requisitos: RF-04, RF-05. Reglas: RN-02, RN-18.
 No funcionales: RNF-06.
 
 **Precondiciones.** El usuario tiene cuenta y confirmó su correo.
@@ -226,7 +226,7 @@ el hogar de `GET /api/auth/me`.
 ## CU-04. Registrar un gasto
 
 Actor principal: integrante. Módulos: M3 Gastos, M4 Categorización.
-Requisitos: RF-13, RF-14, RF-20, RF-21. Reglas: RN-06, RN-07, RN-08, RN-12, RN-16, RN-17.
+Requisitos: RF-13, RF-14, RF-20, RF-21. Reglas: RN-06, RN-07, RN-08, RN-12, RN-16, RN-17, RN-18.
 
 **Precondiciones.** El integrante tiene sesión activa.
 
@@ -367,7 +367,7 @@ Reglas: RN-14, RN-16, RN-18. No funcionales: RNF-11.
 ## CU-07. Capturar un gasto desde un cliente automatizado
 
 Actor principal: cliente automatizado. Módulo: M6. Requisitos: RF-07, RF-30 a RF-32.
-Reglas: RN-17, RN-18. No funcionales: RNF-10.
+Reglas: RN-06, RN-07, RN-17, RN-18. No funcionales: RNF-10.
 
 **Precondiciones.** Un integrante emitió un token de cliente máquina (RF-07), que sigue vigente y
 está asociado a su hogar y a su usuario.
