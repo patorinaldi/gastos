@@ -32,7 +32,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
 | M6 API de integración | Juan | Pendiente |
-| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión y confirmación de correo implementados; el resto de las pantallas pendiente |
+| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión y confirmación de correo implementados; tablero con selector de período y total del mes, sin gráficos ni movimientos; el resto de las pantallas pendiente |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
 
 ---
