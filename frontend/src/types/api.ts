@@ -83,8 +83,10 @@ export interface CurrentUserResponse {
   householdName: string
 }
 
+/** La contraseña actual confirma la emisión: el token no vence. */
 export interface CreateMachineTokenRequest {
   name: string
+  password: string
 }
 
 /** El `token` en claro llega solo en esta respuesta: la base guarda su hash. */

@@ -26,7 +26,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 
 | Módulo | Responsable | Estado |
 |---|---|---|
-| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, autenticación por token de cliente máquina y restablecimiento de contraseña implementados; emisión y revocación de tokens de cliente máquina y pantallas del cliente web pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
+| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; pantallas del cliente web pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
 | M2 Hogares | Elian | Backend implementado, pantallas pendientes |
 | M3 Gastos | Elian | Pendiente |
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
@@ -55,6 +55,7 @@ Requisitos: RF-01 a RF-07. Reglas: RN-01, RN-02, RN-03, RN-11, RN-18.
 | `POST` | `/api/auth/password/reset` | Cambia la contraseña con un token válido. | No |
 | `GET` | `/api/auth/me` | Devuelve el usuario autenticado y su hogar. | Sesión |
 | `POST` | `/api/auth/machine-tokens` | Emite un token de larga duración para un cliente automatizado. | Sesión |
+| `GET` | `/api/auth/machine-tokens` | Lista los tokens propios: los vigentes y los revocados en los últimos 30 días. | Sesión |
 | `DELETE` | `/api/auth/machine-tokens/{id}` | Revoca un token de cliente automatizado. | Sesión |
 
 Contratos principales:
@@ -97,6 +98,21 @@ POST /api/auth/password/reset
         tokens de cliente máquina y el correo queda verificado
   → 400 contraseña de menos de 8 caracteres o de más de 72 bytes; el enlace no se gasta
   → 410 enlace inexistente, vencido o ya usado (RN-03)
+
+POST /api/auth/machine-tokens
+  { "name": "Atajo del teléfono", "password": "..." }
+  → 201 { "id": "...", "name": "...", "token": "gst_...", "createdAt": "..." }
+        el token en claro va solo en esta respuesta
+  → 403 la contraseña no es la de la cuenta
+  → 409 ya tiene el máximo de tokens vigentes (RNF-33)
+  → 429 superado el límite de pedidos de emisión (RNF-33)
+
+GET /api/auth/machine-tokens
+  → 200 [ { "id": "...", "name": "...", "createdAt": "...", "lastUsedAt": "...", "revokedAt": null } ]
+
+DELETE /api/auth/machine-tokens/{id}
+  → 204 revocado, o ya lo estaba
+  → 404 no existe, es de otra persona o de un hogar anterior
 ```
 
 **Decisiones de diseño.** El token de sesión identifica al usuario, y el hogar de cada petición se
@@ -172,6 +188,22 @@ la verificación, se limitan juntos (RNF-32) a 5 por correo y 20 por dirección 
 puede mandar un correo a la misma casilla, y sin límite cualquiera podría llenarla. Se cuentan por el correo escrito, exista o no la cuenta,
 así que el `429` tampoco revela nada. El tope por correo permite que alguien le impida a otra
 persona pedir enlaces durante una hora; es el precio de proteger su casilla.
+
+Los tokens de cliente máquina los emite y los revoca cada persona desde su sesión, y cada una ve y
+revoca solo los suyos, aunque comparta hogar: un token es una credencial de quien lo emitió, y los
+gastos que carga quedan a su nombre. Un token ajeno responde `404`, igual que uno inexistente. La
+emisión bloquea primero la fila del usuario, como el canje de invitaciones, y toma el hogar de esa
+fila: una emisión y un cambio de hogar simultáneos no se cruzan, y el token nunca queda emitido
+para el hogar que la persona acaba de dejar. Cada persona tiene hasta 10 tokens vigentes (RNF-33):
+cada uno es una forma más de cargar gastos a su nombre, y no vence.
+
+Emitir pide la contraseña actual: sin ella, una sesión robada alcanzaría para convertirse en un
+acceso que no vence. Una contraseña incorrecta responde `403` y no `401`, porque la sesión sigue
+siendo válida. Los pedidos de emisión se limitan a 20 por persona por hora (RNF-33), salgan bien o
+no: sin ese tope, emitir y revocar en un bucle nunca llega al de vigentes y deja una fila revocada
+por vuelta, y cada pedido prueba una contraseña. Los revocados no se borran, así que el listado
+muestra solo los de los últimos 30 días. Revocar alcanza a los mismos tokens que muestra el
+listado, los del hogar actual: los de un hogar anterior ya los revocó el cambio de hogar (RN-18).
 
 El registro y la creación del hogar son una
 sola transacción (RN-11): el alta crea el hogar, fija su identificador en el contexto de la

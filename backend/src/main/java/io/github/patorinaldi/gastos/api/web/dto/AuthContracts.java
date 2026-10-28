@@ -1,5 +1,6 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
+import io.github.patorinaldi.gastos.api.web.dto.validation.DisplayNames;
 import io.github.patorinaldi.gastos.api.web.dto.validation.MaxUtf8Bytes;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -31,12 +32,11 @@ public final class AuthContracts {
     /**
      * El alta crea también el hogar y siembra su catálogo, en una sola transacción (RN-11).
      *
-     * <p>El nombre no admite caracteres de control. Postgres no puede guardar el carácter nulo en un
-     * texto, y sin este control un nombre con uno llegaría al insert y volvería como error interno.
+     * <p>El nombre se valida con {@link DisplayNames}: sin caracteres de control ni invisibles.
      */
     public record RegisterRequest(
             @NotBlank @Size(max = 200)
-            @Pattern(regexp = "[^\\p{Cntrl}]*", message = "no puede contener caracteres de control")
+            @Pattern(regexp = DisplayNames.PATTERN, message = DisplayNames.MESSAGE)
             String name,
             @NotBlank @Email @Size(max = 320) String email,
             @NotBlank @Size(min = 8) @MaxUtf8Bytes(BCRYPT_MAX_BYTES) String password) {
@@ -89,8 +89,22 @@ public final class AuthContracts {
             String householdName) {
     }
 
-    /** El nombre es para poder revocar el correcto cuando hay varios dispositivos. */
-    public record CreateMachineTokenRequest(@NotBlank @Size(max = 100) String name) {
+    /**
+     * El nombre es para poder revocar el correcto cuando hay varios dispositivos. La contraseña
+     * actual se pide de nuevo: el token no vence, y sin ella una sesión robada alcanzaría para
+     * convertirse en un acceso permanente.
+     */
+    public record CreateMachineTokenRequest(
+            @NotBlank @Size(max = 100)
+            @Pattern(regexp = DisplayNames.PATTERN, message = DisplayNames.MESSAGE)
+            String name,
+            @NotBlank @MaxUtf8Bytes(BCRYPT_MAX_BYTES) String password) {
+
+        // Sin esto, el toString del record mostraría la contraseña si alguien lo registra en un log.
+        @Override
+        public String toString() {
+            return "CreateMachineTokenRequest[name=" + name + "]";
+        }
     }
 
     /**
@@ -98,6 +112,13 @@ public final class AuthContracts {
      * pierde no hay forma de recuperarlo: se emite otro y se revoca este.
      */
     public record CreatedMachineTokenResponse(UUID id, String name, String token, Instant createdAt) {
+
+        // Spring MVC registra el cuerpo de la respuesta con su toString en DEBUG y TRACE: sin esto,
+        // el token quedaría en el log (RNF-09).
+        @Override
+        public String toString() {
+            return "CreatedMachineTokenResponse[id=" + id + ", name=" + name + ", createdAt=" + createdAt + "]";
+        }
     }
 
     public record MachineTokenResponse(
