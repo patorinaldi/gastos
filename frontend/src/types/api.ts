@@ -55,6 +55,11 @@ export interface VerifyEmailRequest {
   token: string
 }
 
+/** La respuesta es la misma, 202, exista o no la cuenta y esté o no verificada. */
+export interface ResendVerificationRequest {
+  email: string
+}
+
 export interface LoginRequest {
   email: string
   password: string
