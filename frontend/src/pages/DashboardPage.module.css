@@ -1,0 +1,21 @@
+.kpi {
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-sunken);
+}
+
+.kpiLabel {
+  composes: monoLabel from '../styles/typography.module.css';
+  margin-bottom: var(--space-2);
+}
+
+/* Las cifras tabulares mantienen el ancho de cada dígito: el total no salta al cambiar de mes. */
+.kpiValue {
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
