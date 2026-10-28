@@ -214,9 +214,17 @@ Si falta `EMAIL_SENDER`, `JWT_SECRET` o `WEB_URL`, la aplicación no arranca, a 
 mapea de forma explícita en `application.yaml`: una variable que no esté mapeada ahí no la lee
 nadie, aunque esté definida en App Service.
 
-**Orden de despliegue.** Un despliegue que hoy corre con `EMAIL_SENDER=console` pasa a responder 503
-al alta de cuentas apenas se actualiza la aplicación. Antes de desplegar, hay que definir en App
-Service `EMAIL_SENDER=smtp`, `EMAIL_FROM`, `MAIL_HOST`, `MAIL_USERNAME` y `MAIL_PASSWORD`.
+**Orden de despliegue.** Para pasar un despliegue que hoy corre con `EMAIL_SENDER=console` al envío
+real, en este orden:
+
+1. Definir en App Service `EMAIL_FROM`, `MAIL_HOST`, `MAIL_USERNAME` y `MAIL_PASSWORD`. La versión
+   anterior no las lee, así que el reinicio que provoca el cambio no la afecta.
+2. Desplegar la versión nueva. Desde ese momento el alta de cuentas y los pedidos de enlaces
+   responden 503, porque `EMAIL_SENDER` sigue en `console`.
+3. Cambiar `EMAIL_SENDER` a `smtp`.
+
+No hay que definir `EMAIL_SENDER=smtp` antes de desplegar: la versión anterior no conoce ese valor
+y no arrancaría hasta que llegue el despliegue.
 
 ### Preparación de la base
 

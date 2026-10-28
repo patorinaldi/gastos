@@ -129,6 +129,10 @@ public class EmailVerificationService {
      * Emite un enlace nuevo y, recién cuando salió, anula los anteriores: un reenvío deja un solo
      * enlace vigente. Si el envío falla, se anula el nuevo, que nadie recibió, y los anteriores siguen
      * sirviendo.
+     *
+     * <p>Anula solo los creados antes que el nuevo: de dos reenvíos simultáneos queda vigente el
+     * último, en lugar de anularse uno al otro. Bloquea primero al usuario, el mismo orden de locks
+     * que {@link #verify}, para no trabarse con una confirmación que esté anulando los mismos tokens.
      */
     void resend(String email) {
         try {
@@ -151,7 +155,10 @@ public class EmailVerificationService {
                 transactions.executeWithoutResult(status -> tokens.consume(issued.getId()));
                 throw e;
             }
-            transactions.executeWithoutResult(status -> tokens.consumeAllExcept(user.getId(), PURPOSE, issued.getId()));
+            transactions.executeWithoutResult(status -> {
+                users.lockById(user.getId());
+                tokens.consumeOlderThan(user.getId(), PURPOSE, issued.getId());
+            });
             log.info("Enlace de verificación reenviado: usuario={}", user.getId());
         } catch (RuntimeException e) {
             log.error("No se pudo reenviar el enlace de verificación: correo={}, causa={}",

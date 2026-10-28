@@ -10,18 +10,23 @@ import io.github.patorinaldi.gastos.api.service.email.EmailMessage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mail.MailSendException;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.after;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -44,6 +49,10 @@ class EmailVerificationTest extends EmailTestSupport {
 
     @Autowired
     private EmailLinkLimitProperties limits;
+
+    @Autowired
+    @Qualifier("applicationTaskExecutor")
+    private ThreadPoolTaskExecutor executor;
 
     private final List<UUID> households = new ArrayList<>();
 
@@ -173,6 +182,34 @@ class EmailVerificationTest extends EmailTestSupport {
         verifyEmail(anterior).andExpect(status().isNoContent());
     }
 
+    // Doble clic en "reenviar": los dos reenvíos guardan su token antes de que alguno anule los
+    // anteriores. Tiene que quedar vigente el último enlace, no ninguno.
+    @Test
+    void deDosReenviosALaVezQuedaVigenteElUltimoEnlace() throws Exception {
+        CyclicBarrier enviando = new CyclicBarrier(2);
+        doAnswer(invocation -> {
+            enviando.await(5, TimeUnit.SECONDS);
+            return invocation.callRealMethod();
+        }).when(emailSender).send(argThat(m -> m != null && correoDeBeto.equals(m.to())));
+
+        resend(correoDeBeto).andExpect(status().isAccepted());
+        resend(correoDeBeto).andExpect(status().isAccepted());
+        List<String> enviados = emailsTo(correoDeBeto, 2).stream().map(m -> tokenIn(m, LINK)).toList();
+        awaitBackgroundTasks();
+
+        List<Boolean> vigentes = jdbcTemplate.queryForList("""
+                select used_at is null from auth_tokens
+                where user_id = ? and purpose = 'email_verification'
+                order by created_at desc""", Boolean.class, beto);
+        assertThat(vigentes).containsExactly(true, false);
+        String ultimo = enviados.stream()
+                .filter(token -> jdbcTemplate.queryForObject(
+                        "select used_at is null from auth_tokens where token_hash = ?",
+                        Boolean.class, (Object) tokenValues.hash(token)))
+                .findFirst().orElseThrow();
+        verifyEmail(ultimo).andExpect(status().isNoContent());
+    }
+
     // Misma respuesta exista o no la cuenta, esté o no verificada, y sin correo de más.
     @Test
     void elReenvioRespondeIgualParaUnaCuentaVerificadaOInexistenteYNoMandaNada() throws Exception {
@@ -229,6 +266,15 @@ class EmailVerificationTest extends EmailTestSupport {
             Thread.sleep(50);
         } while (System.currentTimeMillis() < deadline);
         assertThat(pending).as("tokens de verificación vigentes").isEqualTo(expected);
+    }
+
+    /** Espera a que el ejecutor de los envíos en segundo plano no tenga tareas en curso ni en cola. */
+    private void awaitBackgroundTasks() throws InterruptedException {
+        long deadline = System.currentTimeMillis() + WAIT_MS;
+        while (executor.getActiveCount() > 0 || !executor.getThreadPoolExecutor().getQueue().isEmpty()) {
+            assertThat(System.currentTimeMillis()).as("tareas en segundo plano terminadas").isLessThan(deadline);
+            Thread.sleep(50);
+        }
     }
 
     private ResultActions verifyEmail(String token) throws Exception {
