@@ -41,7 +41,7 @@ public class PasswordResetService {
     private final AuthTokenValues tokenValues;
     private final PasswordEncoder passwordEncoder;
     private final EmailSender emailSender;
-    private final PasswordResetLimiter limiter;
+    private final EmailLinkLimiter limiter;
     private final WebUrlProperties web;
     private final Executor executor;
     private final TransactionTemplate transactions;
@@ -52,7 +52,7 @@ public class PasswordResetService {
                                 AuthTokenValues tokenValues,
                                 PasswordEncoder passwordEncoder,
                                 EmailSender emailSender,
-                                PasswordResetLimiter limiter,
+                                EmailLinkLimiter limiter,
                                 WebUrlProperties web,
                                 @Qualifier("applicationTaskExecutor") Executor executor,
                                 PlatformTransactionManager transactionManager) {
@@ -82,16 +82,21 @@ public class PasswordResetService {
      * cualquiera con acceso a él podría cambiar la contraseña de otra persona (RNF-09).
      *
      * @param clientIp dirección del cliente, sin puerto, para el límite de pedidos
-     * @throws PasswordResetUnavailableException si el envío de correos no puede llevar el enlace
+     * @throws EmailDeliveryUnavailableException si el envío de correos no puede llevar el enlace
      * @throws io.github.patorinaldi.gastos.api.service.limit.TooManyAttemptsException si se superó
      *         el límite de pedidos (RNF-32)
      */
     public void requestReset(String email, String clientIp) {
         if (!emailSender.canSendSecrets()) {
-            throw new PasswordResetUnavailableException();
+            throw new EmailDeliveryUnavailableException();
         }
         limiter.count(email, clientIp);
-        executor.execute(() -> sendResetLink(email));
+        try {
+            executor.execute(() -> sendResetLink(email));
+        } catch (RuntimeException e) {
+            // La respuesta es la misma pase lo que pase en segundo plano: un 500 acá la distinguiría.
+            log.error("No se pudo programar el envío del restablecimiento: correo={}", LogHash.ofEmail(email), e);
+        }
     }
 
     void sendResetLink(String email) {
@@ -108,7 +113,8 @@ public class PasswordResetService {
             log.info("Enlace de restablecimiento enviado: usuario={}", user.getId());
         } catch (RuntimeException e) {
             // Nadie espera este resultado: la respuesta ya salió. Queda en el log.
-            log.error("No se pudo enviar el enlace de restablecimiento: correo={}", LogHash.ofEmail(email), e);
+            log.error("No se pudo enviar el enlace de restablecimiento: correo={}, causa={}",
+                    LogHash.ofEmail(email), LogCause.of(e));
         }
     }
 

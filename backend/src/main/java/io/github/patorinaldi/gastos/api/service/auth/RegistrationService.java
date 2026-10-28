@@ -23,7 +23,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * operar, y un hogar sin catálogo dejaría al motor de reglas sin nada que aplicar.
  *
  * <p>La cuenta nace sin verificar y no puede iniciar sesión hasta confirmar el correo (RN-02). El
- * token de verificación y su envío son del punto de entrada de verificación, no de este.
+ * token de verificación se emite en la misma transacción, y el correo con el enlace sale después de
+ * confirmarla, en segundo plano (RF-03, ver {@link EmailVerificationService}).
  */
 @Service
 public class RegistrationService {
@@ -39,6 +40,7 @@ public class RegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final HouseholdContext householdContext;
     private final RegistrationAttemptLimiter attemptLimiter;
+    private final EmailVerificationService verification;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactions;
 
@@ -47,6 +49,7 @@ public class RegistrationService {
                                PasswordEncoder passwordEncoder,
                                HouseholdContext householdContext,
                                RegistrationAttemptLimiter attemptLimiter,
+                               EmailVerificationService verification,
                                JdbcTemplate jdbcTemplate,
                                PlatformTransactionManager transactionManager) {
         this.users = users;
@@ -54,6 +57,7 @@ public class RegistrationService {
         this.passwordEncoder = passwordEncoder;
         this.householdContext = householdContext;
         this.attemptLimiter = attemptLimiter;
+        this.verification = verification;
         this.jdbcTemplate = jdbcTemplate;
         this.transactions = new TransactionTemplate(transactionManager);
     }
@@ -70,11 +74,18 @@ public class RegistrationService {
      * pool mientras dura, y bcrypt corre antes de abrirla. El otro es que la violación de la clave
      * única tiene que atraparse una vez que la transacción ya revirtió.
      *
+     * <p>Antes que nada, que se pueda mandar el enlace de verificación: sin él, la cuenta creada no
+     * podría verificarse nunca, y el correo quedaría tomado por una cuenta inservible.
+     *
      * @param clientIp dirección desde la que llega el intento, sin puerto, para el límite de altas
-     * @throws TooManyAttemptsException       si esa dirección superó el límite (RNF-31)
-     * @throws EmailAlreadyRegisteredException si ya hay una cuenta con ese correo (RN-01)
+     * @throws EmailDeliveryUnavailableException si el envío de correos no puede llevar el enlace
+     * @throws TooManyAttemptsException          si esa dirección superó el límite (RNF-31)
+     * @throws EmailAlreadyRegisteredException   si ya hay una cuenta con ese correo (RN-01)
      */
     public Registration register(String name, String email, String password, String clientIp) {
+        if (!verification.canSendLinks()) {
+            throw new EmailDeliveryUnavailableException();
+        }
         attemptLimiter.start(clientIp);
 
         // Comprobación temprana para responder 409 sin hashear. No alcanza por sí sola: dos altas
@@ -83,20 +94,33 @@ public class RegistrationService {
             throw alreadyRegistered(email);
         }
 
-        Registration registration = create(name.strip(), email, passwordEncoder.encode(password));
+        String displayName = name.strip();
+        Created created = create(displayName, email, passwordEncoder.encode(password));
+        Registration registration = created.registration();
         log.info("Alta del usuario {} con su hogar {}", registration.userId(), registration.householdId());
+        verification.sendLater(email, displayName, created.verificationToken());
         return registration;
     }
 
+    /** Lo que deja el alta. El token va aparte de {@link Registration}, que llega a la respuesta. */
+    record Created(Registration registration, String verificationToken) {
+
+        // Sin esto, el toString del record mostraría el token si alguien lo registra en un log.
+        @Override
+        public String toString() {
+            return "Created[registration=" + registration + "]";
+        }
+    }
+
     /**
-     * Crea el hogar, el usuario y el catálogo en una sola transacción. Sin límite ni
+     * Crea el hogar, el usuario, el catálogo y el token de verificación en una sola transacción. Sin límite ni
      * comprobaciones previas: es el camino que decide el índice único, y se puede ejercer solo.
      *
      * <p>Solo la violación de {@code users_email_key} se informa como correo repetido. Cualquier
      * otra violación de integridad es un error real, con otra causa, y se relanza para que no quede
      * disfrazada de "ya existe una cuenta".
      */
-    Registration create(String name, String email, String passwordHash) {
+    Created create(String name, String email, String passwordHash) {
         try {
             return transactions.execute(status -> createAccount(name, email, passwordHash));
         } catch (DataIntegrityViolationException ex) {
@@ -107,7 +131,7 @@ public class RegistrationService {
         }
     }
 
-    private Registration createAccount(String name, String email, String passwordHash) {
+    private Created createAccount(String name, String email, String passwordHash) {
         Household household = households.saveAndFlush(new Household(householdNameFor(name)));
 
         // El hogar no existía cuando empezó la transacción, así que HouseholdTransactionListener no
@@ -117,8 +141,10 @@ public class RegistrationService {
 
         User user = users.saveAndFlush(new User(household.getId(), email, passwordHash, name));
         jdbcTemplate.execute("select seed_household_defaults()");
+        String verificationToken = verification.issueToken(user.getId());
 
-        return new Registration(user.getId(), household.getId(), user.isEmailVerified());
+        return new Created(
+                new Registration(user.getId(), household.getId(), user.isEmailVerified()), verificationToken);
     }
 
     /** El hogar arranca con el nombre de quien lo crea, y se renombra desde M2 (RF-11). */
