@@ -43,6 +43,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
 describe('apiRequest', () => {
@@ -130,6 +131,35 @@ describe('apiRequest', () => {
     await apiRequest('/api/auth/login', { method: 'POST', body: {}, auth: false }).catch(() => undefined)
 
     expect(getSession()?.token).toBe('token-de-prueba')
+  })
+
+  // La sesión venció con la pantalla abierta: la llamada sale sin token y el 401 tiene que llevar
+  // al login igual, aunque no haya un token que comparar.
+  it('un 401 sin token, por una sesión que venció con la pantalla abierta, la descarta', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-28T12:00:00Z'))
+    const { apiRequest, saveSession } = await load()
+    saveSession({ token: 'token-de-prueba', expiresAt: '2026-10-28T13:00:00Z' })
+    vi.setSystemTime(new Date('2026-10-28T13:00:01Z'))
+    fetchMock.mockResolvedValue(problem(401, 'Iniciá sesión para continuar.'))
+
+    await apiRequest('/api/auth/me').catch(() => undefined)
+
+    expect(sentHeaders().Authorization).toBeUndefined()
+    expect(localStorage.getItem('gastos.session')).toBeNull()
+  })
+
+  it('un 401 de una ruta pública no descarta una sesión vencida', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-28T12:00:00Z'))
+    const { apiRequest, saveSession } = await load()
+    saveSession({ token: 'token-de-prueba', expiresAt: '2026-10-28T13:00:00Z' })
+    vi.setSystemTime(new Date('2026-10-28T13:00:01Z'))
+    fetchMock.mockResolvedValue(problem(401, 'Correo o contraseña incorrectos'))
+
+    await apiRequest('/api/auth/login', { method: 'POST', body: {}, auth: false }).catch(() => undefined)
+
+    expect(localStorage.getItem('gastos.session')).not.toBeNull()
   })
 })
 

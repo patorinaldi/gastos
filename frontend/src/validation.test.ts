@@ -18,8 +18,29 @@ describe('validateName', () => {
 
   // Postgres no guarda el carácter nulo en un texto, y el backend los rechaza todos.
   it('rechaza caracteres de control', () => {
-    expect(validateName('Ana\u0000')).toMatch(/signos comunes/)
-    expect(validateName('Ana\tLópez')).toMatch(/signos comunes/)
+    expect(validateName('Ana\u0000')).toMatch(/invisibles/)
+    expect(validateName('Ana\tLópez')).toMatch(/invisibles/)
+    expect(validateName('Ana\nPerez')).toMatch(/invisibles/)
+  })
+
+  // Los mismos casos que ApiContractsValidationTest del backend (DisplayNames): sin esta validación
+  // el servidor responde 400 y la pantalla no puede decir que el problema es el nombre.
+  it('rechaza los caracteres de control de Unicode, los invisibles y los separadores de línea', () => {
+    for (const name of ['Atajo\u0085', '‮onofelet', 'Ana​', '​', 'Ata jo', 'Ata jo']) {
+      expect(validateName(name), JSON.stringify(name)).toBeDefined()
+    }
+  })
+
+  // trim() de JavaScript los quita, así que se piden como un nombre vacío.
+  it('rechaza un nombre hecho solo de espacios duros', () => {
+    expect(validateName(' ')).toBe('Ingresá tu nombre')
+    expect(validateName('  ')).toBe('Ingresá tu nombre')
+  })
+
+  it('acepta emoji, también los compuestos con la unión de ancho cero', () => {
+    expect(validateName('Ana ✨')).toBeUndefined()
+    expect(validateName('Familia 👨‍👩‍👧')).toBeUndefined()
+    expect(validateName('María José Núñez')).toBeUndefined()
   })
 })
 

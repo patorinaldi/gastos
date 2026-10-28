@@ -114,6 +114,17 @@ export function clearSessionIfToken(token: string) {
   }
 }
 
+/**
+ * Descarta la sesión solo si ya venció. getSession deja de devolverla al vencer, pero sin avisarle a
+ * nadie: la pantalla abierta no se entera hasta que algo la vuelve a dibujar. El cliente de la API
+ * llama a esta función ante un 401, para que la app vuelva al login. Una sesión vigente no se toca.
+ */
+export function clearExpiredSession(now: number = Date.now()) {
+  if (current && Date.parse(current.expiresAt) <= now) {
+    set(null)
+  }
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => {

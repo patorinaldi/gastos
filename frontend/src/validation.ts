@@ -15,9 +15,12 @@ const EMAIL_MAX_LENGTH = 320
 // Tan permisiva como @Email del backend, que acepta "ana@ejemplo" sin dominio de nivel superior:
 // una más estricta rechazaría correos que el servidor admite.
 const EMAIL = /^[^\s@]+@[^\s@]+$/
-// Los mismos que \p{Cntrl} de Java, que es lo que rechaza el backend.
-// eslint-disable-next-line no-control-regex -- detectar caracteres de control es justamente la idea
-const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/
+// La misma expresión que DisplayNames.PATTERN del backend, que en JavaScript necesita la bandera u
+// para las clases de Unicode. Rechaza los caracteres de control, también los C1, los de formato
+// (el override de dirección, el espacio de ancho cero) y los separadores de línea, y exige al menos
+// una letra, número, símbolo o signo. La unión de ancho cero (U+200D) se acepta: arma los emoji
+// compuestos. Si cambia allá, cambia acá.
+const DISPLAY_NAME = /^(?=.*[\p{L}\p{N}\p{S}\p{P}])(?:[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}]|‍)*$/u
 
 const utf8 = new TextEncoder()
 
@@ -28,8 +31,9 @@ export function validateName(name: string): string | undefined {
   if (name.length > NAME_MAX_LENGTH) {
     return `Usá un nombre de hasta ${NAME_MAX_LENGTH} caracteres`
   }
-  if (CONTROL_CHARACTERS.test(name)) {
-    return 'Usá solo letras, números y signos comunes'
+  // El caso típico es un nombre pegado de otro lado que trae un carácter que no se ve.
+  if (!DISPLAY_NAME.test(name)) {
+    return 'Escribí el nombre sin caracteres invisibles: a veces se cuelan al pegarlo'
   }
   return undefined
 }

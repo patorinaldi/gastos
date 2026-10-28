@@ -69,6 +69,17 @@ describe('sesión', () => {
     expect(getSession()).toBeNull()
   })
 
+  it('descarta una sesión vencida, pero no una vigente', async () => {
+    const { clearExpiredSession, saveSession } = await loadSession()
+    saveSession({ token: 'token-de-prueba', expiresAt: '2026-10-28T13:00:00Z' })
+
+    clearExpiredSession(Date.parse('2026-10-28T12:59:59Z'))
+    expect(storage.getItem(KEY)).not.toBeNull()
+
+    clearExpiredSession(Date.parse('2026-10-28T13:00:00Z'))
+    expect(storage.getItem(KEY)).toBeNull()
+  })
+
   it('devuelve el mismo objeto mientras la sesión no cambia', async () => {
     const { getSession, saveSession } = await loadSession()
     saveSession({ token: 'token-de-prueba', expiresAt: FUTURE })

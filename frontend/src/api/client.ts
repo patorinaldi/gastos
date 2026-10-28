@@ -1,5 +1,5 @@
 import { API_URL } from '../config.ts'
-import { clearSessionIfToken, getSession } from '../session.ts'
+import { clearExpiredSession, clearSessionIfToken, getSession } from '../session.ts'
 
 /*
  * Cliente de la API. Toda pantalla llama al servidor por acá, así el token, los errores y el tiempo
@@ -67,8 +67,12 @@ export async function apiRequest<T>(path: string, { method = 'GET', body, auth =
 
   if (!response.ok) {
     // Un 401 con token es una sesión vencida o invalidada: se descarta, y la app vuelve al login.
+    // Sin token, en una ruta que lo pide, puede ser una sesión que venció con la pantalla abierta:
+    // getSession ya no la devolvió, pero sigue guardada y nadie se enteró.
     if (response.status === 401 && token) {
       clearSessionIfToken(token)
+    } else if (response.status === 401 && auth) {
+      clearExpiredSession()
     }
     throw new ApiError(response.status, await problemDetail(response), retryAfter(response))
   }
