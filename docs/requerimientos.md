@@ -70,11 +70,11 @@ sacrificable), `Podría` (deseable).
 
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
-| RF-25 | El sistema debe informar el total gastado por el hogar en un período. | Debe | Pendiente |
-| RF-26 | El sistema debe informar el gasto del período agregado por categoría, por integrante y por medio de pago. | Debe | Pendiente |
-| RF-27 | El sistema debe informar la serie mensual de gasto del hogar junto con su media histórica. | Debe | Pendiente |
-| RF-28 | El sistema debe informar los comercios con mayor gasto acumulado en el período. | Debería | Pendiente |
-| RF-29 | El sistema debe permitir que las consultas de análisis acepten los mismos filtros que el listado de gastos. | Debería | Pendiente |
+| RF-25 | El sistema debe informar el total gastado por el hogar en un período. | Debe | Implementado |
+| RF-26 | El sistema debe informar el gasto del período agregado por categoría, por integrante y por medio de pago. | Debe | Implementado |
+| RF-27 | El sistema debe informar la serie mensual de gasto del hogar junto con su media histórica. | Debe | Implementado |
+| RF-28 | El sistema debe informar los comercios con mayor gasto acumulado en el período. | Debería | Implementado |
+| RF-29 | El sistema debe permitir que las consultas de análisis acepten los mismos filtros que el listado de gastos. | Debería | Implementado |
 
 ### M6. API de integración
 
