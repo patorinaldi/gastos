@@ -1,7 +1,12 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.CreateMachineTokenRequest;
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ForgotPasswordRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.RegisterRequest;
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ResendVerificationRequest;
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ResetPasswordRequest;
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.VerifyEmailRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.CreateExpenseRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.ExpenseFilterRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.UpdateExpenseRequest;
@@ -177,6 +182,75 @@ class ApiContractsValidationTest {
     @Test
     void aShortPasswordIsNotRejectedAtLogin() {
         assertThat(validate(new LoginRequest("ana@ejemplo.com", "corta"))).isEmpty();
+    }
+
+    // Como el nombre del alta: un NUL llegaría a la base y volvería como 500.
+    @Test
+    void aMachineTokenNameWithControlCharactersIsRejected() {
+        assertThat(validate(new CreateMachineTokenRequest("Atajo\u0000", "contrasena-larga"))).contains("name");
+        assertThat(validate(new CreateMachineTokenRequest("Atajo del teléfono", "contrasena-larga"))).isEmpty();
+    }
+
+    // Sin la contraseña, una sesión robada alcanzaría para emitir un acceso que no vence.
+    @Test
+    void aMachineTokenNeedsThePassword() {
+        assertThat(validate(new CreateMachineTokenRequest("Atajo", ""))).contains("password");
+        assertThat(validate(new CreateMachineTokenRequest("Atajo", "a".repeat(73)))).contains("password");
+    }
+
+    // \p{Cntrl} sin (?U) cubre solo los controles ASCII. Estos dejan un nombre que se ve vacío o al
+    // revés, y en el listado no se sabría cuál revocar.
+    @Test
+    void namesWithUnicodeControlOrInvisibleCharactersAreRejected() {
+        for (String name : new String[] {"Atajo\u0085", "‮onofelet", "​", " ", "  ", "Ata jo"}) {
+            assertThat(validate(new CreateMachineTokenRequest(name, "contrasena-larga"))).as(name).contains("name");
+            assertThat(validate(new RegisterRequest(name, "ana@ejemplo.com", "contrasena-larga"))).as(name).contains("name");
+        }
+    }
+
+    // La unión de ancho cero arma los emoji compuestos, y no deja un nombre invisible.
+    @Test
+    void namesWithEmojiAreAccepted() {
+        assertThat(validate(new CreateMachineTokenRequest("Familia 👨‍👩‍👧", "contrasena-larga"))).isEmpty();
+        assertThat(validate(new RegisterRequest("Ana ✨", "ana@ejemplo.com", "contrasena-larga"))).isEmpty();
+    }
+
+    // Spring MVC registra el cuerpo de la respuesta con su toString en DEBUG y TRACE.
+    @Test
+    void theIssuedTokenAndThePasswordStayOutOfToString() {
+        var response = new AuthContracts.CreatedMachineTokenResponse(
+                UUID.randomUUID(), "Atajo", "gst_valor-secreto", java.time.Instant.now());
+        assertThat(response.toString()).doesNotContain("gst_valor-secreto").contains("Atajo");
+        assertThat(new CreateMachineTokenRequest("Atajo", "clave-secreta").toString()).doesNotContain("clave-secreta");
+    }
+
+    @Test
+    void anOversizedVerificationTokenIsRejected() {
+        assertThat(validate(new VerifyEmailRequest("t".repeat(65)))).contains("token");
+    }
+
+    @Test
+    void anOversizedEmailIsRejectedWhenAskingToResendTheVerification() {
+        assertThat(validate(new ResendVerificationRequest("a".repeat(310) + "@ejemplo.com"))).contains("email");
+    }
+
+    @Test
+    void anOversizedEmailIsRejectedWhenAskingForAReset() {
+        String email = "a".repeat(310) + "@ejemplo.com";
+
+        assertThat(validate(new ForgotPasswordRequest(email))).contains("email");
+    }
+
+    // El token se hashea antes de buscarlo, igual que un código de invitación: lleva tope.
+    @Test
+    void anOversizedResetTokenIsRejected() {
+        assertThat(validate(new ResetPasswordRequest("t".repeat(65), "contrasena-larga")))
+                .contains("token");
+    }
+
+    @Test
+    void aResetWithAShortPasswordIsRejected() {
+        assertThat(validate(new ResetPasswordRequest("t".repeat(43), "corta"))).contains("password");
     }
 
     // ── Hogares ─────────────────────────────────────────────────────────────

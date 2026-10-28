@@ -1,8 +1,6 @@
 package io.github.patorinaldi.gastos.api.service.household;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import io.github.patorinaldi.gastos.api.service.TokenHash;
 import java.security.SecureRandom;
 import java.util.Locale;
 import org.springframework.stereotype.Component;
@@ -34,13 +32,7 @@ public class InvitationCodes {
 
     /** Hash SHA-256, 32 bytes, del código normalizado. Es lo que se guarda y por lo que se busca. */
     public byte[] hash(String code) {
-        try {
-            return MessageDigest.getInstance("SHA-256")
-                    .digest(normalize(code).getBytes(StandardCharsets.US_ASCII));
-        } catch (NoSuchAlgorithmException ex) {
-            // Toda JVM está obligada a implementar SHA-256.
-            throw new IllegalStateException(ex);
-        }
+        return TokenHash.sha256(normalize(code));
     }
 
     // Mayúsculas, sin guiones ni espacios. El prefijo queda: un código sin él es otro código.

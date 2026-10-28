@@ -12,6 +12,7 @@ Documentación técnica e informes de todas las entregas del proyecto **Gastos**
 | [modelo-de-datos.md](modelo-de-datos.md) | Descripción de cada tabla, sus restricciones e índices, y el mecanismo de aislamiento entre hogares. |
 | [casos-de-uso.md](casos-de-uso.md) | Los 8 flujos críticos con flujo principal, alternativos y de excepción. |
 | [historias-de-usuario.md](historias-de-usuario.md) | Las 20 historias (INVEST) con criterios de aceptación en formato Given-When-Then. |
+| [trazabilidad.md](trazabilidad.md) | Matrices que relacionan requisitos, historias, casos de uso, reglas de negocio y tablas de la base de datos. |
 | [der/](der/) | Diagrama entidad-relación completo: [código DBML](der/DER-gastos-code.md) y [diagrama exportado](der/DER-gastos.svg). |
 
 ## Entregas
@@ -31,6 +32,7 @@ Según lo que se busque:
 - **Qué no puede violarse nunca** → [reglas-de-negocio.md](reglas-de-negocio.md).
 - **Cómo está construido** → [modulos.md](modulos.md).
 - **Cómo se guardan y se aíslan los datos** → [modelo-de-datos.md](modelo-de-datos.md).
+- **Cómo se relaciona todo lo anterior** → [trazabilidad.md](trazabilidad.md).
 
 Los documentos se referencian entre sí mediante identificadores estables: `RF-xx` requisito
 funcional, `RNF-xx` no funcional, `RD-xx` de dominio, `RN-xx` regla de negocio, `HU-xx` historia de

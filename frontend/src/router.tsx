@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage.tsx'
 import { NewExpensePage } from './pages/NewExpensePage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { RegisterPage } from './pages/RegisterPage.tsx'
+import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
 import { VerifyEmailPage } from './pages/VerifyEmailPage.tsx'
 
 // El catálogo del sistema de diseño solo existe en desarrollo. Se carga con un import dinámico
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
       // El enlace del correo de alta: /verify-email#token=...
       { path: '/verify-email', element: <VerifyEmailPage /> },
       { path: '*', element: <NotFoundPage /> },

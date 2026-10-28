@@ -249,6 +249,11 @@ RN-18:
 - validar que el hogar de un token de cliente máquina sea el hogar actual de su dueño;
 - rechazar operaciones sobre hogares archivados.
 
+> **Nota posterior.** Los tres puntos están implementados: la sesión resuelve el hogar desde
+> `users.household_id` en cada petición, y el token de cliente máquina se rechaza si su hogar no es
+> el actual de su dueño o está archivado. De la lista siguiente, el canje único de una invitación
+> se sostiene en el motor desde la migración V7.
+
 Y quedan registrados, para resolver junto con esos módulos, los puntos que surgieron de la revisión
 del esquema:
 
