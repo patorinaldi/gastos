@@ -447,9 +447,8 @@ sostenerse (RNF-11). Las políticas de aislamiento alcanzan también a estas con
 los totales nunca pueden mezclar hogares. Las consultas no nombran el hogar: corren dentro de una
 transacción, que fija el hogar de la sesión, y RLS deja fuera las filas de cualquier otro. Como
 `app_current_household()` es `stable`, el planificador usa igual los índices que empiezan por
-`household_id`. El desglose por categoría va dentro de `/summary`, en lugar de un `/categories`
-aparte como preveía el cronograma: es la misma consulta con los mismos filtros, y la pantalla lo
-pide junto con el resto del resumen.
+`household_id`. El desglose por categoría va dentro de `/summary`: es la misma consulta con los
+mismos filtros, y la pantalla lo pide junto con el resto del resumen.
 
 Depende de M3 (los datos que agrega) y M8.
 
