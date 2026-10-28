@@ -4,6 +4,11 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+    # Las fechas de los parámetros de la URL van en ISO (2026-09-01). Sin esto, Spring lee LocalDate
+    # en el formato corto del idioma del servidor, y la misma URL daría otra fecha, o un 400, según
+    # dónde corra.
+    format:
+      date: iso
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gastos}
     username: ${DB_API_USERNAME:gastos_api}
