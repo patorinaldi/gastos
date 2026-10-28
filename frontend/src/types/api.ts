@@ -171,6 +171,11 @@ export interface UpdateExpenseRequest {
   expenseDate?: IsoDate
   paymentMethod?: PaymentMethod
   categoryId?: Uuid
+  /**
+   * `true` devuelve el gasto a la bandeja de no categorizados. Un `categoryId` nulo no alcanza,
+   * porque significa "no cambiar". No se combina con `categoryId`: el servidor responde 400.
+   */
+  uncategorized?: boolean
 }
 
 export interface ExpenseResponse {
@@ -206,7 +211,7 @@ export interface ExpenseFilter {
   categoryId?: string
   ownerId?: Uuid
   paymentMethod?: PaymentMethod
-  /** Desde 0. Sin paginación, el servidor devuelve la página 0 de 20 elementos. */
+  /** Desde 0, hasta 10.000. Sin paginación, el servidor devuelve la página 0 de 20 elementos. */
   page?: number
   /** Máximo 100. */
   size?: number

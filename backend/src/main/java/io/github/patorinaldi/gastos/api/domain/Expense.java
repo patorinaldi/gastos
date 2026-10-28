@@ -57,10 +57,13 @@ public class Expense {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "household_id", nullable = false)
+    // Hogar y responsable no cambian, y updatable = false los deja fuera del update. Si Hibernate los
+    // escribiera, aunque fuera con el mismo valor, el trigger require_user_in_household de la V5 se
+    // dispararía, y editar un gasto de alguien que ya se fue del hogar fallaría (RN-18).
+    @Column(name = "household_id", nullable = false, updatable = false)
     private UUID householdId;
 
-    @Column(name = "owner_id", nullable = false)
+    @Column(name = "owner_id", nullable = false, updatable = false)
     private UUID ownerId;
 
     @Setter

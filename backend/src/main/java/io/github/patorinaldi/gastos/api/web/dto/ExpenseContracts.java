@@ -1,6 +1,7 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
@@ -30,6 +31,9 @@ public final class ExpenseContracts {
 
     /** Tamaño de página cuando el cliente no pide uno. */
     public static final int DEFAULT_PAGE_SIZE = 20;
+
+    /** Última página que se puede pedir. Con 100 elementos por página, un millón de gastos. */
+    public static final int MAX_PAGE = 10_000;
 
     /** Valor de {@code categoryId} que pide la bandeja de no categorizados (RF-22). */
     public static final String UNCATEGORIZED = "uncategorized";
@@ -80,7 +84,8 @@ public final class ExpenseContracts {
      * válido, pero " " sí es un cambio, y es uno que la base rechaza.
      *
      * <p>Para sacarle la categoría a un gasto y devolverlo a la bandeja no alcanza con un null,
-     * que acá significa "no cambiar": esa operación necesita su propio campo y queda para M3.
+     * que acá significa "no cambiar": esa operación tiene su propio campo, {@code "uncategorized":
+     * true}, que no se combina con {@code categoryId}. {@code false} o ausente no cambia nada.
      */
     public record UpdateExpenseRequest(
             @Positive @Digits(integer = 10, fraction = 2)
@@ -89,7 +94,17 @@ public final class ExpenseContracts {
             @Size(max = 200) String merchant,
             LocalDate expenseDate,
             PaymentMethodValue paymentMethod,
-            UUID categoryId) {
+            UUID categoryId,
+            Boolean uncategorized) {
+
+        @AssertTrue(message = "categoryId y uncategorized no se combinan")
+        public boolean isCategoryChangeConsistent() {
+            return categoryId == null || !removesCategory();
+        }
+
+        public boolean removesCategory() {
+            return Boolean.TRUE.equals(uncategorized);
+        }
     }
 
     /**
@@ -100,7 +115,9 @@ public final class ExpenseContracts {
      * valores por defecto porque los parámetros que no vienen llegan nulos: sin ellos, un listado
      * pedido sin paginación quedaría en página 0 de tamaño 0 y la validación lo rechazaría con un
      * 400, cuando es la forma más común de pedirlo. El tope de 100 lo fija RNF-12: sin límite, una
-     * sola petición podría pedir el historial completo del hogar.
+     * sola petición podría pedir el historial completo del hogar. La página también tiene tope: con
+     * una página enorme, la posición del primer elemento no entraría en un entero y la consulta
+     * fallaría con un 500 en lugar de devolver una página vacía.
      *
      * <p>{@code categoryId} es texto y no UUID porque admite además {@code uncategorized} (RF-22);
      * un identificador nulo ahí significaría "sin filtro", que es justo lo contrario. Al ser texto,
@@ -115,7 +132,7 @@ public final class ExpenseContracts {
             String categoryId,
             UUID ownerId,
             PaymentMethodValue paymentMethod,
-            @PositiveOrZero Integer page,
+            @PositiveOrZero @Max(MAX_PAGE) Integer page,
             @Positive @Max(100) Integer size) implements ExpenseFilter {
 
         public ExpenseFilterRequest {

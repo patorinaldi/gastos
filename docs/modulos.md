@@ -28,7 +28,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 |---|---|---|
 | M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; pantallas del cliente web pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
 | M2 Hogares | Elian | Backend implementado, pantallas pendientes |
-| M3 Gastos | Elian | Pendiente |
+| M3 Gastos | Elian | Alta, detalle, edición, baja lógica y listado con filtros implementados; la categoría automática llega con el motor de M4 |
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
 | M6 API de integración | Juan | Pendiente |
@@ -348,20 +348,65 @@ Parámetros del listado:
 | `categoryId` | uuid | Filtra por categoría. `uncategorized` para la bandeja (RF-22). |
 | `ownerId` | uuid | Filtra por integrante. |
 | `paymentMethod` | enum | `Efectivo`, `Tarjeta` o `Transferencia`. |
-| `page`, `size` | entero | Paginación. `size` máximo 100 (RNF-12). |
+| `page`, `size` | entero | Paginación. `page` desde 0 y hasta 10.000; `size` por defecto 20 y máximo 100 (RNF-12). |
 
 Contratos principales:
 
 ```
 POST /api/expenses
   { "amount": "1234.56", "merchant": "Carrefour", "paymentMethod": "Tarjeta" }
-  → 201 { "id": "...", "categoryId": "...", "expenseDate": "2026-09-21", "ownerId": "..." }
-  → 400 importe no positivo (RN-06) o comercio vacío (RN-07)
+  → 201 { "id": "...", "amount": "1234.56", "merchant": "Carrefour", "expenseDate": "2026-09-21",
+          "paymentMethod": "Tarjeta", "categoryId": "...", "categoryName": "Supermercado",
+          "ownerId": "...", "ownerName": "Ana", "createdAt": "...", "updatedAt": "..." }
+  → 400 importe no positivo o con más de dos decimales (RN-06), comercio vacío (RN-07), o una
+        categoría inexistente, de otro hogar o dada de baja (RN-08, RN-16)
+
+GET /api/expenses?from=2026-09-01&to=2026-09-30&categoryId=uncategorized&page=0&size=20
+  → 200 { "content": [ { ...como el alta... } ], "page": 0, "size": 20,
+          "totalElements": 3, "totalPages": 1 }
+
+PATCH /api/expenses/{id}
+  { "amount": "1100.50" }            // solo cambia lo que viene
+  { "uncategorized": true }          // devuelve el gasto a la bandeja
+  → 200 el gasto completo, como en el alta
+  → 400 las mismas validaciones del alta, o categoryId junto con uncategorized
+  → 404 inexistente, dado de baja o de otro hogar
+
+DELETE /api/expenses/{id}
+  → 204
+  → 404 inexistente, ya dado de baja o de otro hogar
 ```
 
 **Decisión de diseño.** El cuerpo mínimo del alta es importe y comercio. La fecha es la del día, el
 responsable sale del token y la categoría la resuelve M4 (RF-14). Todo lo demás es opcional. Eso es
 lo que baja el costo de registrar un gasto, que es el problema central que el proyecto ataca.
+
+**El día es el de Argentina.** La fecha que completa el alta y el mes en curso del listado y del
+análisis se deciden en la misma zona, `America/Argentina/Buenos_Aires`. Si el alta tomara la fecha en
+UTC, un gasto cargado el 31 a las 22 h quedaría con fecha del 1 y no aparecería en el mes en que se
+hizo.
+
+**El importe del alta viaja con punto decimal** (RD-01): `"1234.56"`, nunca `"1.234,56"`. La interfaz
+web arma el valor, así que no hay nada que interpretar, y un formato ambiguo se rechaza con `400`. La
+normalización de formatos locales es de la captura de M6, que recibe texto leído de una notificación;
+el normalizador, `AmountParser`, vive con el resto de M3 y rechaza cualquier formato que admita más de
+una lectura en lugar de adivinar.
+
+**Edición.** Cualquier integrante puede editar cualquier gasto del hogar, también el de alguien que ya
+se fue (RN-18). El responsable no se edita: es quien cargó el gasto. Una categoría nueva tiene que estar
+activa; si la que llega es la que el gasto ya tenía, no se vuelve a validar, para que un formulario
+completo pueda corregir el importe de un gasto viejo cuya categoría se dio de baja después. Como
+`categoryId` nulo significa "no cambiar", devolver un gasto a la bandeja se pide con
+`"uncategorized": true`. Dos ediciones simultáneas del mismo gasto se serializan con un bloqueo de
+fila, y una edición que llega después de la baja responde `404`.
+
+**Gastos de otro hogar.** Un identificador de otro hogar responde `404`, igual que uno inexistente: un
+`403` confirmaría que existe (HU-09). En el listado, filtrar por una categoría o un integrante de otro
+hogar no da error: no hay gastos que coincidan y la página viene vacía, como en el análisis.
+
+**Orden del listado.** Por fecha descendente (RF-17), y a igual fecha por fecha de carga e
+identificador. Sin ese desempate, los gastos del mismo día podían cambiar de lugar entre una página y
+la siguiente, y uno aparecer dos veces o ninguna.
 
 **Las bajas son lógicas.** Un gasto dado de baja deja de aparecer en listados y análisis, pero la
 fila se conserva. En una aplicación de dinero, el borrado físico destruye el historial sobre el que
