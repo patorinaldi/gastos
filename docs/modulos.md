@@ -28,8 +28,8 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 |---|---|---|
 | M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; pantallas del cliente web pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
 | M2 Hogares | Elian | Backend implementado, pantallas pendientes |
-| M3 Gastos | Elian | Alta, detalle, edición, baja lógica y listado con filtros implementados; la categoría automática llega con el motor de M4 |
-| M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
+| M3 Gastos | Elian | Alta con categoría automática, detalle, edición, baja lógica y listado con filtros implementados; pantallas pendientes |
+| M4 Categorización | Elian | Catálogo, motor de reglas en el alta, bandeja y reglas con reclasificación implementados; pantallas pendientes |
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
 | M6 API de integración | Juan | Pendiente |
 | M7 Interfaz de usuario | Elian, Pato | Sistema de diseño y shell implementados, pantallas pendientes |
@@ -344,7 +344,7 @@ Parámetros del listado:
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
-| `from`, `to` | fecha ISO (`2026-09-01`) | Período. Por defecto, el mes en curso (RD-07). |
+| `from`, `to` | fecha ISO (`2026-09-01`) | Período. Por defecto, el mes en curso (RD-07); en la bandeja, toda la historia. |
 | `categoryId` | uuid | Filtra por categoría. `uncategorized` para la bandeja (RF-22). |
 | `ownerId` | uuid | Filtra por integrante. |
 | `paymentMethod` | enum | `Efectivo`, `Tarjeta` o `Transferencia`. |
@@ -408,6 +408,11 @@ hogar no da error: no hay gastos que coincidan y la página viene vacía, como e
 identificador. Sin ese desempate, los gastos del mismo día podían cambiar de lugar entre una página y
 la siguiente, y uno aparecer dos veces o ninguna.
 
+**La bandeja no tiene período por defecto.** Con `categoryId=uncategorized` y sin `from` ni `to`, el
+listado trae los gastos sin categoría de cualquier mes (RF-22). La bandeja es trabajo pendiente, no el
+gasto de un período: con el mes en curso por defecto, un gasto del mes anterior quedaría sin clasificar
+y fuera de la vista. Con período, filtra como cualquier otro listado.
+
 **Las bajas son lógicas.** Un gasto dado de baja deja de aparecer en listados y análisis, pero la
 fila se conserva. En una aplicación de dinero, el borrado físico destruye el historial sobre el que
 después se pide explicación: quién cargó qué, cuándo y por cuánto. La consecuencia es que todas las
@@ -444,8 +449,20 @@ categoría. No usa aprendizaje automático, así que la misma entrada produce si
 resultado, siempre se puede decir qué regla se aplicó, y no hay dependencia de un servicio externo
 ni costo por consulta.
 
-Los patrones se almacenan en minúscula y sin tildes. Se evitan patrones cortos o palabras comunes
-que coincidirían con comercios no relacionados.
+Una categoría elegida a mano en el alta manda sobre las reglas. El motor solo corre cuando el gasto
+llega sin categoría, y si ninguna regla coincide el gasto queda en la bandeja (RF-21, RN-12).
+
+**Qué es coincidir.** Los patrones se guardan en minúscula, sin tildes y con un solo espacio entre
+palabras: es la forma que muestra el listado de reglas, y la API la aplica a lo que recibe, así que la
+interfaz puede proponer el comercio tal como está y el servidor lo lleva a patrón (CU-05, paso 2). Para
+comparar, patrón y comercio se reducen a sus letras y números, sin tildes ni mayúsculas, y la regla
+coincide si el patrón está contenido en el comercio. Así `supermercado` coincide con
+"Super Mercado Rosario", `mcdonald` con "McDonald's" y `pedidosya` con "PEDIDOS YA": el comercio se
+tipea a mano o llega de una notificación del banco, y los espacios y la puntuación varían.
+
+Un patrón necesita al menos tres letras o números; uno más corto responde `400`. Se evitan además
+patrones cortos o palabras comunes que coincidirían con comercios no relacionados: por eso la siembra
+no incluye `dia` ni `claro`.
 
 **Cuando coinciden varias reglas gana la del patrón más largo.** Con los patrones `super` y
 `supermercado`, el comercio "Super Mercado Rosario" se resuelve por el segundo; con `uber` y
@@ -453,7 +470,27 @@ que coincidirían con comercios no relacionados.
 más específico manda, que es lo que el usuario espera al agregar una regla más precisa sobre un
 comercio que ya estaba cubierto. Si dos patrones empatan en longitud, gana la regla más antigua, de
 modo que el resultado no cambia al agregar reglas nuevas. No hace falta una columna de prioridad:
-el orden se deduce del patrón, y no hay un orden que el usuario deba mantener a mano.
+el orden se deduce del patrón, y no hay un orden que el usuario deba mantener a mano. La longitud se
+cuenta en letras y números, y entre las 43 reglas de la siembra, que tienen la misma fecha, desempata
+el identificador: el resultado nunca depende del orden en que la base devuelve las reglas.
+
+**Patrones repetidos (RN-10).** Dos patrones con las mismas letras y números, como `burger king` y
+`burgerking`, coinciden con exactamente los mismos comercios, así que cuentan como el mismo y el
+segundo responde `409`. La respuesta dice a qué categoría apunta la regla existente (CU-05, 4a): para
+que el patrón apunte a otra, se elimina esa regla y se crea de nuevo.
+
+**Reclasificación retroactiva (RN-13).** Al crear una regla, los gastos activos de la bandeja que
+coinciden con el patrón salen de ella. Cada uno recibe la categoría que le daría el motor completo,
+con la regla nueva incluida: con `uber eats` ya existente, crear `uber` no manda a Transporte un
+"Uber Eats" que estaba en la bandeja. Es lo que habría pasado si la regla hubiera existido al
+cargarlo. Los gastos que ya tienen categoría no se tocan, aunque coincidan: pueden ser una corrección
+manual. La asignación vuelve a comprobar, fila por fila, que el gasto siga sin categoría y activo, así
+que no pisa lo que otro integrante clasificó o dio de baja mientras tanto. Un gasto cargado en el mismo
+instante en que se crea la regla puede quedar en la bandeja, donde se ve y se clasifica a mano.
+
+La categoría de la regla se bloquea mientras se crea: si alguien la da de baja al mismo tiempo, o la
+regla se crea antes y la baja la borra, o la baja llega antes y la regla se rechaza con `400`. Sin el
+bloqueo, la regla podía quedar apuntando a una categoría dada de baja.
 
 **Catálogo inicial.** Cada hogar nuevo recibe 10 categorías y 43 reglas de comercios habituales en
 Argentina, sembradas por la migración V3. Dos categorías, Ropa y Educación, se siembran sin reglas.
@@ -469,13 +506,40 @@ categoría en el historial y en el análisis del período correspondiente; la ca
 ofrecerse para nuevas asignaciones y sus reglas dejan de aplicarse. Las reglas, en cambio, se
 eliminan físicamente: no son un hecho económico, sino una preferencia de clasificación.
 
+Una categoría o una regla de otro hogar responde `404`, igual que una inexistente. El nombre de una
+categoría es visible: no puede ser solo de espacios ni tener caracteres de control o invisibles.
+
 Contratos principales:
 
 ```
+GET /api/categories
+  → 200 [ { "id": "...", "name": "Supermercado" } ]   // solo las activas, por nombre
+
+POST /api/categories            { "name": "Mascotas" }
+PATCH /api/categories/{id}      { "name": "Animales" }
+  → 201 / 200 { "id": "...", "name": "..." }
+  → 400 nombre vacío, de más de 200 caracteres o con caracteres invisibles
+  → 404 (solo PATCH) inexistente, dada de baja o de otro hogar
+  → 409 ya hay una categoría activa con ese nombre, sin distinguir mayúsculas (RN-09)
+
+DELETE /api/categories/{id}
+  → 204
+  → 404 inexistente, ya dada de baja o de otro hogar
+
+GET /api/category-rules
+  → 200 [ { "id": "...", "pattern": "carrefour", "categoryId": "...", "categoryName": "Supermercado" } ]
+
 POST /api/category-rules
-  { "pattern": "carrefour", "categoryId": "..." }
-  → 201 { "id": "...", "reclassified": 7 }   // gastos que salieron de la bandeja
-  → 409 el patrón ya existe en el hogar (RN-10)
+  { "pattern": "Almacén de Pepe", "categoryId": "..." }
+  → 201 { "id": "...", "pattern": "almacen de pepe", "categoryId": "...",
+          "reclassified": 7 }   // gastos que salieron de la bandeja
+  → 400 patrón con menos de tres letras o números, o una categoría inexistente, de otro hogar o
+        dada de baja
+  → 409 el patrón ya existe en el hogar (RN-10), con la categoría de la regla existente
+
+DELETE /api/category-rules/{id}
+  → 204   // los gastos que ya clasificó conservan su categoría (RF-43)
+  → 404 inexistente o de otro hogar
 ```
 
 Depende de M8 (esquema y siembra) y M3 (los gastos que clasifica).

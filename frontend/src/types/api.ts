@@ -198,7 +198,7 @@ export const UNCATEGORIZED = 'uncategorized'
 
 /** Filtros del listado, como parámetros de consulta. Se combinan entre sí. */
 export interface ExpenseFilter {
-  /** Sin período, el mes en curso. */
+  /** Sin período, el mes en curso; en la bandeja (`UNCATEGORIZED`), toda la historia. */
   from?: IsoDate
   to?: IsoDate
   /**
@@ -237,6 +237,10 @@ export interface CategoryRuleResponse {
 }
 
 export interface CreateCategoryRuleRequest {
+  /**
+   * Puede ir el comercio tal como está: el servidor lo guarda en minúscula, sin tildes y con un solo
+   * espacio, y la respuesta trae cómo quedó. Necesita al menos tres letras o números.
+   */
   pattern: string
   categoryId: Uuid
 }

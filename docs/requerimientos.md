@@ -59,12 +59,12 @@ sacrificable), `Podría` (deseable).
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
 | RF-19 | El sistema debe sembrar en cada hogar nuevo un catálogo inicial de categorías y reglas. | Debe | Implementado |
-| RF-20 | El sistema debe resolver la categoría de un gasto en el alta, aplicando las reglas patrón-categoría del hogar sobre el nombre del comercio. Si coinciden varias, aplica la de patrón más largo y, a igual longitud, la más antigua. | Debe | Pendiente |
-| RF-21 | El sistema debe dejar el gasto sin categoría cuando ningún patrón coincide, en lugar de asignar una categoría por defecto. | Debe | Pendiente |
-| RF-22 | El sistema debe ofrecer un listado de los gastos sin categoría del hogar (bandeja de no categorizados). | Debe | Pendiente |
-| RF-23 | El sistema debe permitir crear una regla patrón-categoría y aplicarla retroactivamente a los gastos sin categoría que coincidan. | Debe | Pendiente |
-| RF-24 | El sistema debe permitir administrar el catálogo de categorías del hogar (alta, renombrado y baja lógica). | Debería | Pendiente |
-| RF-43 | El sistema debe permitir listar las reglas patrón-categoría del hogar y eliminarlas. Eliminar una regla no altera los gastos ya clasificados. | Debería | Pendiente |
+| RF-20 | El sistema debe resolver la categoría de un gasto en el alta, aplicando las reglas patrón-categoría del hogar sobre el nombre del comercio. Si coinciden varias, aplica la de patrón más largo y, a igual longitud, la más antigua. | Debe | Implementado |
+| RF-21 | El sistema debe dejar el gasto sin categoría cuando ningún patrón coincide, en lugar de asignar una categoría por defecto. | Debe | Implementado |
+| RF-22 | El sistema debe ofrecer un listado de los gastos sin categoría del hogar (bandeja de no categorizados). | Debe | Implementado |
+| RF-23 | El sistema debe permitir crear una regla patrón-categoría y aplicarla retroactivamente a los gastos sin categoría que coincidan. | Debe | Implementado |
+| RF-24 | El sistema debe permitir administrar el catálogo de categorías del hogar (alta, renombrado y baja lógica). | Debería | Implementado |
+| RF-43 | El sistema debe permitir listar las reglas patrón-categoría del hogar y eliminarlas. Eliminar una regla no altera los gastos ya clasificados. | Debería | Implementado |
 
 ### M5. Análisis
 
