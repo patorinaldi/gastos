@@ -70,6 +70,7 @@ class SecurityConfiguration {
             pathPattern("/error"),
             pathPattern(HttpMethod.POST, "/api/auth/register"),
             pathPattern(HttpMethod.POST, "/api/auth/verify"),
+            pathPattern(HttpMethod.POST, "/api/auth/verify/resend"),
             pathPattern(HttpMethod.POST, "/api/auth/login"),
             pathPattern(HttpMethod.POST, "/api/auth/password/forgot"),
             pathPattern(HttpMethod.POST, "/api/auth/password/reset"));

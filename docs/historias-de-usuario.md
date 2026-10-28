@@ -97,13 +97,14 @@ Escenario: Token vencido
 > **quiero** entrar con mi correo y contraseña
 > **para** ver y cargar los gastos de mi hogar.
 
-*Requisitos: RF-05 · Reglas: RN-02 · No funcionales: RNF-06*
+*Requisitos: RF-05 · Reglas: RN-02, RN-18 · No funcionales: RNF-06*
 
 ```gherkin
 Escenario: Acceso correcto
   Dado que mi cuenta está verificada
   Cuando ingreso mi correo y mi contraseña correctos
-  Entonces el sistema me devuelve un token de sesión que incluye mi hogar
+  Entonces el sistema me devuelve un token de sesión
+  Y cada petición que hago con él opera sobre mi hogar actual
 
 Escenario: Cuenta sin verificar
   Dado que no confirmé mi correo
@@ -166,7 +167,7 @@ Escenario: No se revela si el correo existe
 > **quiero** emitir un token para una automatización de mi teléfono y poder revocarlo
 > **para** registrar gastos sin abrir la aplicación, y cortar el acceso si pierdo el dispositivo.
 
-*Requisitos: RF-07, RF-31*
+*Requisitos: RF-07, RF-31 · Reglas: RN-18*
 
 ```gherkin
 Escenario: Emitir un token
@@ -184,6 +185,12 @@ Escenario: Revocar un token
   Cuando lo revoco
   Entonces las capturas que lleguen con ese token se rechazan
   Y mi sesión web sigue activa
+
+Escenario: Cambiarme de hogar revoca mis tokens
+  Dado que tengo un token de cliente máquina emitido en mi hogar
+  Cuando me incorporo a otro hogar con una invitación
+  Entonces las capturas que lleguen con ese token se rechazan
+  Y mis gastos anteriores siguen en el hogar que dejé
 ```
 
 ---
@@ -581,7 +588,7 @@ Escenario: Token revocado
 |---|---|---|---|
 | HU-01 Registro | M1, M4 | RF-01, RF-02, RF-03, RF-19 | RN-01, RN-11 |
 | HU-02 Confirmación de correo | M1 | RF-03, RF-04 | RN-02, RN-03 |
-| HU-03 Inicio de sesión | M1 | RF-05 | RN-02 |
+| HU-03 Inicio de sesión | M1 | RF-05 | RN-02, RN-18 |
 | HU-04 Recuperación de contraseña | M1 | RF-06 | RN-03 |
 | HU-05 Invitar | M2 | RF-08, RF-12 | RN-05 |
 | HU-06 Unirse a un hogar | M2 | RF-09 | RN-04, RN-05, RN-18 |
@@ -595,7 +602,7 @@ Escenario: Token revocado
 | HU-14 Evolución mensual | M5 | RF-27 | RN-14 |
 | HU-15 Filtrado interactivo | M5, M7 | RF-37 | ninguna |
 | HU-16 Captura desde el teléfono | M6 | RF-30 a RF-32 | RN-06, RN-07 |
-| HU-17 Tokens de automatización | M1, M6 | RF-07, RF-31 | ninguna |
+| HU-17 Tokens de automatización | M1, M6 | RF-07, RF-31 | RN-18 |
 | HU-18 Renombrar el hogar | M2 | RF-11 | ninguna |
 | HU-19 Comercios con más gasto | M5 | RF-28 | RN-16 |
 | HU-20 Filtrar el análisis | M5 | RF-18, RF-29 | ninguna |

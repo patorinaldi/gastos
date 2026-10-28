@@ -1,37 +1,24 @@
 package io.github.patorinaldi.gastos.api.web;
 
-import io.github.patorinaldi.gastos.api.AuthTestSupport;
-import io.github.patorinaldi.gastos.api.config.PasswordResetLimitProperties;
+import io.github.patorinaldi.gastos.api.EmailTestSupport;
+import io.github.patorinaldi.gastos.api.config.EmailLinkLimitProperties;
 import io.github.patorinaldi.gastos.api.domain.AuthTokenPurpose;
-import io.github.patorinaldi.gastos.api.service.auth.AuthTokenValues;
 import io.github.patorinaldi.gastos.api.service.auth.PasswordResetService;
 import io.github.patorinaldi.gastos.api.service.auth.ResetTokenUnavailableException;
 import io.github.patorinaldi.gastos.api.service.email.EmailMessage;
-import io.github.patorinaldi.gastos.api.service.email.EmailSender;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.after;
-import static org.mockito.Mockito.mockingDetails;
-import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -44,28 +31,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Restablecimiento de contraseña: {@code POST /api/auth/password/forgot} y
  * {@code POST /api/auth/password/reset} (RF-06, CU-08, RN-03, RNF-08, RNF-29, RNF-32).
  *
- * <p>El correo sale en segundo plano, después de responder: las pruebas lo esperan con
- * {@code verify(..., timeout(...))}. Las que prueban el canje emiten el token directo en la base,
- * sin pasar por el correo.
+ * <p>Las pruebas del canje emiten el token directo en la base, sin pasar por el correo.
  */
-class PasswordResetTest extends AuthTestSupport {
+class PasswordResetTest extends EmailTestSupport {
 
     private static final String PASSWORD = "contraseña-anterior";
     private static final String NEW_PASSWORD = "contraseña-nueva-1";
-    private static final long WAIT_MS = 10_000;
-    private static final Pattern LINK_TOKEN = Pattern.compile("/reset-password#token=([A-Za-z0-9_-]{43})");
-
-    @MockitoSpyBean
-    private EmailSender emailSender;
-
-    @Autowired
-    private AuthTokenValues tokenValues;
+    private static final String LINK = "/reset-password";
 
     @Autowired
     private PasswordResetService passwordResetService;
 
     @Autowired
-    private PasswordResetLimitProperties limits;
+    private EmailLinkLimitProperties limits;
 
     private UUID casa;
     private UUID ana;
@@ -89,7 +67,7 @@ class PasswordResetTest extends AuthTestSupport {
     void elEnlaceDelCorreoPermiteElegirUnaContrasenaNueva() throws Exception {
         forgot(email).andExpect(status().isAccepted()).andExpect(content().string(""));
 
-        resetPassword(tokenIn(emailTo(email)), NEW_PASSWORD).andExpect(status().isNoContent());
+        resetPassword(tokenIn(emailTo(email), LINK), NEW_PASSWORD).andExpect(status().isNoContent());
 
         login(email, NEW_PASSWORD).andExpect(status().isOk());
         login(email, PASSWORD).andExpect(status().isUnauthorized());
@@ -101,7 +79,7 @@ class PasswordResetTest extends AuthTestSupport {
         forgot(email).andExpect(status().isAccepted());
 
         EmailMessage sent = emailTo(email);
-        String token = tokenIn(sent);
+        String token = tokenIn(sent, LINK);
 
         assertThat(sent.body()).contains("http://localhost:5173/reset-password#token=" + token);
         assertThat(jdbcTemplate.queryForObject(
@@ -156,8 +134,7 @@ class PasswordResetTest extends AuthTestSupport {
     @Test
     void unEnlaceVencidoNoSirve() throws Exception {
         String token = issue(ana, AuthTokenPurpose.PASSWORD_RESET);
-        jdbcTemplate.update("update auth_tokens set expires_at = now() - interval '1 minute' where token_hash = ?",
-                (Object) tokenValues.hash(token));
+        expire(token);
 
         resetPassword(token, NEW_PASSWORD).andExpect(status().isGone());
 
@@ -264,34 +241,10 @@ class PasswordResetTest extends AuthTestSupport {
 
     // ── Ayudantes ───────────────────────────────────────────────────────────
 
-    /**
-     * Canjea los dos tokens a la vez, cada uno desde su hilo, y devuelve cuáles cambiaron la
-     * contraseña. Cualquier otra excepción, como un deadlock, hace fallar la prueba.
-     */
     private List<Boolean> simultaneousResets(String first, String second) throws Exception {
-        CyclicBarrier largada = new CyclicBarrier(2);
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        try {
-            List<Future<Boolean>> canjes = new ArrayList<>();
-            for (String token : List.of(first, second)) {
-                canjes.add(pool.submit(() -> {
-                    largada.await(5, TimeUnit.SECONDS);
-                    try {
-                        passwordResetService.resetPassword(token, "contraseña-simultanea-" + token.charAt(0));
-                        return true;
-                    } catch (ResetTokenUnavailableException e) {
-                        return false;
-                    }
-                }));
-            }
-            List<Boolean> resultados = new ArrayList<>();
-            for (Future<Boolean> canje : canjes) {
-                resultados.add(canje.get(WAIT_MS, TimeUnit.MILLISECONDS));
-            }
-            return resultados;
-        } finally {
-            pool.shutdownNow();
-        }
+        return redeemSimultaneously(first, second,
+                token -> passwordResetService.resetPassword(token, "contraseña-simultanea-" + token.charAt(0)),
+                ResetTokenUnavailableException.class);
     }
 
     private int sessionVersion(UUID user) {
@@ -311,30 +264,5 @@ class PasswordResetTest extends AuthTestSupport {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"token": "%s", "password": "%s"}""".formatted(token, password)));
-    }
-
-    /** Un token emitido directo en la base, como lo haría el pedido del enlace. */
-    private String issue(UUID user, AuthTokenPurpose purpose) {
-        String token = tokenValues.generate();
-        jdbcTemplate.update("insert into auth_tokens (user_id, purpose, token_hash) values (?, ?, ?)",
-                user, purpose.databaseValue(), tokenValues.hash(token));
-        return token;
-    }
-
-    /** El correo enviado a {@code to}, esperando a que salga. */
-    private EmailMessage emailTo(String to) {
-        verify(emailSender, timeout(WAIT_MS)).send(argThat(m -> m != null && to.equals(m.to())));
-        return mockingDetails(emailSender).getInvocations().stream()
-                .filter(invocation -> invocation.getMethod().getName().equals("send"))
-                .map(invocation -> invocation.<EmailMessage>getArgument(0))
-                .filter(message -> to.equals(message.to()))
-                .reduce((first, last) -> last)
-                .orElseThrow();
-    }
-
-    private static String tokenIn(EmailMessage message) {
-        Matcher matcher = LINK_TOKEN.matcher(message.body());
-        assertThat(matcher.find()).as("el correo lleva el enlace").isTrue();
-        return matcher.group(1);
     }
 }

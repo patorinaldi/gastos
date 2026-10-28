@@ -102,6 +102,8 @@ Toda la información de negocio pertenece a un hogar, y el aislamiento se implem
 - Las políticas definidas sobre cada tabla restringen tanto la lectura como la escritura al hogar indicado por esa variable.
 - La aplicación se conecta con un rol que no puede omitir esas políticas, de modo que el aislamiento no depende de la corrección del código de aplicación.
 
+> **Nota posterior.** La decisión final cambió el primer punto: el hogar de cada petición se resuelve desde el hogar actual del usuario autenticado (`users.household_id`), no desde el token. El token puede llevar el hogar como dato de contexto para la interfaz, pero no se usa para autorizar, porque un cambio de hogar lo dejaría desactualizado (RN-18). Ver RF-05 en [requerimientos.md](requerimientos.md) y M1 en [modulos.md](modulos.md).
+
 La consecuencia práctica es que el comportamiento por defecto es cerrado: si el contexto del hogar no se establece, las consultas no devuelven filas en lugar de devolver las de todos los hogares. Verificar esto se considera el entregable de seguridad más importante del proyecto, y por eso se aborda con pruebas específicas: por cada punto de acceso de la API se comprueba que un usuario del hogar A no puede leer, modificar ni eliminar datos del hogar B, ni siquiera conociendo sus identificadores.
 
 En cuanto a credenciales, las contraseñas se almacenan cifradas con una función de derivación con sal; el registro exige verificación del correo mediante token de un solo uso con vencimiento, y la cuenta no queda operativa hasta confirmarla; la recuperación de contraseña usa el mismo patrón, por lo que la tabla de tokens se diseña desde el inicio para ambos usos. Se aplican requisitos mínimos de longitud y limitación de la tasa de intentos de inicio de sesión.

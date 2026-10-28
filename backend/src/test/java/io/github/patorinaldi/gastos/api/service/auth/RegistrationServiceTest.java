@@ -89,7 +89,7 @@ class RegistrationServiceTest extends AuthTestSupport {
         Callable<Object> alta = () -> {
             salida.await(10, TimeUnit.SECONDS);
             try {
-                return service.create(nombre("Ana " + UUID.randomUUID()), email, HASH);
+                return service.create(nombre("Ana " + UUID.randomUUID()), email, HASH).registration();
             } catch (EmailAlreadyRegisteredException rechazada) {
                 return rechazada;
             }

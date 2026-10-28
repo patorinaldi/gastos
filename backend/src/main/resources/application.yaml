@@ -18,9 +18,23 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-  # Los correos se envían en segundo plano (ver PasswordResetService). Al apagarse, la aplicación
-  # espera a que salgan los pendientes: si no, un reinicio o un despliegue los descartaría sin
-  # aviso, después de haberle respondido 202 a quien los pidió.
+  # Servidor SMTP, para gastos.email.sender=smtp. Con console no se usa. Los tiempos de espera van
+  # en milisegundos: sin ellos, un servidor que no responde deja el envío esperando para siempre.
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+  # Los correos se envían en segundo plano (ver PasswordResetService y EmailVerificationService).
+  # Al apagarse, la aplicación espera a que salgan los pendientes: si no, un reinicio o un
+  # despliegue los descartaría sin aviso, después de haberle respondido a quien los pidió.
   task:
     execution:
       shutdown:
@@ -37,6 +51,12 @@ management:
   endpoint:
     health:
       show-details: never
+  # Sin esto, el health consulta al servidor SMTP: con console no hay servidor y el health daría
+  # DOWN, y con smtp una caída del proveedor tiraría el despliegue, que se verifica contra el
+  # health. Un correo que no sale queda en el log; la API sigue sirviendo.
+  health:
+    mail:
+      enabled: false
 
 server:
   port: 8080
@@ -71,6 +91,7 @@ server:
 gastos:
   email:
     sender: ${EMAIL_SENDER:}
+    from: ${EMAIL_FROM:}
   jwt:
     secret: ${JWT_SECRET:}
     ttl: 7d
@@ -92,8 +113,9 @@ gastos:
   registration-limit:
     window: 1h
     max-per-ip: 20
-  # Límite de pedidos de restablecimiento de contraseña (RNF-32). Ver PasswordResetLimiter.
-  password-reset-limit:
+  # Límite de pedidos de enlaces por correo, restablecimiento y reenvío de verificación (RNF-32).
+  # Ver EmailLinkLimiter.
+  email-link-limit:
     window: 1h
     max-per-email: 5
     max-per-ip: 20

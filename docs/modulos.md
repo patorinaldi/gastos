@@ -26,7 +26,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 
 | Módulo | Responsable | Estado |
 |---|---|---|
-| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; verificación de correo y pantallas del cliente web pendientes. El restablecimiento responde 503 en producción hasta que haya un proveedor de correo real |
+| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; pantallas del cliente web pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
 | M2 Hogares | Elian | Backend implementado, pantallas pendientes |
 | M3 Gastos | Elian | Pendiente |
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
@@ -49,6 +49,7 @@ Requisitos: RF-01 a RF-07. Reglas: RN-01, RN-02, RN-03, RN-11, RN-18.
 |---|---|---|---|
 | `POST` | `/api/auth/register` | Registra un usuario, crea su hogar y siembra el catálogo inicial. Envía el correo de verificación. | No |
 | `POST` | `/api/auth/verify` | Confirma el correo a partir del token recibido. | No |
+| `POST` | `/api/auth/verify/resend` | Reenvía el enlace de verificación, por ejemplo si venció. | No |
 | `POST` | `/api/auth/login` | Valida credenciales y emite el token de sesión. | No |
 | `POST` | `/api/auth/password/forgot` | Emite y envía un token de restablecimiento. | No |
 | `POST` | `/api/auth/password/reset` | Cambia la contraseña con un token válido. | No |
@@ -65,6 +66,18 @@ POST /api/auth/register
   → 201 { "userId": "...", "householdId": "...", "emailVerified": false }
   → 409 si el correo ya está registrado (RN-01)
   → 429 superado el límite de altas por dirección (RNF-31)
+  → 503 el envío de correos configurado no puede llevar el enlace de verificación (RNF-09)
+
+POST /api/auth/verify
+  { "token": "..." }
+  → 204 correo verificado; la cuenta ya puede iniciar sesión (RN-02)
+  → 410 enlace inexistente, vencido o ya usado (RN-03)
+
+POST /api/auth/verify/resend
+  { "email": "ana@ejemplo.com" }
+  → 202 sin cuerpo, exista o no la cuenta y esté o no verificada
+  → 429 superado el límite de pedidos (RNF-32)
+  → 503 el envío de correos configurado no puede llevar el enlace (RNF-09)
 
 POST /api/auth/login
   { "email": "ana@ejemplo.com", "password": "..." }
@@ -154,13 +167,25 @@ máquina, que no vencen y pudieron emitirse con la contraseña comprometida, y d
 verificado, porque el enlace llegó a esa casilla: sin eso, una cuenta sin verificar quedaría con la
 contraseña nueva y el inicio de sesión rechazado igual (RN-02).
 
-El envío por consola escribe los correos en el log, y con ellos los enlaces de un solo uso. Por eso
-no acepta correos con tokens salvo que se habilite `gastos.email.console-allow-secrets`, como hacen
-el perfil dev y las pruebas. Un despliegue con `EMAIL_SENDER=console` responde `503` al pedido de
-restablecimiento hasta que haya un proveedor real. Los correos pendientes se envían antes de
-apagarse la aplicación (`spring.task.execution.shutdown`). Los pedidos se limitan (RNF-32) a 5 por
-correo y 20 por dirección por hora: cada pedido puede mandar un correo, y sin límite cualquiera
-podría llenar la casilla de otra persona. Se cuentan por el correo escrito, exista o no la cuenta,
+La verificación de correo sigue el mismo patrón. El alta emite el token de verificación dentro de
+su transacción, así que la cuenta y su token se crean juntos o no se crea ninguno, y manda el correo
+después de confirmarla, en segundo plano: un proveedor lento o caído no demora ni hace fallar el
+alta. Si el enlace no llega o vence, `POST /api/auth/verify/resend` manda otro, con la misma
+respuesta exista o no la cuenta. Confirmar un enlace anula los demás enlaces de verificación
+pendientes, con el mismo orden de locks que el restablecimiento. El enlace es
+`/verify-email#token=...`, también sobre `WEB_URL`.
+
+Los correos salen por SMTP (`EMAIL_SENDER=smtp`), que sirve con cualquier proveedor que lo ofrezca,
+así que cambiar de proveedor es cambiar variables de entorno. El health de la aplicación no consulta
+al servidor SMTP: una caída del proveedor no tira el despliegue, y un correo que no sale queda en el
+log. El envío por consola escribe los correos en el log, y con ellos los enlaces de un solo uso. Por
+eso no acepta correos con tokens salvo que se habilite `gastos.email.console-allow-secrets`, como
+hacen el perfil dev y las pruebas. Un despliegue con `EMAIL_SENDER=console` responde `503` al alta,
+al pedido de restablecimiento y al reenvío de la verificación: una cuenta que no puede recibir su
+enlace no se podría verificar nunca. Los correos pendientes se envían antes de apagarse la
+aplicación (`spring.task.execution.shutdown`). Los pedidos de enlaces, restablecimiento y reenvío de
+la verificación, se limitan juntos (RNF-32) a 5 por correo y 20 por dirección por hora: cada pedido
+puede mandar un correo a la misma casilla, y sin límite cualquiera podría llenarla. Se cuentan por el correo escrito, exista o no la cuenta,
 así que el `429` tampoco revela nada. El tope por correo permite que alguien le impida a otra
 persona pedir enlaces durante una hora; es el precio de proteger su casilla.
 
@@ -305,7 +330,7 @@ M8 (aislamiento).
 **Responsabilidad.** El registro del hecho económico: alta, edición, baja y consulta del gasto
 compartido del hogar.
 
-Requisitos: RF-13 a RF-18. Reglas: RN-06, RN-07, RN-08, RN-12.
+Requisitos: RF-13 a RF-18. Reglas: RN-06, RN-07, RN-08, RN-12, RN-16.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -356,7 +381,7 @@ Depende de M1, M4 (resolución de categoría) y M8.
 **Responsabilidad.** Convertir un nombre de comercio en una categoría, con un resultado
 reproducible y corregible por el usuario.
 
-Requisitos: RF-19 a RF-24, RF-43. Reglas: RN-09, RN-10, RN-12, RN-13.
+Requisitos: RF-19 a RF-24, RF-43. Reglas: RN-09, RN-10, RN-12, RN-13, RN-16, RN-17.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -417,7 +442,7 @@ Depende de M8 (esquema y siembra) y M3 (los gastos que clasifica).
 **Responsabilidad.** Responder las preguntas que motivan el sistema: cuánto se gastó, en qué, quién
 lo pagó y cómo evoluciona.
 
-Requisitos: RF-25 a RF-29. Reglas: RN-08, RN-14.
+Requisitos: RF-25 a RF-29. Reglas: RN-08, RN-14, RN-16, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
@@ -451,7 +476,7 @@ Depende de M3 (los datos que agrega) y M8.
 **Responsabilidad.** Permitir registrar un gasto desde fuera de la interfaz web, por ejemplo desde
 una automatización del teléfono o un atajo, en el orden de los segundos.
 
-Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07, RN-18.
+Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07, RN-17, RN-18.
 
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|

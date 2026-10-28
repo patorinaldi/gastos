@@ -42,4 +42,17 @@ public interface AuthTokenRepository extends JpaRepository<AuthToken, UUID> {
             where user_id = ?1 and purpose = ?2 and used_at is null""",
             nativeQuery = true)
     int consumeAll(UUID userId, String purpose);
+
+    /**
+     * Marca como usados los tokens pendientes del usuario con ese propósito creados antes que
+     * {@code tokenId}: el que se acaba de enviar en un reenvío. Solo los anteriores, para que de dos
+     * reenvíos simultáneos quede vigente el último y no se anulen entre sí.
+     */
+    @Modifying
+    @Query(value = """
+            update auth_tokens set used_at = now()
+            where user_id = ?1 and purpose = ?2 and used_at is null
+              and created_at < (select created_at from auth_tokens where id = ?3)""",
+            nativeQuery = true)
+    int consumeOlderThan(UUID userId, String purpose, UUID tokenId);
 }

@@ -1,7 +1,7 @@
 package io.github.patorinaldi.gastos.api.service.auth;
 
 import com.github.benmanes.caffeine.cache.Ticker;
-import io.github.patorinaldi.gastos.api.config.PasswordResetLimitProperties;
+import io.github.patorinaldi.gastos.api.config.EmailLinkLimitProperties;
 import io.github.patorinaldi.gastos.api.service.limit.AddressKey;
 import io.github.patorinaldi.gastos.api.service.limit.AttemptCounter;
 import io.github.patorinaldi.gastos.api.service.limit.PendingAttempt;
@@ -13,9 +13,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Límite de pedidos de restablecimiento de contraseña (RNF-32). Cada pedido puede mandar un correo,
- * así que sin límite cualquiera podría llenar la casilla de otra persona o gastar la cuota del
- * proveedor de envío. Dos contadores, en ventanas fijas como los del login:
+ * Límite de pedidos de enlaces por correo (RNF-32): el de restablecimiento de contraseña y el
+ * reenvío del de verificación. Cada pedido puede mandar un correo, así que sin límite cualquiera
+ * podría llenar la casilla de otra persona o gastar la cuota del proveedor de envío. Los dos pedidos
+ * cuentan juntos, porque llegan a la misma casilla. Dos contadores, en ventanas fijas como los del
+ * login:
  *
  * <ul>
  *   <li>por correo, desde cualquier dirección: es lo que protege la casilla de quien recibe;</li>
@@ -27,19 +29,19 @@ import org.springframework.stereotype.Component;
  * así que el 429 no revela si el correo está registrado.
  */
 @Component
-public class PasswordResetLimiter {
+public class EmailLinkLimiter {
 
-    private static final Logger log = LoggerFactory.getLogger(PasswordResetLimiter.class);
+    private static final Logger log = LoggerFactory.getLogger(EmailLinkLimiter.class);
 
     private final AttemptCounter byEmail;
     private final AttemptCounter byIp;
 
     @Autowired
-    public PasswordResetLimiter(PasswordResetLimitProperties limits) {
+    public EmailLinkLimiter(EmailLinkLimitProperties limits) {
         this(limits, Ticker.systemTicker());
     }
 
-    PasswordResetLimiter(PasswordResetLimitProperties limits, Ticker ticker) {
+    EmailLinkLimiter(EmailLinkLimitProperties limits, Ticker ticker) {
         this.byEmail = new AttemptCounter(limits.window(), limits.maxPerEmail(), ticker);
         this.byIp = new AttemptCounter(limits.window(), limits.maxPerIp(), ticker);
     }
@@ -56,8 +58,8 @@ public class PasswordResetLimiter {
         // El pedido no se descarta nunca: queda contado.
         PendingAttempt.start(
                 byEmail.slot(emailKey, () -> log.warn(
-                        "Límite de pedidos de restablecimiento por correo: correo={}", LogHash.of(emailKey))),
+                        "Límite de pedidos de enlaces por correo: correo={}", LogHash.of(emailKey))),
                 byIp.slot(ipKey, () -> log.warn(
-                        "Límite de pedidos de restablecimiento por dirección: ip={}", ipKey)));
+                        "Límite de pedidos de enlaces por dirección: ip={}", ipKey)));
     }
 }

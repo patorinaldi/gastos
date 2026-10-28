@@ -4,7 +4,9 @@ import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.CreateMachineToken
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ForgotPasswordRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.LoginRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.RegisterRequest;
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ResendVerificationRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ResetPasswordRequest;
+import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.VerifyEmailRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.CreateExpenseRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.ExpenseFilterRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.UpdateExpenseRequest;
@@ -220,6 +222,16 @@ class ApiContractsValidationTest {
                 UUID.randomUUID(), "Atajo", "gst_valor-secreto", java.time.Instant.now());
         assertThat(response.toString()).doesNotContain("gst_valor-secreto").contains("Atajo");
         assertThat(new CreateMachineTokenRequest("Atajo", "clave-secreta").toString()).doesNotContain("clave-secreta");
+    }
+
+    @Test
+    void anOversizedVerificationTokenIsRejected() {
+        assertThat(validate(new VerifyEmailRequest("t".repeat(65)))).contains("token");
+    }
+
+    @Test
+    void anOversizedEmailIsRejectedWhenAskingToResendTheVerification() {
+        assertThat(validate(new ResendVerificationRequest("a".repeat(310) + "@ejemplo.com"))).contains("email");
     }
 
     @Test

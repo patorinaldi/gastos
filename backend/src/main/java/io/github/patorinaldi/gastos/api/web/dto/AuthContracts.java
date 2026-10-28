@@ -46,7 +46,12 @@ public final class AuthContracts {
     public record RegisterResponse(UUID userId, UUID householdId, boolean emailVerified) {
     }
 
-    public record VerifyEmailRequest(@NotBlank String token) {
+    /** El token se hashea antes de buscarlo: lleva tope, como el de restablecimiento. */
+    public record VerifyEmailRequest(@NotBlank @Size(max = 64) String token) {
+    }
+
+    /** La respuesta es la misma exista o no el correo, y esté o no verificado. */
+    public record ResendVerificationRequest(@NotBlank @Email @Size(max = 320) String email) {
     }
 
     /**
