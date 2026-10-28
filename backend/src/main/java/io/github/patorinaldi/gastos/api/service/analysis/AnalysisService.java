@@ -45,7 +45,12 @@ public class AnalysisService {
 
     private static final int MONEY_SCALE = 2;
 
-    /** Zona en la que se decide qué es "el mes en curso". */
+    /**
+     * Zona en la que se decide qué es "el mes en curso". Tiene que ser la misma con la que M3 y M6
+     * completen la fecha del gasto (RF-14): si la toman en UTC, un gasto cargado el 31 a las 22 h
+     * cae en el mes siguiente. Cuando M3 empiece a completarla, mover la zona a un bean
+     * {@code ZoneId} compartido.
+     */
     static final ZoneId ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
 
     private final NamedParameterJdbcTemplate jdbc;
