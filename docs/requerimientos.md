@@ -31,7 +31,7 @@ sacrificable), `Podría` (deseable).
 | RF-04 | El sistema debe rechazar el inicio de sesión de una cuenta cuyo correo no fue verificado. | Debe | Implementado |
 | RF-05 | El sistema debe autenticar a un usuario por correo y contraseña, y emitir un token de sesión. El token puede llevar el identificador del hogar como dato de contexto para la interfaz, pero no se usa para autorizar: el hogar de cada petición se resuelve desde el usuario autenticado, porque puede haber cambiado desde que se emitió el token (RN-18). | Debe | Implementado |
 | RF-06 | El sistema debe permitir solicitar el restablecimiento de la contraseña mediante un token de un solo uso enviado por correo. | Debe | Implementado |
-| RF-07 | El sistema debe permitir emitir y revocar tokens de larga duración para clientes automatizados, asociados a un hogar. | Debería | Pendiente |
+| RF-07 | El sistema debe permitir emitir y revocar tokens de larga duración para clientes automatizados, asociados a un hogar. | Debería | Implementado |
 
 ### M2. Hogares
 
