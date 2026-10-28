@@ -34,6 +34,21 @@ describe('tokenFromHash', () => {
   })
 })
 
+describe('resendVerification', () => {
+  it('pide el reenvío con el correo, sin token de sesión', async () => {
+    const { resendVerification } = await load()
+    fetchMock.mockResolvedValue(new Response(null, { status: 202 }))
+
+    await expect(resendVerification('ana@ejemplo.com')).resolves.toBeUndefined()
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('http://localhost:8080/api/auth/verify/resend')
+    expect(init?.body).toBe('{"email":"ana@ejemplo.com"}')
+    const headers = init?.headers as Record<string, string>
+    expect(headers.Authorization).toBeUndefined()
+  })
+})
+
 describe('verifyEmail', () => {
   it('pide la confirmación de un token una sola vez aunque se llame dos veces', async () => {
     const { verifyEmail } = await load()

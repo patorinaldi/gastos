@@ -107,7 +107,8 @@ const SERVER_ERROR = 'Algo falló de nuestro lado. Intentá de nuevo en unos min
  * Los rechazos del servidor (401, 403, 409, 410…) traen un `detail` escrito para el usuario, y es
  * el que mejor explica qué pasó: el 403 del login, por ejemplo, puede ser un correo sin verificar o
  * un hogar archivado. Los 400 no: su detalle es el de la validación de Spring, técnico y en inglés,
- * así que se usa el de la pantalla. Lo mismo para la falta de conexión y los errores del servidor.
+ * así que se usa el de la pantalla. Lo mismo para la falta de conexión y los errores del servidor,
+ * salvo el 503 de la propia API.
  */
 export function errorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof ApiError)) {
@@ -115,6 +116,11 @@ export function errorMessage(error: unknown, fallback: string): string {
   }
   if (error.status === 0) {
     return NO_CONNECTION
+  }
+  // El 503 de la API dice qué no está disponible ("no podemos enviar correos"); el de un proxy o
+  // de la plataforma no trae detalle y queda con el genérico.
+  if (error.status === 503 && error.detail) {
+    return error.detail
   }
   if (error.status >= 500) {
     return SERVER_ERROR

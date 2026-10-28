@@ -22,8 +22,10 @@
   outline: none;
 }
 
+/* Puede llevar el correo de la persona, que en 360 px no siempre entra en una línea. */
 .lede {
   color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .form {

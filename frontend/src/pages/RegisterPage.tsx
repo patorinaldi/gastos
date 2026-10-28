@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router'
 import { register } from '../api/auth.ts'
 import { ApiError, errorMessage } from '../api/client.ts'
-import { Button, ButtonLink } from '../components/ui/Button.tsx'
+import { ResendVerification } from '../components/auth/ResendVerification.tsx'
+import { Button } from '../components/ui/Button.tsx'
 import { Notice } from '../components/ui/Notice.tsx'
 import { TextField } from '../components/ui/TextField.tsx'
 import { useSession } from '../session.ts'
@@ -57,11 +58,18 @@ export function RegisterPage() {
             Te enviamos un enlace a <strong>{registeredEmail}</strong> para confirmar tu cuenta. Vence en 24
             horas.
           </p>
-          <p className={styles.lede}>Cuando lo confirmes, vas a poder iniciar sesión.</p>
+          <p className={styles.lede}>
+            Cuando lo confirmes, vas a poder iniciar sesión. Si en unos minutos no te llegó, revisá el
+            correo no deseado o pedí otro.
+          </p>
         </header>
-        <ButtonLink to="/login" variant="secondary" block>
-          Ir a iniciar sesión
-        </ButtonLink>
+        <ResendVerification email={registeredEmail} />
+        <p className={styles.footer}>
+          ¿Ya lo confirmaste?{' '}
+          <Link to="/login" className={styles.link}>
+            Iniciá sesión
+          </Link>
+        </p>
       </>
     )
   }

@@ -54,7 +54,9 @@ mensajes por `errorMessage`: usa el `detail` que el servidor escribe para el usu
 
 El enlace del correo de alta es `/verify-email#token=...`. El token va en el fragmento, como el del
 restablecimiento de contraseña, para que no llegue a ningún registro de acceso, y la pantalla lo
-borra de la dirección al leerlo.
+borra de la dirección al leerlo. Si el enlace venció o ya se usó, la misma pantalla ofrece pedir uno
+nuevo (`components/auth/ResendVerification.tsx`), igual que el alta y el login cuando responde que el
+correo no está verificado.
 
 ## Pruebas
 

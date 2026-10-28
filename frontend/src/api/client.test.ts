@@ -153,6 +153,14 @@ describe('errorMessage', () => {
     expect(errorMessage(new ApiError(429, 'x'), '')).toBe('Hiciste demasiados intentos. Esperá unos minutos y volvé a intentar.')
   })
 
+  it('muestra el detalle del 503 de la API, pero no el de un proxy sin detalle', async () => {
+    const { ApiError, errorMessage } = await load()
+    expect(errorMessage(new ApiError(503, 'Por ahora no podemos enviar correos.'), '')).toBe(
+      'Por ahora no podemos enviar correos.',
+    )
+    expect(errorMessage(new ApiError(503), '')).toMatch(/de nuestro lado/)
+  })
+
   it('distingue la falta de conexión de un error del servidor', async () => {
     const { ApiError, errorMessage } = await load()
     expect(errorMessage(new ApiError(0), '')).toMatch(/Revisá tu conexión/)

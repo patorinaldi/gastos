@@ -1,7 +1,8 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation } from 'react-router'
 import { login } from '../api/auth.ts'
-import { errorMessage } from '../api/client.ts'
+import { ApiError, errorMessage } from '../api/client.ts'
+import { ResendVerification } from '../components/auth/ResendVerification.tsx'
 import { Button } from '../components/ui/Button.tsx'
 import { Notice } from '../components/ui/Notice.tsx'
 import { TextField } from '../components/ui/TextField.tsx'
@@ -26,6 +27,8 @@ export function LoginPage() {
   const [errors, setErrors] = useState<Errors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // El correo con el que el servidor respondió "sin verificar": se ofrece reenviarle el enlace.
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
   const emailInput = useRef<HTMLInputElement>(null)
   const passwordInput = useRef<HTMLInputElement>(null)
 
@@ -40,6 +43,7 @@ export function LoginPage() {
     const found: Errors = { email: validateEmail(email), password: validatePassword(password) }
     setErrors(found)
     setFormError(null)
+    setUnverifiedEmail(null)
     if (found.email || found.password) {
       const firstInvalid = found.email ? emailInput : passwordInput
       firstInvalid.current?.focus()
@@ -47,10 +51,16 @@ export function LoginPage() {
     }
 
     setSubmitting(true)
+    const trimmedEmail = email.trim()
     try {
-      saveSession(await login({ email: email.trim(), password }))
+      saveSession(await login({ email: trimmedEmail, password }))
     } catch (error) {
       setFormError(errorMessage(error, 'Revisá el correo y la contraseña e intentá de nuevo.'))
+      // El 403 del login es un correo sin verificar. El de un hogar archivado también es 403, pero no
+      // debería ocurrir (HouseholdArchivedException), y ahí el reenvío no manda nada: no hace daño.
+      if (error instanceof ApiError && error.status === 403) {
+        setUnverifiedEmail(trimmedEmail)
+      }
       setSubmitting(false)
     }
   }
@@ -86,6 +96,8 @@ export function LoginPage() {
           {submitting ? 'Ingresando…' : 'Iniciar sesión'}
         </Button>
       </form>
+
+      {unverifiedEmail !== null && <ResendVerification email={unverifiedEmail} />}
 
       <p className={styles.footer}>
         ¿No tenés cuenta?{' '}

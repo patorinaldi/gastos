@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { tokenFromHash, verifyEmail } from '../api/auth.ts'
 import { ApiError, errorMessage } from '../api/client.ts'
+import { ResendVerification } from '../components/auth/ResendVerification.tsx'
 import { ErrorState, LoadingState } from '../components/states/States.tsx'
 import { ButtonLink } from '../components/ui/Button.tsx'
 import styles from './AuthPages.module.css'
@@ -20,11 +21,19 @@ type Status =
 export function VerifyEmailPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  // Se lee una sola vez, al entrar: enseguida se borra de la dirección.
-  const [token] = useState(() => tokenFromHash(location.hash))
-  const [status, setStatus] = useState<Status>(token ? { kind: 'verifying' } : { kind: 'invalid' })
+  // El token se guarda al leerlo, porque enseguida se borra de la dirección.
+  const hashToken = tokenFromHash(location.hash)
+  const [token, setToken] = useState(hashToken)
+  const [status, setStatus] = useState<Status>(hashToken ? { kind: 'verifying' } : { kind: 'invalid' })
   const [attempt, setAttempt] = useState(0)
   const title = useRef<HTMLHeadingElement>(null)
+
+  // Abrir otro enlace en la misma pestaña solo cambia el fragmento: el navegador no recarga y la
+  // pantalla sigue montada. Un token nuevo en la dirección vuelve a empezar la confirmación.
+  if (hashToken && hashToken !== token) {
+    setToken(hashToken)
+    setStatus({ kind: 'verifying' })
+  }
 
   // El token sale de la barra de direcciones y del historial: un enlace de un solo uso no tiene que
   // quedar a la vista ni volver con "atrás".
@@ -90,13 +99,17 @@ export function VerifyEmailPage() {
               El enlace no es válido
             </h1>
             <p className={styles.lede}>
-              Puede que haya vencido, que ya se haya usado o que no se haya copiado entero. Si ya
-              confirmaste tu correo, iniciá sesión.
+              Puede que haya vencido, que ya se haya usado o que no se haya copiado entero. Pedí uno
+              nuevo con el correo de tu cuenta.
             </p>
           </header>
-          <ButtonLink to="/login" variant="secondary" block>
-            Ir a iniciar sesión
-          </ButtonLink>
+          <ResendVerification />
+          <p className={styles.footer}>
+            ¿Ya confirmaste tu correo?{' '}
+            <Link to="/login" className={styles.link}>
+              Iniciá sesión
+            </Link>
+          </p>
         </>
       )
     case 'failed':

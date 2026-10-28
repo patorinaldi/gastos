@@ -531,7 +531,9 @@ Requisitos: RF-33 a RF-38. No funcionales: RNF-14 a RNF-17, RNF-26.
 **Sesión.** El token del login se guarda en el navegador y dura sus 7 días (RNF-29). Sin sesión,
 las pantallas de la app mandan al login, y un 401 de la API la descarta. El enlace de confirmación
 que arma el backend es `/verify-email#token=...`, con el token en el fragmento como el del
-restablecimiento: el navegador no lo manda al servidor que sirve el cliente web.
+restablecimiento: el navegador no lo manda al servidor que sirve el cliente web. Un enlace vencido o
+usado lleva a pedir otro con `POST /api/auth/verify/resend`, que también se ofrece después del alta
+y cuando el login rechaza un correo sin verificar.
 
 **Diseños.** Dos disposiciones sobre el mismo código. En móvil, pantalla única con botón fijo de
 alta. En escritorio, barra lateral y tabla. El umbral es 768 px.

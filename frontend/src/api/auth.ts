@@ -1,7 +1,14 @@
-import type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, VerifyEmailRequest } from '../types/api.ts'
+import type {
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  ResendVerificationRequest,
+  VerifyEmailRequest,
+} from '../types/api.ts'
 import { apiRequest } from './client.ts'
 
-/** M1, identidad y acceso. Las tres son públicas: no llevan el token de sesión. */
+/** M1, identidad y acceso. Todas son públicas: no llevan el token de sesión. */
 
 export function register(request: RegisterRequest) {
   return apiRequest<RegisterResponse>('/api/auth/register', { method: 'POST', body: request, auth: false })
@@ -25,6 +32,15 @@ export function verifyEmail(token: string): Promise<void> {
     verifications.set(token, pending)
   }
   return pending
+}
+
+/** Manda un enlace de confirmación nuevo, si el correo tiene una cuenta sin verificar (HU-02). */
+export function resendVerification(email: string) {
+  return apiRequest<void>('/api/auth/verify/resend', {
+    method: 'POST',
+    body: { email } satisfies ResendVerificationRequest,
+    auth: false,
+  })
 }
 
 /**

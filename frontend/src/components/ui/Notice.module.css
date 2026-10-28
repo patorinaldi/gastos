@@ -8,9 +8,12 @@
   font-weight: 500;
 }
 
+/* Un texto sin espacios, como un correo largo, se corta donde haga falta en lugar de salirse del
+   aviso: en 360 px no hay desplazamiento horizontal que lo deje ver (RNF-15). */
 .message {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .accent {
