@@ -11,6 +11,7 @@ import { SidebarContent } from '../layouts/SidebarSlot.tsx'
 import { EmptyState, ErrorState, LoadingState } from '../components/states/States.tsx'
 import { focusFilter, monthSeries, parseFocus, slices, type Dimension, type Focus } from '../dashboard.ts'
 import { formatMoneyParts, formatMonth } from '../format.ts'
+import { DESKTOP, useMediaQuery } from '../hooks/useMediaQuery.ts'
 import { useRequest } from '../hooks/useRequest.ts'
 import {
   currentMonth,
@@ -83,9 +84,9 @@ export function DashboardPage() {
 
   const title = periodTitle(period)
 
-  // El resumen se dibuja dos veces y CSS muestra uno, como decide el shell la disposición: en
-  // escritorio en la barra lateral, en móvil arriba del contenido. El oculto, con display: none,
-  // tampoco lo lee el lector de pantalla.
+  // El resumen va en escritorio en la barra lateral, y en móvil arriba del contenido. Se monta solo
+  // donde se ve: una copia oculta con display: none dibujaría también su anillo en 0 × 0.
+  const desktop = useMediaQuery(DESKTOP)
   const panel = summary.kind === 'loaded' && (
     <section className={styles.panel} aria-label={`Resumen de ${title}`}>
       <PeriodSelector period={period} current={current} onChange={(p) => navigate({ period: p })} />
@@ -140,14 +141,14 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader title="Tablero" />
-      <SidebarContent>{panel}</SidebarContent>
+      <SidebarContent>{desktop && panel}</SidebarContent>
       {summary.kind === 'loading' ? (
         <LoadingState />
       ) : summary.kind === 'failed' ? (
         <ErrorState message={summary.message} onRetry={summary.retry} />
       ) : (
         <div className={styles.layout}>
-          <div className={styles.inlinePanel}>{panel}</div>
+          {!desktop && <div className={styles.inlinePanel}>{panel}</div>}
 
           <div className={styles.movements}>
             {expenses.kind === 'loading' ? (

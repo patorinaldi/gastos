@@ -11,16 +11,10 @@
 }
 
 /* En móvil, el resumen va arriba de los movimientos, separado por un divisor. Desde 768 px va en la
-   barra lateral, y esta copia no se muestra. */
+   barra lateral. */
 .inlinePanel {
   padding-bottom: var(--space-6);
   border-bottom: var(--border-width) solid var(--color-divider);
-}
-
-@media (min-width: 768px) {
-  .inlinePanel {
-    display: none;
-  }
 }
 
 .summary {
