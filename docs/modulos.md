@@ -32,7 +32,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | M4 Categorización | Elian | Catálogo inicial implementado, motor pendiente |
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
 | M6 API de integración | Juan | Pendiente |
-| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión y confirmación de correo implementados; tablero con selector de período y total del mes, sin gráficos ni movimientos; el resto de las pantallas pendiente |
+| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión y confirmación de correo implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; el resto de las pantallas pendiente |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
 
 ---
@@ -609,7 +609,7 @@ Requisitos: RF-33 a RF-38. No funcionales: RNF-14 a RNF-17, RNF-26.
 | Pantalla | Contenido |
 |---|---|
 | Registro, inicio de sesión y confirmación | Alta de cuenta, acceso y confirmación de correo (RF-33). |
-| Tablero | Selector de período, total, gráficos de distribución y evolución, movimientos recientes (RF-34 a RF-36). |
+| Tablero | Selector de período, total, gráficos de distribución y evolución, movimientos recientes y filtrado desde los gráficos (RF-34 a RF-37). |
 | Movimientos | Listado paginado con filtros combinables y alta, edición y baja de gastos. |
 | Bandeja de no categorizados | Gastos sin categoría y alta de reglas desde ahí (RF-22, RF-23). |
 | Hogar | Integrantes, generación y canje de códigos de invitación, ajustes (RF-38). |
@@ -621,12 +621,22 @@ restablecimiento: el navegador no lo manda al servidor que sirve el cliente web.
 usado lleva a pedir otro con `POST /api/auth/verify/resend`, que también se ofrece después del alta
 y cuando el login rechaza un correo sin verificar.
 
-**Diseños.** Dos disposiciones sobre el mismo código. En móvil, pantalla única con botón fijo de
-alta. En escritorio, barra lateral y tabla. El umbral es 768 px.
+**Diseños.** Dos disposiciones sobre el mismo código. En móvil, pantalla única con menú desplegable y
+botón fijo de alta. En escritorio, barra superior con las secciones y el alta, y tabla. La barra
+lateral de escritorio es de cada pantalla, no de la navegación: solo aparece si la pantalla la usa,
+como el tablero para su resumen. El umbral es 768 px.
+
+**Tablero.** El período es el mes en curso por defecto (RD-07), o el año, y la evolución muestra los
+últimos doce meses con la media histórica al pie. La distribución es un solo anillo que se reparte por
+categoría, persona o medio de pago, con una leyenda que tiene los mismos datos y los mismos clics, y
+que es la que usan el teclado y el lector de pantalla. Lo que no tiene categoría va en gris. El período
+y la porción elegida van en la dirección (`/?month=2026-07&categoryId=...`), con los nombres de los
+filtros de la API, así un enlace se puede compartir y "atrás" deshace el último cambio.
 
 **Filtrado interactivo.** Al seleccionar un mes en el gráfico de evolución, el resto de la pantalla
-se re-filtra a ese mes. Al seleccionar una porción de un gráfico de distribución, se enfoca esa
-dimensión (RF-37).
+se re-filtra a ese mes. Al seleccionar una porción de la distribución, el total, la evolución y los
+movimientos pasan a mostrar solo esa categoría, persona o medio de pago; el anillo sigue mostrando el
+período completo, para que se vea cuánto pesa la porción (RF-37).
 
 Depende de todos los módulos de la API.
 
