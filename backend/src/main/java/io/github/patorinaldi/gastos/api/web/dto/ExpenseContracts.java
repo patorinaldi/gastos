@@ -1,9 +1,10 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import io.github.patorinaldi.gastos.api.web.dto.validation.DisplayNames;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -31,6 +32,9 @@ public final class ExpenseContracts {
     /** Tamaño de página cuando el cliente no pide uno. */
     public static final int DEFAULT_PAGE_SIZE = 20;
 
+    /** Última página que se puede pedir. Con 100 elementos por página, un millón de gastos. */
+    public static final int MAX_PAGE = 10_000;
+
     /** Valor de {@code categoryId} que pide la bandeja de no categorizados (RF-22). */
     public static final String UNCATEGORIZED = "uncategorized";
 
@@ -38,9 +42,6 @@ public final class ExpenseContracts {
     static final String UUID_OR_UNCATEGORIZED =
             "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|"
                     + UNCATEGORIZED + ")$";
-
-    /** Ni vacío ni solo espacios, en línea con el check {@code expenses_merchant_not_blank}. */
-    private static final String NOT_BLANK = ".*\\S.*";
 
     private ExpenseContracts() {
     }
@@ -58,11 +59,20 @@ public final class ExpenseContracts {
      *
      * <p>{@code Digits} con dos decimales rechaza "1234.567" en lugar de redondearlo: un importe
      * que no es el que se cargó no se adivina (RN-06).
+     *
+     * <p>El comercio se valida como un nombre que se muestra ({@link DisplayNames}) y no solo como no
+     * vacío. El check {@code expenses_merchant_not_blank} usa {@code trim()}, que recorta solo el
+     * espacio común: un comercio hecho de espacios duros o de ancho cero, o con caracteres de control,
+     * pasaba y quedaba guardado. Se vería vacío en el listado, no coincidiría con ninguna regla y
+     * saldría aparte en el ranking de comercios. El carácter nulo, además, Postgres no lo puede guardar,
+     * y llegaba al insert como un 500. {@code NotNull} sigue haciendo falta porque {@code Pattern}
+     * acepta el nulo.
      */
     public record CreateExpenseRequest(
             @NotNull @Positive @Digits(integer = 10, fraction = 2)
             @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal amount,
-            @NotBlank @Size(max = 200) String merchant,
+            @NotNull @Size(max = 200)
+            @Pattern(regexp = DisplayNames.PATTERN, message = DisplayNames.MESSAGE) String merchant,
             LocalDate expenseDate,
             PaymentMethodValue paymentMethod,
             UUID categoryId) {
@@ -76,20 +86,31 @@ public final class ExpenseContracts {
      * Modificación parcial: lo que viene en null no se toca. Por eso no lleva {@code NotNull} y sí
      * las validaciones de rango, que se evalúan solo sobre lo que sí viene.
      *
-     * <p>El comercio lleva {@code Pattern} y no {@code NotBlank}: null significa "no cambiar" y es
-     * válido, pero " " sí es un cambio, y es uno que la base rechaza.
+     * <p>El comercio se valida como en el alta, pero sin {@code NotNull}: null significa "no cambiar"
+     * y es válido, y {@code Pattern} lo acepta. " " sí es un cambio, y se rechaza.
      *
      * <p>Para sacarle la categoría a un gasto y devolverlo a la bandeja no alcanza con un null,
-     * que acá significa "no cambiar": esa operación necesita su propio campo y queda para M3.
+     * que acá significa "no cambiar": esa operación tiene su propio campo, {@code "uncategorized":
+     * true}, que no se combina con {@code categoryId}. {@code false} o ausente no cambia nada.
      */
     public record UpdateExpenseRequest(
             @Positive @Digits(integer = 10, fraction = 2)
             @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal amount,
-            @Pattern(regexp = NOT_BLANK, message = "no puede estar en blanco")
-            @Size(max = 200) String merchant,
+            @Size(max = 200)
+            @Pattern(regexp = DisplayNames.PATTERN, message = DisplayNames.MESSAGE) String merchant,
             LocalDate expenseDate,
             PaymentMethodValue paymentMethod,
-            UUID categoryId) {
+            UUID categoryId,
+            Boolean uncategorized) {
+
+        @AssertTrue(message = "categoryId y uncategorized no se combinan")
+        public boolean isCategoryChangeConsistent() {
+            return categoryId == null || !removesCategory();
+        }
+
+        public boolean removesCategory() {
+            return Boolean.TRUE.equals(uncategorized);
+        }
     }
 
     /**
@@ -100,7 +121,9 @@ public final class ExpenseContracts {
      * valores por defecto porque los parámetros que no vienen llegan nulos: sin ellos, un listado
      * pedido sin paginación quedaría en página 0 de tamaño 0 y la validación lo rechazaría con un
      * 400, cuando es la forma más común de pedirlo. El tope de 100 lo fija RNF-12: sin límite, una
-     * sola petición podría pedir el historial completo del hogar.
+     * sola petición podría pedir el historial completo del hogar. La página también tiene tope: con
+     * una página enorme, la posición del primer elemento no entraría en un entero y la consulta
+     * fallaría con un 500 en lugar de devolver una página vacía.
      *
      * <p>{@code categoryId} es texto y no UUID porque admite además {@code uncategorized} (RF-22);
      * un identificador nulo ahí significaría "sin filtro", que es justo lo contrario. Al ser texto,
@@ -115,7 +138,7 @@ public final class ExpenseContracts {
             String categoryId,
             UUID ownerId,
             PaymentMethodValue paymentMethod,
-            @PositiveOrZero Integer page,
+            @PositiveOrZero @Max(MAX_PAGE) Integer page,
             @Positive @Max(100) Integer size) implements ExpenseFilter {
 
         public ExpenseFilterRequest {

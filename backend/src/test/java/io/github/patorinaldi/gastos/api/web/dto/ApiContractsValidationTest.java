@@ -81,13 +81,24 @@ class ApiContractsValidationTest {
     // que la base rechaza.
     @Test
     void aPartialUpdateMayOmitEverything() {
-        assertThat(validate(new UpdateExpenseRequest(null, null, null, null, null))).isEmpty();
+        assertThat(validate(new UpdateExpenseRequest(null, null, null, null, null, null))).isEmpty();
     }
 
     @Test
     void aPartialUpdateCannotBlankTheMerchant() {
-        assertThat(validate(new UpdateExpenseRequest(null, " ", null, null, null)))
+        assertThat(validate(new UpdateExpenseRequest(null, " ", null, null, null, null)))
                 .contains("merchant");
+    }
+
+    // Asignar una categoría y devolver el gasto a la bandeja a la vez no tiene una lectura posible.
+    @Test
+    void anUpdateCannotAssignACategoryAndRemoveItAtOnce() {
+        UUID category = UUID.randomUUID();
+
+        assertThat(validate(new UpdateExpenseRequest(null, null, null, null, category, true)))
+                .contains("categoryChangeConsistent");
+        assertThat(validate(new UpdateExpenseRequest(null, null, null, null, category, false))).isEmpty();
+        assertThat(validate(new UpdateExpenseRequest(null, null, null, null, null, true))).isEmpty();
     }
 
     // ── Filtros del listado ─────────────────────────────────────────────────
@@ -109,6 +120,12 @@ class ApiContractsValidationTest {
     @Test
     void aPageSizeOfZeroIsRejectedWhenItIsAsked() {
         assertThat(validate(filter(null, 0, 0))).contains("size");
+    }
+
+    @Test
+    void aPageOverTheLimitIsRejected() {
+        assertThat(validate(filter(null, ExpenseContracts.MAX_PAGE, 100))).isEmpty();
+        assertThat(validate(filter(null, ExpenseContracts.MAX_PAGE + 1, 100))).contains("page");
     }
 
     @Test

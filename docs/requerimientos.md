@@ -47,12 +47,12 @@ sacrificable), `Podría` (deseable).
 
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
-| RF-13 | El sistema debe permitir registrar un gasto indicando únicamente importe y comercio. | Debe | Pendiente |
-| RF-14 | El sistema debe asignar automáticamente al gasto la fecha del día y el usuario autenticado como responsable, cuando no se indiquen explícitamente. | Debe | Pendiente |
-| RF-15 | El sistema debe permitir editar cualquier campo de un gasto del propio hogar. | Debe | Pendiente |
-| RF-16 | El sistema debe permitir la baja lógica de un gasto del propio hogar. El gasto deja de figurar en listados y análisis, pero se conserva. | Debe | Pendiente |
-| RF-17 | El sistema debe listar los gastos del hogar de forma paginada, ordenados por fecha descendente. | Debe | Pendiente |
-| RF-18 | El sistema debe permitir filtrar el listado de gastos por período, categoría, integrante y medio de pago, de forma combinable. | Debe | Pendiente |
+| RF-13 | El sistema debe permitir registrar un gasto indicando únicamente importe y comercio. | Debe | Implementado |
+| RF-14 | El sistema debe asignar automáticamente al gasto la fecha del día y el usuario autenticado como responsable, cuando no se indiquen explícitamente. | Debe | Implementado |
+| RF-15 | El sistema debe permitir editar cualquier campo de un gasto del propio hogar. | Debe | Implementado |
+| RF-16 | El sistema debe permitir la baja lógica de un gasto del propio hogar. El gasto deja de figurar en listados y análisis, pero se conserva. | Debe | Implementado |
+| RF-17 | El sistema debe listar los gastos del hogar de forma paginada, ordenados por fecha descendente. | Debe | Implementado |
+| RF-18 | El sistema debe permitir filtrar el listado de gastos por período, categoría, integrante y medio de pago, de forma combinable. | Debe | Implementado |
 
 ### M4. Categorización
 

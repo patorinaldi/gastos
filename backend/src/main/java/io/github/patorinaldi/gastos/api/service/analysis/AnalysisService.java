@@ -45,20 +45,19 @@ public class AnalysisService {
 
     private static final int MONEY_SCALE = 2;
 
-    /**
-     * Zona en la que se decide qué es "el mes en curso". Tiene que ser la misma con la que M3 y M6
-     * completen la fecha del gasto (RF-14): si la toman en UTC, un gasto cargado el 31 a las 22 h
-     * cae en el mes siguiente. Cuando M3 empiece a completarla, mover la zona a un bean
-     * {@code ZoneId} compartido.
-     */
-    static final ZoneId ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
-
     private final NamedParameterJdbcTemplate jdbc;
     private final Clock clock;
 
-    public AnalysisService(NamedParameterJdbcTemplate jdbc, Clock clock) {
+    /**
+     * Zona en la que se decide qué es "el mes en curso". Es la misma con la que M3 completa la fecha
+     * del gasto (RF-14): ver {@code TimeZoneConfiguration}.
+     */
+    private final ZoneId zone;
+
+    public AnalysisService(NamedParameterJdbcTemplate jdbc, Clock clock, ZoneId zone) {
         this.jdbc = jdbc;
         this.clock = clock;
+        this.zone = zone;
     }
 
     /**
@@ -194,7 +193,7 @@ public class AnalysisService {
     }
 
     private LocalDate today() {
-        return LocalDate.now(clock.withZone(ZONE));
+        return LocalDate.now(clock.withZone(zone));
     }
 
     // Las sumas de numeric(12, 2) ya vienen con dos decimales; solo el cero inicial viene sin ellos.
