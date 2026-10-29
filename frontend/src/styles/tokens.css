@@ -18,8 +18,10 @@
   --color-surface: #ffffff;
   --color-surface-sunken: #fbf7f1;
   --color-surface-muted: #f7f2ea;
+  --color-surface-muted-strong: #f2ece2;
   --color-border: #e6ddd2;
   --color-divider: #efe8df;
+  --color-divider-soft: #f6f0e8;
 
   /*
    * Acento. --color-accent es el ámbar puro, para superficies y trazos; sobre blanco no llega al
@@ -30,26 +32,54 @@
   --color-accent-text-hover: #6e3f04;
   --color-accent-soft: #fdebd4;
   --color-accent-notice: #fdf3e3;
+  /* Borde punteado de lo que falta completar, como un gasto sin categoría. */
+  --color-accent-dashed: #edbe85;
 
   /* Error */
   --color-danger: #b23c17;
   --color-danger-soft: #fbe9e3;
 
+  /*
+   * Gráficos. Las porciones de una distribución toman los colores en orden, de la más grande a la
+   * más chica; el primero es el acento. El ámbar no llega a 3:1 sobre blanco, pero ningún gráfico
+   * depende solo del color: cada uno lleva al lado su leyenda con nombre, importe y porcentaje.
+   */
+  --color-chart-1: #f2911b;
+  --color-chart-2: #4436c7;
+  --color-chart-3: #1fa35c;
+  --color-chart-4: #c2255c;
+  --color-chart-5: #0e8a8a;
+  --color-chart-6: #7a3fb0;
+  --color-chart-7: #b8860b;
+  --color-chart-8: #5a6472;
+  /* Lo que no tiene categoría: neutro, para que no compita con las categorías reales. */
+  --color-chart-neutral: #b8a99a;
+  /* Barras de los meses que no están elegidos. */
+  --color-chart-idle: #e8decf;
+
   /* Tipografía */
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
 
+  --text-2xs: 9px;
   --text-xs: 11px;
   --text-sm: 12.5px;
   --text-md: 14px;
   --text-lg: 16px;
   --text-xl: 20px;
   --text-display: 34px;
+  /* El total del tablero, la cifra más grande de la app: más chica en escritorio, donde va en el panel. */
+  --text-total: 46px;
+  --text-total-desktop: 40px;
+  --text-total-currency: 26px;
+  --text-total-currency-desktop: 22px;
 
   /* Etiquetas en mayúsculas y monoespaciadas: la marca, los encabezados chicos. */
   --tracking-label: 0.12em;
   /* Títulos: un poco más juntos que el texto corrido. */
   --tracking-tight: -0.01em;
+  /* Cifras grandes, como el total del tablero. */
+  --tracking-display: -0.03em;
 
   /* Espaciado, en una escala de 4 px; --space-half es el paso mínimo, para separaciones finas. */
   --space-half: 2px;
@@ -66,6 +96,7 @@
   --gutter: 22px;
 
   /* Radios */
+  --radius-xs: 3px;
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -93,8 +124,15 @@
    * en cada @media porque CSS no admite variables en las media queries.
    */
   --topbar-height: 56px;
-  --sidebar-width: 248px;
+  /* La barra lateral de escritorio, que solo aparece en las pantallas que la usan, como el tablero. */
+  --sidebar-width: 308px;
   --content-max-width: 960px;
   --auth-card-max-width: 400px;
+
+  /* Tablero */
+  --month-bars-height: 46px;
+  --month-bars-height-desktop: 54px;
+  --donut-size: 112px;
+  --donut-size-desktop: 132px;
   --catalog-column-min: 220px;
 }
