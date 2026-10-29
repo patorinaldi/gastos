@@ -777,7 +777,7 @@ flowchart TB
 | Servicio de aplicaciones | Jar ejecutable de `backend/` (`./mvnw package`) | `DB_URL`, `DB_API_USERNAME`, `DB_API_PASSWORD`, `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD`, `EMAIL_SENDER`. La rama de autenticación suma `JWT_SECRET` y `CORS_ALLOWED_ORIGINS`, el restablecimiento de contraseña, `WEB_URL`, y el envío real de correos, `EMAIL_FROM`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME` y `MAIL_PASSWORD`. |
 | PostgreSQL gestionado | Esquema creado por las migraciones V1 a V5 | Copias de seguridad automáticas del proveedor (RNF-20) y conexión cifrada. |
 
-Ningún secreto se versiona. Todos se inyectan como variables de entorno del servicio (RNF-07). Si
+Ningún secreto se versiona. Todos se inyectan como variables de entorno del servicio (RNF-07). La lista completa y el procedimiento están en la [guía de despliegue](despliegue.md). Si
 falta `EMAIL_SENDER`, la API no arranca, para que un despliegue no quede escribiendo tokens en el
 log. La plataforma verifica el estado con `GET /actuator/health`, que responde sin autenticación y
 sin detalle de componentes (RF-41).
