@@ -37,11 +37,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * filas" pasa igual si el fixture se rompió y nunca se insertó nada. Los casos de
  * {@link ConHogarPropio} demuestran que ese cero significa "RLS lo bloqueó" y no "no había nada".
  *
- * <p><strong>Fuera de alcance a propósito:</strong> {@code users} y {@code households} todavía no
- * tienen RLS — la V2 las dejó afuera porque el login resuelve el email antes de que exista
- * contexto de hogar. Su aislamiento se cierra con el módulo de identidad, y hasta entonces esta
- * clase no lo cubre ni debe leerse como si lo hiciera. La cobertura por punto de acceso HTTP
- * llega cuando existan los endpoints.
+ * <p><strong>Fuera de alcance a propósito:</strong> {@code users} y {@code households} no tienen
+ * RLS — la V2 las dejó afuera porque el login resuelve el email antes de que exista contexto de
+ * hogar. Su aislamiento lo prueba {@link IdentityAndHouseholdIsolationTest} por punto de acceso
+ * HTTP, y esta clase no debe leerse como si lo cubriera. Qué prueba cubre cada punto de acceso de
+ * la API lo lleva {@link EndpointIsolationInventoryTest}.
  */
 class HouseholdIsolationTest extends HouseholdTestSupport {
 

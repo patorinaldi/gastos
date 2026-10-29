@@ -45,8 +45,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * había nada".
  *
  * <p>La vista previa y el canje de invitaciones cruzan hogares a propósito (RF-09): lo que se
- * verifica es que crucen solo lo previsto. El registro y la verificación de correo se suman acá
- * cuando lleguen a {@code main}.
+ * verifica es que crucen solo lo previsto. El registro y la verificación de correo no operan sobre
+ * un hogar existente: el motivo de cada uno figura en {@link EndpointIsolationInventoryTest}.
  */
 class IdentityAndHouseholdIsolationTest extends AuthTestSupport {
 
