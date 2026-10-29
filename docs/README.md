@@ -21,6 +21,7 @@ Documentación técnica e informes de todas las entregas del proyecto **Gastos**
 |---|---|
 | [entrega-1-propuesta.md](entrega-1-propuesta.md) | Propuesta de proyecto de la 1.ª entrega. Problema, alcance, stack, arquitectura, estrategia de datos y seguridad, plan de trabajo y riesgos. |
 | [entrega-2-esquema-y-modulos.md](entrega-2-esquema-y-modulos.md) | Esquema de datos y definición de módulos de la 2.ª entrega. Esquema definitivo y aislamiento entre hogares, estado de los módulos, cambios respecto de la propuesta y respuesta a las observaciones recibidas. |
+| [entrega-final.md](entrega-final.md) | Informe final. El sistema construido, alcance logrado, arquitectura, aislamiento, seguridad, calidad, despliegue, cambios respecto de la propuesta, desarrollo del trabajo y criterios de éxito. |
 
 ## Cómo leer esta documentación
 
