@@ -83,17 +83,24 @@ const noSpaces = (text: string) => text.replace(/\s/g, '')
 describe('formatMoneyCompact', () => {
   // El sufijo es fijo: con notation: 'compact', Node 20 da "K" y Node 22 da "k".
   it('abrevia los miles, los millones y los miles de millones con un decimal', () => {
-    expect(formatMoneyCompact('74070.75')).toBe('$ 74,1 K')
-    expect(formatMoneyCompact('1234567.89')).toBe('$ 1,2 M')
-    expect(formatMoneyCompact('2500000000.00')).toBe('$ 2,5 B')
+    expect(formatMoneyCompact('74070.75')).toBe(`$${NBSP}74,1${NBSP}K`)
+    expect(formatMoneyCompact('1234567.89')).toBe(`$${NBSP}1,2${NBSP}M`)
+    expect(formatMoneyCompact('2500000000.00')).toBe(`$${NBSP}2,5${NBSP}mil${NBSP}M`)
   })
 
   it('sin decimal cuando es redondo', () => {
-    expect(formatMoneyCompact('5000.00')).toBe('$ 5 K')
+    expect(formatMoneyCompact('5000.00')).toBe(`$${NBSP}5${NBSP}K`)
+  })
+
+  it('pasa a la escala siguiente cuando el redondeo llega a mil', () => {
+    expect(formatMoneyCompact('999.50')).toBe(`$${NBSP}1${NBSP}K`)
+    expect(formatMoneyCompact('999950.00')).toBe(`$${NBSP}1${NBSP}M`)
+    expect(formatMoneyCompact('999999999.99')).toBe(`$${NBSP}1${NBSP}mil${NBSP}M`)
   })
 
   it('debajo de mil, el importe redondeado sin decimales', () => {
     expect(noSpaces(formatMoneyCompact('950.50'))).toBe('$951')
+    expect(noSpaces(formatMoneyCompact('999.49'))).toBe('$999')
     expect(noSpaces(formatMoneyCompact('0.00'))).toBe('$0')
   })
 

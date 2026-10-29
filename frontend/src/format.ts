@@ -54,28 +54,41 @@ const wholeMoney = new Intl.NumberFormat('es-AR', { style: 'currency', currency:
 
 // El sufijo va fijo y no sale de notation: 'compact' de Intl, porque esa abreviatura cambia según los
 // datos regionales de cada navegador ("K", "k" o "mil"), y el centro del anillo se vería distinto en
-// cada uno.
+// cada uno. Para 10⁹ va "mil M" y no "B", que en castellano se lee como billón (10¹²).
 const SCALES = [
-  { from: 1e9, suffix: 'B' },
-  { from: 1e6, suffix: 'M' },
   { from: 1e3, suffix: 'K' },
+  { from: 1e6, suffix: 'M' },
+  { from: 1e9, suffix: 'mil M' },
 ]
+
+// El mismo espacio duro que pone Intl después del símbolo: el importe no se corta en dos líneas.
+const NBSP = ' '
+
+const toTenths = (value: number) => Math.round(value * 10) / 10
 
 /**
  * "74070.75" → "$ 74,1 K"; "950.50" → "$ 951". Para un lugar chico donde el importe exacto ya está a
  * la vista en otro lado, como el centro del anillo del tablero. Redondea: no sirve para mostrar un
  * importe solo, que va siempre con formatMoney (RD-01).
+ *
+ * La escala se elige con la cifra ya redondeada: 999.950 son 999,95 K, que con un decimal llega a
+ * 1.000 K, y se muestra como 1 M.
  */
 export function formatMoneyCompact(amount: Money): string {
   if (!MONEY.test(amount)) {
     return amount
   }
   const value = Number(amount)
-  const scale = SCALES.find((s) => Math.abs(value) >= s.from)
-  if (!scale) {
+  if (Math.abs(Math.round(value)) < 1000) {
     return wholeMoney.format(amount as Intl.StringNumericLiteral)
   }
-  return `$ ${oneDecimal.format(value / scale.from)} ${scale.suffix}`
+  let scale = 0
+  let scaled = toTenths(value / SCALES[scale].from)
+  while (Math.abs(scaled) >= 1000 && scale < SCALES.length - 1) {
+    scale += 1
+    scaled = toTenths(value / SCALES[scale].from)
+  }
+  return `$${NBSP}${oneDecimal.format(scaled)}${NBSP}${SCALES[scale].suffix}`
 }
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
