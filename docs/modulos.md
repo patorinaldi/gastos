@@ -358,7 +358,8 @@ POST /api/expenses
   → 201 { "id": "...", "amount": "1234.56", "merchant": "Carrefour", "expenseDate": "2026-09-21",
           "paymentMethod": "Tarjeta", "categoryId": "...", "categoryName": "Supermercado",
           "ownerId": "...", "ownerName": "Ana", "createdAt": "...", "updatedAt": "..." }
-  → 400 importe no positivo o con más de dos decimales (RN-06), comercio vacío (RN-07), o una
+  → 400 importe no positivo o con más de dos decimales (RN-06), comercio vacío, solo de espacios
+        (también duros o de ancho cero) o con caracteres de control o invisibles (RN-07), o una
         categoría inexistente, de otro hogar o dada de baja (RN-08, RN-16)
 
 GET /api/expenses?from=2026-09-01&to=2026-09-30&categoryId=uncategorized&page=0&size=20
