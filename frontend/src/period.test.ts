@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { currentMonth, monthRange, parseMonth, shiftMonth } from './period.ts'
+import {
+  currentMonth,
+  includesMonth,
+  monthRange,
+  monthsUntil,
+  parseMonth,
+  parsePeriod,
+  periodParams,
+  periodRange,
+  shiftMonth,
+} from './period.ts'
 
 describe('currentMonth', () => {
   it('decide el mes en la hora de Argentina', () => {
@@ -47,5 +57,51 @@ describe('monthRange', () => {
   it('febrero termina el 28, o el 29 en un año bisiesto', () => {
     expect(monthRange('2026-02')).toEqual({ from: '2026-02-01', to: '2026-02-28' })
     expect(monthRange('2028-02')).toEqual({ from: '2028-02-01', to: '2028-02-29' })
+  })
+})
+
+describe('monthsUntil', () => {
+  it('da los meses que terminan en el indicado, del más viejo al más nuevo', () => {
+    expect(monthsUntil('2026-02', 4)).toEqual(['2025-11', '2025-12', '2026-01', '2026-02'])
+    expect(monthsUntil('2026-10', 12)).toHaveLength(12)
+    expect(monthsUntil('2026-10', 12)[0]).toBe('2025-11')
+  })
+})
+
+describe('parsePeriod', () => {
+  const CURRENT = '2026-10'
+  const params = (query: string) => new URLSearchParams(query)
+
+  it('lee un mes o un año de la dirección', () => {
+    expect(parsePeriod(params('month=2026-07'), CURRENT)).toEqual({ kind: 'month', month: '2026-07' })
+    expect(parsePeriod(params('year=2026'), CURRENT)).toEqual({ kind: 'year', year: 2026 })
+  })
+
+  it('sin período, o con uno inválido, es el mes en curso', () => {
+    for (const query of ['', 'month=2026-13', 'year=26', 'year=dos mil']) {
+      expect(parsePeriod(params(query), CURRENT), query).toEqual({ kind: 'month', month: CURRENT })
+    }
+  })
+
+  it('vuelve a la dirección como la leyó, sin escribir el mes en curso', () => {
+    expect(periodParams({ kind: 'month', month: '2026-07' }, CURRENT)).toEqual({ month: '2026-07' })
+    expect(periodParams({ kind: 'month', month: CURRENT }, CURRENT)).toEqual({})
+    expect(periodParams({ kind: 'year', year: 2026 }, CURRENT)).toEqual({ year: '2026' })
+  })
+})
+
+describe('periodRange', () => {
+  it('un año va del 1 de enero al 31 de diciembre', () => {
+    expect(periodRange({ kind: 'year', year: 2026 })).toEqual({ from: '2026-01-01', to: '2026-12-31' })
+    expect(periodRange({ kind: 'month', month: '2026-02' })).toEqual({ from: '2026-02-01', to: '2026-02-28' })
+  })
+})
+
+describe('includesMonth', () => {
+  it('un mes incluye solo ese mes; un año, sus doce meses', () => {
+    expect(includesMonth({ kind: 'month', month: '2026-07' }, '2026-07')).toBe(true)
+    expect(includesMonth({ kind: 'month', month: '2026-07' }, '2026-08')).toBe(false)
+    expect(includesMonth({ kind: 'year', year: 2026 }, '2026-01')).toBe(true)
+    expect(includesMonth({ kind: 'year', year: 2026 }, '2025-12')).toBe(false)
   })
 })

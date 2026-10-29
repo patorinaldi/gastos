@@ -49,3 +49,53 @@ export function monthRange(month: IsoMonth): { from: IsoDate; to: IsoDate } {
   const lastDay = new Date(Date.UTC(year, m, 0)).getUTCDate()
   return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, '0')}` }
 }
+
+/** Los `count` meses que terminan en `last`, del más viejo al más nuevo. */
+export function monthsUntil(last: IsoMonth, count: number): IsoMonth[] {
+  return Array.from({ length: count }, (_, i) => shiftMonth(last, i - count + 1))
+}
+
+/**
+ * El período que se mira en el tablero: un mes, o un año entero. El mes es el caso común (RD-07); el
+ * año sirve para ver la distribución acumulada.
+ */
+export type Period = { kind: 'month'; month: IsoMonth } | { kind: 'year'; year: number }
+
+const YEAR = /^\d{4}$/
+
+/**
+ * El período de la dirección: `?month=2026-09` o `?year=2026`. Sin ninguno, o con uno inválido, el
+ * mes en curso.
+ */
+export function parsePeriod(params: URLSearchParams, current: IsoMonth): Period {
+  const month = parseMonth(params.get('month'))
+  if (month) {
+    return { kind: 'month', month }
+  }
+  const year = params.get('year')
+  if (year !== null && YEAR.test(year)) {
+    return { kind: 'year', year: Number(year) }
+  }
+  return { kind: 'month', month: current }
+}
+
+/** El período como parámetros de la dirección. El mes en curso es el valor por defecto y no se escribe. */
+export function periodParams(period: Period, current: IsoMonth): Record<string, string> {
+  if (period.kind === 'year') {
+    return { year: String(period.year) }
+  }
+  return period.month === current ? {} : { month: period.month }
+}
+
+/** Primer y último día del período, inclusive. */
+export function periodRange(period: Period): { from: IsoDate; to: IsoDate } {
+  if (period.kind === 'year') {
+    return { from: `${period.year}-01-01`, to: `${period.year}-12-31` }
+  }
+  return monthRange(period.month)
+}
+
+/** Si el mes cae dentro del período. */
+export function includesMonth(period: Period, month: IsoMonth): boolean {
+  return period.kind === 'month' ? period.month === month : month.startsWith(`${period.year}-`)
+}
