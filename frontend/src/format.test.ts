@@ -77,13 +77,19 @@ describe('formatMoneyParts', () => {
   })
 })
 
-// Los espacios dependen de cómo arma Intl cada notación; se comparan sin espacios.
+// Intl separa el símbolo con un espacio duro; se comparan sin espacios.
 const noSpaces = (text: string) => text.replace(/\s/g, '')
 
 describe('formatMoneyCompact', () => {
-  it('abrevia los miles y los millones con un decimal', () => {
-    expect(noSpaces(formatMoneyCompact('74070.75'))).toBe('$74,1K')
-    expect(noSpaces(formatMoneyCompact('1234567.89'))).toBe('$1,2M')
+  // El sufijo es fijo: con notation: 'compact', Node 20 da "K" y Node 22 da "k".
+  it('abrevia los miles, los millones y los miles de millones con un decimal', () => {
+    expect(formatMoneyCompact('74070.75')).toBe('$ 74,1 K')
+    expect(formatMoneyCompact('1234567.89')).toBe('$ 1,2 M')
+    expect(formatMoneyCompact('2500000000.00')).toBe('$ 2,5 B')
+  })
+
+  it('sin decimal cuando es redondo', () => {
+    expect(formatMoneyCompact('5000.00')).toBe('$ 5 K')
   })
 
   it('debajo de mil, el importe redondeado sin decimales', () => {

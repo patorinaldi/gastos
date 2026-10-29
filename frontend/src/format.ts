@@ -49,25 +49,33 @@ export function formatMoneyParts(amount: Money): { currency: string; number: str
   return { currency, number }
 }
 
-const compactMoney = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  notation: 'compact',
-  maximumFractionDigits: 1,
-})
+const oneDecimal = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 })
 const wholeMoney = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })
 
+// El sufijo va fijo y no sale de notation: 'compact' de Intl, porque esa abreviatura cambia según los
+// datos regionales de cada navegador ("K", "k" o "mil"), y el centro del anillo se vería distinto en
+// cada uno.
+const SCALES = [
+  { from: 1e9, suffix: 'B' },
+  { from: 1e6, suffix: 'M' },
+  { from: 1e3, suffix: 'K' },
+]
+
 /**
- * "74070.75" → "$74,1 K"; "950.50" → "$ 951". Para un lugar chico donde el importe exacto ya está a la
- * vista en otro lado, como el centro del anillo del tablero. Redondea: no sirve para mostrar un importe
- * solo, que va siempre con formatMoney (RD-01).
+ * "74070.75" → "$ 74,1 K"; "950.50" → "$ 951". Para un lugar chico donde el importe exacto ya está a
+ * la vista en otro lado, como el centro del anillo del tablero. Redondea: no sirve para mostrar un
+ * importe solo, que va siempre con formatMoney (RD-01).
  */
 export function formatMoneyCompact(amount: Money): string {
   if (!MONEY.test(amount)) {
     return amount
   }
-  const value = amount as Intl.StringNumericLiteral
-  return Math.abs(Number(amount)) < 1000 ? wholeMoney.format(value) : compactMoney.format(value)
+  const value = Number(amount)
+  const scale = SCALES.find((s) => Math.abs(value) >= s.from)
+  if (!scale) {
+    return wholeMoney.format(amount as Intl.StringNumericLiteral)
+  }
+  return `$ ${oneDecimal.format(value / scale.from)} ${scale.suffix}`
 }
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
