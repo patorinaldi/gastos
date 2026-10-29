@@ -1,7 +1,9 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import io.github.patorinaldi.gastos.api.web.dto.validation.DisplayNames;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,12 +20,35 @@ import java.util.UUID;
  */
 public final class CaptureContracts {
 
+    /** El medio de pago de una captura que no lo indica. */
+    public static final PaymentMethodValue DEFAULT_PAYMENT_METHOD = PaymentMethodValue.TARJETA;
+
+    // Espacios de cualquier tipo, incluidos los saltos de línea, el espacio duro y los de ancho cero.
+    private static final java.util.regex.Pattern SPACES =
+            java.util.regex.Pattern.compile("[\\s\\u00A0\\u2007\\u202F\\u200B\\uFEFF]+");
+
     private CaptureContracts() {
     }
 
+    /**
+     * El comercio llega, como el importe, tal como se leyó de una notificación: con saltos de línea,
+     * espacios duros o espacios repetidos. Se normaliza antes de validarlo, con el mismo criterio con
+     * el que el análisis agrupa los comercios: una sola forma de espacio, sin espacios en los extremos.
+     * Lo que queda se valida como el comercio de cualquier gasto.
+     *
+     * <p>El medio de pago es opcional y por defecto es tarjeta: la captura sale de notificaciones del
+     * banco, que son de compras con tarjeta o de transferencias, no de pagos en efectivo.
+     */
     public record CaptureRequest(
             @NotBlank @Size(max = 50) String amount,
-            @NotBlank @Size(max = 200) String merchant) {
+            @NotBlank @Size(max = 200)
+            @Pattern(regexp = DisplayNames.PATTERN, message = DisplayNames.MESSAGE) String merchant,
+            PaymentMethodValue paymentMethod) {
+
+        public CaptureRequest {
+            merchant = merchant == null ? null : SPACES.matcher(merchant).replaceAll(" ").strip();
+            paymentMethod = paymentMethod == null ? DEFAULT_PAYMENT_METHOD : paymentMethod;
+        }
     }
 
     /**
