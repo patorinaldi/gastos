@@ -1,5 +1,5 @@
-import type { ExpenseFilter, SummaryResponse } from '../types/api.ts'
-import { apiRequest } from './client.ts'
+import type { ExpenseFilter, MonthlySeriesResponse, SummaryResponse } from '../types/api.ts'
+import { apiRequest, query } from './client.ts'
 
 /**
  * M5, análisis. Piden sesión: el hogar es siempre el de quien consulta. Aceptan los mismos filtros
@@ -12,14 +12,10 @@ export function getSummary(filter: AnalysisFilter) {
   return apiRequest<SummaryResponse>(`/api/expenses/summary${query(filter)}`)
 }
 
-/** Los filtros como parámetros de consulta. Los que no vienen no se mandan: sin filtro es sin restricción. */
-export function query(filter: AnalysisFilter): string {
-  const params = new URLSearchParams()
-  for (const [name, value] of Object.entries(filter)) {
-    if (value !== undefined && value !== '') {
-      params.set(name, value)
-    }
-  }
-  const text = params.toString()
-  return text === '' ? '' : `?${text}`
+/**
+ * Un punto por mes con gasto y la media histórica (RF-27). La media no depende del período pedido:
+ * se calcula sobre los meses anteriores al mes en curso, con los demás filtros.
+ */
+export function getMonthly(filter: AnalysisFilter) {
+  return apiRequest<MonthlySeriesResponse>(`/api/expenses/monthly${query(filter)}`)
 }

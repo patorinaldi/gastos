@@ -7,8 +7,9 @@ const fetchMock = vi.fn<typeof fetch>()
 async function load() {
   vi.resetModules()
   const session = await import('../session.ts')
+  const client = await import('./client.ts')
   const analysis = await import('./analysis.ts')
-  return { ...session, ...analysis }
+  return { ...session, ...client, ...analysis }
 }
 
 beforeEach(() => {
@@ -38,6 +39,11 @@ describe('query', () => {
   it('codifica los valores', async () => {
     const { query } = await load()
     expect(query({ categoryId: 'a b&c' })).toBe('?categoryId=a+b%26c')
+  })
+
+  it('manda los números como texto, también el cero', async () => {
+    const { query } = await load()
+    expect(query({ page: 0, size: 10 })).toBe('?page=0&size=10')
   })
 })
 
