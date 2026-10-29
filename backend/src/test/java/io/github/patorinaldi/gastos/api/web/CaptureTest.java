@@ -173,6 +173,22 @@ class CaptureTest extends AuthTestSupport {
         assertThat(expensesOf(otraCasa)).isZero();
     }
 
+    // Las reglas son las del hogar del token: una de otro hogar que coincide con el comercio no se aplica.
+    @Test
+    void lasReglasDeOtroHogarNoSeAplican() throws Exception {
+        UUID deOtroHogar = UUID.randomUUID();
+        withHousehold(otraCasa, () -> {
+            jdbcTemplate.update("insert into categories (id, household_id, name) values (?, ?, ?)",
+                    deOtroHogar, otraCasa, "Kioscos");
+            jdbcTemplate.update("insert into category_rules (household_id, category_id, pattern) values (?, ?, ?)",
+                    otraCasa, deOtroHogar, "kiosco");
+        });
+
+        capture(token, "500", "Kiosco de la esquina")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.categoryId").doesNotExist());
+    }
+
     // ── Ayudantes ───────────────────────────────────────────────────────────
 
     private String issueToken(UUID household, UUID user) {
