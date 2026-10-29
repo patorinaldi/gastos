@@ -7,6 +7,7 @@ import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.RegisterRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ResendVerificationRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.ResetPasswordRequest;
 import io.github.patorinaldi.gastos.api.web.dto.AuthContracts.VerifyEmailRequest;
+import io.github.patorinaldi.gastos.api.web.dto.CaptureContracts.CaptureRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.CreateExpenseRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.ExpenseFilterRequest;
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.UpdateExpenseRequest;
@@ -268,6 +269,37 @@ class ApiContractsValidationTest {
     @Test
     void aResetWithAShortPasswordIsRejected() {
         assertThat(validate(new ResetPasswordRequest("t".repeat(43), "corta"))).contains("password");
+    }
+
+    // ── Captura ─────────────────────────────────────────────────────────────
+
+    // El comercio llega como se leyó de una notificación: se normaliza antes de validarlo.
+    @Test
+    void theCapturedMerchantIsNormalizedBeforeItIsValidated() {
+        CaptureRequest request = new CaptureRequest("1.234,56", "  CARREFOUR\n\u00A0Express\t ", null);
+
+        assertThat(request.merchant()).isEqualTo("CARREFOUR Express");
+        assertThat(validate(request)).isEmpty();
+    }
+
+    // Una captura sale de una notificación del banco: tarjeta o transferencia, no efectivo.
+    @Test
+    void aCaptureWithoutPaymentMethodDefaultsToCard() {
+        assertThat(new CaptureRequest("100", "Carrefour", null).paymentMethod()).isEqualTo(PaymentMethodValue.TARJETA);
+        assertThat(new CaptureRequest("100", "Carrefour", PaymentMethodValue.EFECTIVO).paymentMethod())
+                .isEqualTo(PaymentMethodValue.EFECTIVO);
+    }
+
+    @Test
+    void aCaptureMadeOnlyOfSpacesIsRejected() {
+        assertThat(validate(new CaptureRequest("100", " \n\u00A0 ", null))).contains("merchant");
+        assertThat(validate(new CaptureRequest("  ", "Carrefour", null))).contains("amount");
+    }
+
+    // El importe se interpreta después, como texto: acá solo se le pone un tope.
+    @Test
+    void anOversizedCapturedAmountIsRejected() {
+        assertThat(validate(new CaptureRequest("1".repeat(51), "Carrefour", null))).contains("amount");
     }
 
     // ── Hogares ─────────────────────────────────────────────────────────────

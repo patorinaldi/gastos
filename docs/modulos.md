@@ -31,7 +31,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | M3 Gastos | Elian | Alta con categoría automática, detalle, edición, baja lógica y listado con filtros implementados; pantallas pendientes |
 | M4 Categorización | Elian | Catálogo, motor de reglas en el alta, bandeja y reglas con reclasificación implementados; pantallas pendientes |
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
-| M6 API de integración | Juan | Pendiente |
+| M6 API de integración | Juan | Captura rápida implementada, con normalización de importes y autenticación por token de cliente máquina |
 | M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión y confirmación de correo implementados; el resto de las pantallas pendiente |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
 
@@ -642,9 +642,22 @@ Contrato:
 ```
 POST /api/capture
   Authorization: Token <token de cliente máquina>
-  { "amount": "1.234,56", "merchant": "Carrefour" }
-  → 201 { "id": "...", "categoryId": "...", "amount": "1234.56" }
+  { "amount": "1.234,56", "merchant": "Carrefour", "paymentMethod": "Tarjeta" }
+  → 201 { "id": "...", "amount": "1234.56", "merchant": "Carrefour", "categoryId": "...",
+          "expenseDate": "2026-10-29" }
+  → 400 importe que no se puede interpretar sin ambigüedad, o comercio vacío o inválido
+  → 401 token inexistente, revocado, de un hogar que su dueño dejó o archivado
+  → 403 con una sesión web en lugar de un token de cliente máquina
 ```
+
+El gasto queda en el hogar del token, a nombre de su dueño y con la fecha de hoy en la hora de
+Argentina, igual que un alta desde la interfaz. `paymentMethod` es opcional y por defecto es
+`Tarjeta`: la captura sale de notificaciones del banco, que son de compras con tarjeta o de
+transferencias. La categoría la resuelve el mismo motor de reglas que el alta (RN-17), así que una
+captura y un gasto cargado a mano con el mismo comercio quedan en la misma categoría, y sin regla
+que coincida el gasto queda en la bandeja. El comercio también llega como se leyó de la
+notificación: antes de validarlo se reducen los saltos de línea, los espacios duros y los espacios
+repetidos a uno solo, con el mismo criterio con el que el análisis agrupa los comercios.
 
 **Normalización defensiva de importes.** El cliente que invoca este punto de entrada suele extraer
 el importe de un texto, como una notificación bancaria o un mensaje, y lo envía tal como lo leyó.
