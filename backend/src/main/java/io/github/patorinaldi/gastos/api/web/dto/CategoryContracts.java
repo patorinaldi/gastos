@@ -1,7 +1,9 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
+import io.github.patorinaldi.gastos.api.web.dto.validation.DisplayNames;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
@@ -21,15 +23,21 @@ public final class CategoryContracts {
     public record CategoryResponse(UUID id, String name) {
     }
 
-    /** Sirve para el alta y para el renombrado: en los dos casos lo único que cambia es el nombre. */
-    public record SaveCategoryRequest(@NotBlank @Size(max = 200) String name) {
+    /**
+     * Sirve para el alta y para el renombrado: en los dos casos lo único que cambia es el nombre. Es un
+     * nombre que se muestra en pantalla, con las mismas reglas que el de una persona.
+     */
+    public record SaveCategoryRequest(
+            @NotBlank @Size(max = 200)
+            @Pattern(regexp = DisplayNames.PATTERN, message = DisplayNames.MESSAGE) String name) {
     }
 
     public record CategoryRuleResponse(UUID id, String pattern, UUID categoryId, String categoryName) {
     }
 
     /**
-     * El patrón se guarda normalizado, en minúscula y sin tildes. Dos reglas con el mismo patrón en
+     * El patrón se guarda normalizado, en minúscula y sin tildes, así que puede llegar escrito como el
+     * comercio. Necesita al menos tres letras o números: si no, 400. Dos reglas con el mismo patrón en
      * un hogar se rechazan con 409 (RN-10).
      */
     public record CreateCategoryRuleRequest(

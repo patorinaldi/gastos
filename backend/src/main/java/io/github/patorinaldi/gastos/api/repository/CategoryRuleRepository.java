@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -20,4 +21,18 @@ public interface CategoryRuleRepository extends JpaRepository<CategoryRule, UUID
     List<CategoryRule> findAllByOrderByPatternAsc();
 
     List<CategoryRule> findByCategoryId(UUID categoryId);
+
+    /**
+     * Las reglas que aplican: las de categorías activas (RN-16), ordenadas por patrón. Es lo que usa el
+     * motor y lo que ve el usuario.
+     *
+     * <p>Al dar de baja una categoría, el trigger de la V4 borra sus reglas, así que no debería quedar
+     * ninguna de una categoría inactiva. El join igual las descarta: el motor no depende de que nadie
+     * haya escrito en la tabla por fuera de la aplicación.
+     */
+    @Query("""
+            select r from CategoryRule r join Category c on c.id = r.categoryId
+            where c.active
+            order by r.pattern""")
+    List<CategoryRule> findAllOfActiveCategories();
 }
