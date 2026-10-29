@@ -75,6 +75,42 @@ class RuleSetTest {
         assertThat(rules.categoryFor("PEDIDOS YA *PROPINA")).contains(RESTAURANTES);
     }
 
+    // La coincidencia empieza al principio de una palabra del comercio, pero puede seguir en la
+    // siguiente: los espacios y la puntuación del comercio varían.
+    @ParameterizedTest(name = "\"{1}\" coincide con {0}")
+    @CsvSource(delimiter = '|', value = {
+            "supermercado | Super Mercado Rosario",
+            "pedidosya    | PEDIDOS YA",
+            "mcdonald     | McDonald's",
+            "uber         | MERPAGO*UBER",
+            "farmacia     | Farmacias del Pueblo",
+    })
+    void coincideDesdeElPrincipioDeUnaPalabra(String pattern, String merchant) {
+        assertThat(RuleSet.of(List.of(rule(pattern, TRANSPORTE, T0))).categoryFor(merchant)).contains(TRANSPORTE);
+    }
+
+    // Como la clave no tiene espacios, sin esa condición el patrón coincidía en medio de una palabra o
+    // entre dos, y el gasto quedaba en una categoría equivocada en lugar de ir a la bandeja.
+    @ParameterizedTest(name = "\"{1}\" no coincide con {0}")
+    @CsvSource(delimiter = '|', value = {
+            "uber | Pub Ernesto",
+            "uber | Tuberías del Sur",
+            "coto | Disco Tomás",
+            "coto | Escoto",
+    })
+    void noCoincideEnMedioDeUnaPalabraNiEntreDos(String pattern, String merchant) {
+        assertThat(RuleSet.of(List.of(rule(pattern, TRANSPORTE, T0))).categoryFor(merchant)).isEmpty();
+    }
+
+    // Busca todas las apariciones, no solo la primera: en "pubernesto uber" la primera "uber" está en
+    // medio de una palabra, y la segunda empieza una.
+    @Test
+    void coincideAunqueLaPrimeraAparicionEsteEnMedioDeUnaPalabra() {
+        RuleSet rules = RuleSet.of(List.of(rule("uber", TRANSPORTE, T0)));
+
+        assertThat(rules.categoryFor("Pub Ernesto - Uber")).contains(TRANSPORTE);
+    }
+
     // RF-21, RN-12: sin coincidencia no hay categoría por defecto.
     @Test
     void sinCoincidenciaNoHayCategoria() {

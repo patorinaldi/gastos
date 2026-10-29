@@ -46,9 +46,9 @@ public final class RuleSet {
 
     /** La categoría que corresponde al comercio, o vacío si ninguna regla coincide (RN-12). */
     public Optional<UUID> categoryFor(String merchant) {
-        String merchantKey = Patterns.matchKey(merchant);
+        MerchantKey merchantKey = MerchantKey.of(merchant);
         return candidates.stream()
-                .filter(c -> merchantKey.contains(c.key()))
+                .filter(c -> merchantKey.matches(c.key()))
                 .map(Candidate::categoryId)
                 .findFirst();
     }

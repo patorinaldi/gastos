@@ -206,6 +206,30 @@ class CategoryRuleTest extends AuthTestSupport {
         createRule("ypf", transporte).andExpect(status().isCreated());
     }
 
+    // NFKD alarga algunos caracteres: 200 ligaduras "ﬃ" pasan el Size del contrato y quedan en 600
+    // caracteres. Antes llegaban al insert y la base respondía con un 500.
+    @Test
+    void rechazaUnPatronQueAlNormalizarloNoEntraEnLaColumna() throws Exception {
+        createRule("ﬃ".repeat(200), supermercado)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El patrón no puede tener más de 200 caracteres."));
+        // "㎏" pasa a ser "kg": 101 son 202 caracteres.
+        createRule("㎏".repeat(101), supermercado).andExpect(status().isBadRequest());
+        mockMvc.perform(authorized(get("/api/category-rules"))).andExpect(jsonPath("$").isEmpty());
+    }
+
+    // La reclasificación usa la misma coincidencia que el alta: "uber" no clasifica "Pub Ernesto".
+    @Test
+    void laReclasificacionNoTomaUnPatronEnMedioDeUnaPalabra() throws Exception {
+        UUID pub = expense(casa, ana, null, "Pub Ernesto", SEPTIEMBRE);
+        UUID viaje = expense(casa, ana, null, "MERPAGO*UBER", SEPTIEMBRE);
+
+        createRule("uber", transporte).andExpect(jsonPath("$.reclassified").value(1));
+
+        assertThat(categoryOf(casa, pub)).isNull();
+        assertThat(categoryOf(casa, viaje)).isEqualTo(transporte);
+    }
+
     // RN-08, RN-16: la categoría tiene que ser del hogar y estar activa.
     @Test
     void rechazaUnaCategoriaDadaDeBajaODeOtroHogar() throws Exception {

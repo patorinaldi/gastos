@@ -457,11 +457,16 @@ llega sin categoría, y si ninguna regla coincide el gasto queda en la bandeja (
 palabras: es la forma que muestra el listado de reglas, y la API la aplica a lo que recibe, así que la
 interfaz puede proponer el comercio tal como está y el servidor lo lleva a patrón (CU-05, paso 2). Para
 comparar, patrón y comercio se reducen a sus letras y números, sin tildes ni mayúsculas, y la regla
-coincide si el patrón está contenido en el comercio. Así `supermercado` coincide con
-"Super Mercado Rosario", `mcdonald` con "McDonald's" y `pedidosya` con "PEDIDOS YA": el comercio se
-tipea a mano o llega de una notificación del banco, y los espacios y la puntuación varían.
+coincide si el patrón aparece en el comercio empezando al principio de una de sus palabras. Así
+`supermercado` coincide con "Super Mercado Rosario", `mcdonald` con "McDonald's", `pedidosya` con
+"PEDIDOS YA" y `uber` con "MERPAGO*UBER": el comercio se tipea a mano o llega de una notificación del
+banco, y los espacios y la puntuación varían. Que tenga que empezar una palabra evita que `uber`
+coincida con "Pub Ernesto" o con "Tuberías", y `coto` con "Escoto": ese error no se vería, porque el
+gasto quedaría en una categoría equivocada y no en la bandeja. El final sí puede caer en medio de una
+palabra, así que `farmacia` coincide con "Farmacias del Pueblo", y también `sube` con "Subestación".
 
-Un patrón necesita al menos tres letras o números; uno más corto responde `400`. Se evitan además
+Un patrón necesita al menos tres letras o números, y normalizado no puede pasar los 200 caracteres
+(algunos caracteres se alargan al normalizarlos, como la ligadura `ﬃ`); si no, responde `400`. Se evitan además
 patrones cortos o palabras comunes que coincidirían con comercios no relacionados: por eso la siembra
 no incluye `dia` ni `claro`.
 
@@ -534,8 +539,8 @@ POST /api/category-rules
   { "pattern": "Almacén de Pepe", "categoryId": "..." }
   → 201 { "id": "...", "pattern": "almacen de pepe", "categoryId": "...",
           "reclassified": 7 }   // gastos que salieron de la bandeja
-  → 400 patrón con menos de tres letras o números, o una categoría inexistente, de otro hogar o
-        dada de baja
+  → 400 patrón con menos de tres letras o números o de más de 200 caracteres ya normalizado, o una
+        categoría inexistente, de otro hogar o dada de baja
   → 409 el patrón ya existe en el hogar (RN-10), con la categoría de la regla existente
 
 DELETE /api/category-rules/{id}

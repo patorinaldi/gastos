@@ -82,14 +82,18 @@ public class CategoryRuleService {
      * el alta no ve la regla todavía sin confirmar, y la reclasificación no ve el gasto. Queda a la vista
      * en la bandeja, y se clasifica a mano.
      *
-     * @throws InvalidPatternException       si el patrón tiene menos de tres letras o números
+     * @throws InvalidPatternException       si el patrón normalizado tiene menos de tres letras o números,
+     *                                       o más de 200 caracteres
      * @throws CategoryUnavailableException  si la categoría no existe, está dada de baja o es de otro hogar
      * @throws PatternTakenException         si ya hay una regla con el mismo patrón (RN-10)
      */
     public CreatedRule create(AuthenticatedUser user, String rawPattern, UUID categoryId) {
         String pattern = Patterns.normalize(rawPattern);
         if (Patterns.matchKey(pattern).length() < Patterns.MIN_KEY_LENGTH) {
-            throw new InvalidPatternException();
+            throw InvalidPatternException.tooShort();
+        }
+        if (pattern.length() > Patterns.MAX_LENGTH) {
+            throw InvalidPatternException.tooLong();
         }
         try {
             return transactions.execute(status -> createLocked(user, pattern, categoryId));
@@ -135,7 +139,7 @@ public class CategoryRuleService {
     private int reclassify(RuleSet ruleSet, String patternKey) {
         Map<UUID, List<UUID>> byCategory = new HashMap<>();
         for (UncategorizedExpense expense : expenses.findUncategorized()) {
-            if (Patterns.matchKey(expense.getMerchant()).contains(patternKey)) {
+            if (MerchantKey.of(expense.getMerchant()).matches(patternKey)) {
                 ruleSet.categoryFor(expense.getMerchant())
                         .ifPresent(c -> byCategory.computeIfAbsent(c, k -> new ArrayList<>()).add(expense.getId()));
             }
