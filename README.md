@@ -194,93 +194,18 @@ GitHub entra a Azure por OIDC: el environment `production` guarda los identifica
 (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`), y Azure solo acepta tokens emitidos
 para este repositorio y ese environment. No hay ninguna contraseña de Azure guardada en GitHub.
 
-La aplicación toma su configuración de las variables de entorno de App Service:
+La guía completa está en [docs/despliegue.md](docs/despliegue.md): las variables de entorno de
+App Service y de Cloudflare Pages, la preparación de la base, el primer despliegue, el orden para
+cargar variables nuevas, la verificación después de desplegar y los problemas frecuentes.
 
-| Variable | Contenido |
-|---|---|
-| `DB_URL` | URL JDBC de la base, con `sslmode=require` |
-| `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD` | Rol con el que corren las migraciones (`gastos_admin`). Es dueño de la base y del esquema `public`, y tiene `CREATEROLE`, sin ser superusuario. |
-| `DB_API_USERNAME`, `DB_API_PASSWORD` | Rol con el que se conecta la aplicación (`gastos_api`). Lo crea la V2 en el primer arranque, con esta contraseña. |
-| `JWT_SECRET` | Clave de firma del token de sesión, de 32 caracteres o más |
-| `EMAIL_SENDER` | Implementación del envío de correos: `smtp`, el envío real, o `console`, que solo escribe los correos en el log. Con `console`, el alta y los pedidos de enlaces por correo responden 503, para que los enlaces de un solo uso no queden en el log. |
-| `EMAIL_FROM` | Con `smtp`: remitente de los correos, por ejemplo `Gastos <no-responder@gastos.ejemplo>`. Tiene que ser una dirección que el proveedor permita usar. |
-| `MAIL_HOST`, `MAIL_PORT` | Con `smtp`: servidor SMTP del proveedor y su puerto, `587` si no se indica. La conexión exige STARTTLS. |
-| `MAIL_USERNAME`, `MAIL_PASSWORD` | Con `smtp`: credenciales SMTP del proveedor. Obligatorias: la conexión exige autenticación. |
-| `CORS_ALLOWED_ORIGINS` | Orígenes del cliente web, separados por coma. Vacía, ningún otro origen puede llamar a la API. |
-| `WEB_URL` | Dirección del cliente web, por ejemplo `https://gastos.pages.dev`. Con ella se arman los enlaces de los correos: verificación y restablecimiento de contraseña. |
-| `WEBSITES_PORT` | `8080`, el puerto en el que escucha la aplicación |
+Lo mínimo para tener presente:
 
-Si falta `EMAIL_SENDER`, `JWT_SECRET` o `WEB_URL`, la aplicación no arranca, a propósito, y con `EMAIL_SENDER=smtp` tampoco si falta `MAIL_HOST`, `EMAIL_FROM`, `MAIL_USERNAME` o `MAIL_PASSWORD`. Cada variable se
-mapea de forma explícita en `application.yaml`: una variable que no esté mapeada ahí no la lee
-nadie, aunque esté definida en App Service.
-
-**Orden de despliegue.** Para pasar un despliegue que hoy corre con `EMAIL_SENDER=console` al envío
-real, en este orden:
-
-1. Definir en App Service `EMAIL_FROM`, `MAIL_HOST`, `MAIL_USERNAME` y `MAIL_PASSWORD`. La versión
-   anterior no las lee, así que el reinicio que provoca el cambio no la afecta.
-2. Desplegar la versión nueva. Desde ese momento el alta de cuentas y los pedidos de enlaces
-   responden 503, porque `EMAIL_SENDER` sigue en `console`.
-3. Cambiar `EMAIL_SENDER` a `smtp`.
-
-No hay que definir `EMAIL_SENDER=smtp` antes de desplegar: la versión anterior no conoce ese valor
-y no arrancaría hasta que llegue el despliegue.
-
-### Preparación de la base
-
-Se hace una sola vez, antes del primer despliegue, conectado al servidor con su administrador (el
-rol que se eligió al crear el Flexible Server). Desde el portal se puede usar Cloud Shell, que ya
-trae `psql` y llega al servidor si está activado *Allow public access from any Azure service*.
-
-1. Crear el rol de las migraciones. Con `\password`, la contraseña no queda escrita en el SQL ni
-   en el historial:
-
-   ```bash
-   psql "host=<servidor>.postgres.database.azure.com port=5432 dbname=postgres user=<administrador> sslmode=require"
-   ```
-   ```sql
-   create role gastos_admin login createrole createdb;
-   \password gastos_admin
-   ```
-
-2. Crear la base como `gastos_admin`, para que quede como su dueño:
-
-   ```bash
-   psql "host=<servidor>.postgres.database.azure.com port=5432 dbname=postgres user=gastos_admin sslmode=require"
-   ```
-   ```sql
-   create database gastos;
-   ```
-
-3. Como el administrador, conectado a la base `gastos`, transferirle el esquema `public` a
-   `gastos_admin` y quitarle `CREATEDB`, que ya no necesita:
-
-   ```bash
-   psql "host=<servidor>.postgres.database.azure.com port=5432 dbname=gastos user=<administrador> sslmode=require"
-   ```
-   ```sql
-   grant gastos_admin to <administrador>;
-   alter schema public owner to gastos_admin;
-   revoke gastos_admin from <administrador>;
-   alter role gastos_admin nocreatedb;
-   ```
-
-**Por qué el paso 3.** En Azure, el esquema `public` de una base nueva pertenece a `azure_pg_admin`,
-no al dueño de la base: `gastos_admin` podría usarlo pero no crear tablas, y Flyway fallaría al
-crear su tabla de historial (`permission denied for schema public`). El `grant` temporal hace falta
-porque, desde PostgreSQL 16, transferirle un objeto a un rol exige poder actuar como ese rol; el
-administrador puede concedérselo a sí mismo porque fue quien creó `gastos_admin`. Las pruebas
-reproducen este mismo escenario con
-[`init-admin-gestionado.sql`](backend/src/test/resources/db/init-admin-gestionado.sql).
-
-`gastos_api` no se crea a mano: lo crea la V2 en el primer arranque, con `DB_API_PASSWORD`.
-
-### Arranque en frío
-
-El plan gratuito de App Service no permite *Always On*: después de un rato sin pedidos la
-aplicación se detiene, y el primer pedido siguiente la vuelve a levantar. Ese pedido tarda más:
-la plataforma inicia el contenedor y Spring Boot tarda entre 15 y 30 segundos en arrancar. Los
-pedidos siguientes responden normalmente.
+- **La API no arranca si falta `EMAIL_SENDER`, `JWT_SECRET` o `WEB_URL`**, ni con
+  `EMAIL_SENDER=smtp` sin la configuración del proveedor. Es a propósito, y el log del arranque
+  nombra la variable que falta.
+- **Las variables nuevas se cargan antes de desplegar el código que las lee.**
+- **`WEB_URL`, `CORS_ALLOWED_ORIGINS` y la `VITE_API_URL` del cliente web tienen que coincidir**
+  con las direcciones reales de las dos partes.
 
 ---
 
