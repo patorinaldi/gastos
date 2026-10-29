@@ -58,6 +58,13 @@ borra de la dirección al leerlo. Si el enlace venció o ya se usó, la misma pa
 nuevo (`components/auth/ResendVerification.tsx`), igual que el alta y el login cuando responde que el
 correo no está verificado.
 
+La recuperación de contraseña tiene dos pantallas. `/forgot-password`, a la que se llega desde el
+login con el correo ya escrito, pide el enlace y responde igual exista o no la cuenta. El enlace del
+correo es `/reset-password#token=...`: la pantalla lee el token y lo borra de la dirección, igual que
+la de confirmación, pero lo canjea recién al enviar la contraseña nueva. Si el enlace venció o ya se
+usó, ofrece pedir otro. Al cambiarla, el servidor cierra todas las sesiones de la cuenta, y la
+pantalla descarta también la que hubiera en ese navegador.
+
 ## Pruebas
 
 `npm test` corre las pruebas con Vitest, también en CI. Corren con la zona horaria de Buenos

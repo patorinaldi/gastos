@@ -1,7 +1,7 @@
 /*
- * Estilos de las pantallas de cuenta: inicio de sesión, registro y confirmación de correo. Las tres
- * van dentro de la tarjeta de AuthLayout y comparten encabezado, formulario y pie, así que comparten
- * este módulo en lugar de repetir las mismas reglas en tres.
+ * Estilos de las pantallas de cuenta: inicio de sesión, registro, confirmación de correo y
+ * recuperación de contraseña. Todas van dentro de la tarjeta de AuthLayout y comparten encabezado,
+ * formulario y pie, así que comparten este módulo en lugar de repetir las mismas reglas.
  */
 
 .header {

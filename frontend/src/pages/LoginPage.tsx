@@ -100,6 +100,13 @@ export function LoginPage() {
       {unverifiedEmail !== null && <ResendVerification email={unverifiedEmail} />}
 
       <p className={styles.footer}>
+        {/* Lleva el correo escrito, para no pedirlo dos veces. */}
+        <Link to="/forgot-password" state={{ email: email.trim() }} className={styles.link}>
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </p>
+
+      <p className={styles.footer}>
         ¿No tenés cuenta?{' '}
         <Link to="/register" className={styles.link}>
           Creá una
