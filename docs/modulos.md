@@ -26,7 +26,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 
 | Módulo | Responsable | Estado |
 |---|---|---|
-| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; pantallas del cliente web pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
+| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; en el cliente web, las pantallas de registro, inicio de sesión y confirmación de correo implementadas, y las de restablecimiento de contraseña y tokens de cliente máquina pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
 | M2 Hogares | Elian | Backend implementado, pantallas pendientes |
 | M3 Gastos | Elian | Alta con categoría automática, detalle, edición, baja lógica y listado con filtros implementados; pantallas pendientes |
 | M4 Categorización | Elian | Catálogo, motor de reglas en el alta, bandeja y reglas con reclasificación implementados; pantallas pendientes |
