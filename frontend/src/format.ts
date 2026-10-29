@@ -1,4 +1,4 @@
-import type { IsoDate, IsoMonth, Money } from './types/api.ts'
+import type { IsoDate, IsoInstant, IsoMonth, Money } from './types/api.ts'
 
 /*
  * Formato de importes y fechas para Argentina (es-AR). Toda pantalla que muestra un importe o una
@@ -120,6 +120,33 @@ function monthParts(month: string): { year: number; month: number } | null {
   }
   const [year, m] = match.slice(1).map(Number)
   return m >= 1 && m <= 12 ? { year, month: m } : null
+}
+
+const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
+
+// Un instante sí tiene hora, así que sí pasa por Date. Se muestra en la hora de Argentina, la misma
+// para todos los integrantes, sin importar la zona del dispositivo (RD-08).
+const instant = new Intl.DateTimeFormat('es-AR', {
+  timeZone: 'America/Argentina/Buenos_Aires',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+/**
+ * "2026-11-05T17:30:00Z" → "05/11/2026 14:30", en la hora de Argentina. Se arma con las partes y no
+ * con format(), que según el navegador separa la fecha de la hora con coma o sin ella.
+ */
+export function formatInstant(value: IsoInstant): string {
+  const time = Date.parse(value)
+  if (!INSTANT.test(value) || Number.isNaN(time)) {
+    return value
+  }
+  const parts = Object.fromEntries(instant.formatToParts(time).map((part) => [part.type, part.value]))
+  return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`
 }
 
 /** "2026-09-21" → "21 sep". */

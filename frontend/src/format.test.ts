@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatDate,
   formatDayMonth,
+  formatInstant,
   formatMoney,
   formatMoneyCompact,
   formatMoneyParts,
@@ -52,6 +53,23 @@ describe('formatDate', () => {
   it('devuelve tal cual una fecha que no existe', () => {
     expect(formatDate('2026-02-31')).toBe('2026-02-31')
     expect(formatDate('2026-13-01')).toBe('2026-13-01')
+  })
+})
+
+describe('formatInstant', () => {
+  it('formatea un instante con fecha y hora de Argentina', () => {
+    expect(formatInstant('2026-11-05T17:30:00Z')).toBe('05/11/2026 14:30')
+  })
+
+  // A las 2 de la mañana UTC todavía es el día anterior en Argentina (RD-08).
+  it('toma el día de Argentina, no el de UTC', () => {
+    expect(formatInstant('2026-11-06T02:15:00Z')).toBe('05/11/2026 23:15')
+  })
+
+  it('devuelve tal cual lo que no es un instante', () => {
+    expect(formatInstant('2026-11-05')).toBe('2026-11-05')
+    expect(formatInstant('')).toBe('')
+    expect(formatInstant('mañana')).toBe('mañana')
   })
 })
 
