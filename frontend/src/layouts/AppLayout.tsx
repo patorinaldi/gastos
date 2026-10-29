@@ -5,12 +5,16 @@ import { ButtonLink } from '../components/ui/Button.tsx'
 import { clearSession } from '../session.ts'
 import styles from './AppLayout.module.css'
 import { NEW_EXPENSE_PATH, SECTIONS } from './navigation.ts'
+import { SidebarSlotContext } from './sidebarSlotContext.ts'
 
 /**
  * Shell de las pantallas autenticadas.
  *
  * En móvil la navegación vive en un menú desplegable y la acción de alta queda fija abajo, a un
- * toque desde cualquier pantalla (RNF-14). En escritorio las dos van en la barra lateral.
+ * toque desde cualquier pantalla (RNF-14). En escritorio las dos van en la barra superior.
+ *
+ * La barra lateral de escritorio es de la pantalla, no de la navegación: solo aparece si la pantalla
+ * pone algo en ella, como el resumen del tablero (ver SidebarSlot). Las demás usan todo el ancho.
  */
 export function AppLayout() {
   const { pathname } = useLocation()
@@ -21,6 +25,8 @@ export function AppLayout() {
   const menuButton = useRef<HTMLButtonElement>(null)
   // En el alta misma, el botón de alta sobra.
   const addingExpense = useMatch(NEW_EXPENSE_PATH) !== null
+  // Un estado y no un ref: la pantalla tiene que volver a dibujarse cuando el lugar ya existe.
+  const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null)
 
   const closeMenu = () => setOpenAt(null)
 
@@ -50,25 +56,26 @@ export function AppLayout() {
     </button>
   )
 
+  // En la barra superior de escritorio, del tamaño de un botón; en la barra fija de móvil, de todo el ancho.
   const addExpense = (size: 'normal' | 'large') => (
-    <ButtonLink to={NEW_EXPENSE_PATH} size={size} block>
+    <ButtonLink to={NEW_EXPENSE_PATH} size={size} block={size === 'large'}>
       <span aria-hidden="true">+</span> Añadir gasto
     </ButtonLink>
   )
 
   return (
     <div className={styles.shell}>
-      <aside className={styles.sidebar}>
-        <Brand to="/" className={styles.sidebarBrand} />
-        {navigation()}
-        <div className={styles.spacer} />
-        {logout}
-        {!addingExpense && addExpense('normal')}
-      </aside>
-
       <header className={styles.topbar} onKeyDown={closeOnEscape}>
         <div className={styles.topbarRow}>
           <Brand to="/" />
+          {/* En escritorio, las secciones y las acciones van en la misma barra. */}
+          <div className={styles.desktopNav}>
+            {navigation()}
+            <div className={styles.desktopActions}>
+              {logout}
+              {!addingExpense && addExpense('normal')}
+            </div>
+          </div>
           <button
             ref={menuButton}
             type="button"
@@ -91,9 +98,17 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main className={styles.content}>
-        <Outlet />
-      </main>
+      <div className={styles.body}>
+        {/* Lo que la pantalla actual pone en la barra lateral, como el resumen del tablero. Vacía,
+            la barra no se muestra. */}
+        <aside ref={setSidebarSlot} className={styles.sidebar} />
+
+        <main className={styles.content}>
+          <SidebarSlotContext value={sidebarSlot}>
+            <Outlet />
+          </SidebarSlotContext>
+        </main>
+      </div>
 
       {!addingExpense && <div className={styles.actionbar}>{addExpense('large')}</div>}
     </div>
