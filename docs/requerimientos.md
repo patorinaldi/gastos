@@ -88,11 +88,11 @@ sacrificable), `Podría` (deseable).
 
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
-| RF-33 | El sistema debe ofrecer pantallas de registro, inicio de sesión y confirmación de correo. | Debe | Pendiente |
-| RF-34 | El sistema debe ofrecer un tablero con selector de período, total del período y listado de movimientos. | Debe | Pendiente |
-| RF-35 | El sistema debe representar gráficamente la distribución del gasto por categoría, integrante y medio de pago. | Debe | Pendiente |
-| RF-36 | El sistema debe representar gráficamente la evolución mensual del gasto contra su media histórica. | Debe | Pendiente |
-| RF-37 | El sistema debe permitir que al seleccionar un elemento de un gráfico se re-filtre el resto de la pantalla. | Debería | Pendiente |
+| RF-33 | El sistema debe ofrecer pantallas de registro, inicio de sesión y confirmación de correo. | Debe | Implementado |
+| RF-34 | El sistema debe ofrecer un tablero con selector de período, total del período y listado de movimientos. | Debe | Implementado |
+| RF-35 | El sistema debe representar gráficamente la distribución del gasto por categoría, integrante y medio de pago. | Debe | Implementado |
+| RF-36 | El sistema debe representar gráficamente la evolución mensual del gasto contra su media histórica. | Debe | Implementado |
+| RF-37 | El sistema debe permitir que al seleccionar un elemento de un gráfico se re-filtre el resto de la pantalla. | Debería | Implementado |
 | RF-38 | El sistema debe ofrecer pantallas para invitar integrantes, unirse por código y ver los miembros del hogar. | Debe | Pendiente |
 
 ### M8. Plataforma y calidad
@@ -190,6 +190,7 @@ pedido explícito del usuario. Se cumplen obligatoriamente.
 | RD-05 | Los medios de pago admitidos son `Efectivo`, `Tarjeta` y `Transferencia`. | Cubren las formas de pago habituales del dominio sin obligar al usuario a clasificar con más detalle del que aporta valor. |
 | RD-06 | Los valores de datos del dominio se registran en español. | El sistema se usa en Argentina y los valores se muestran tal como se almacenan. |
 | RD-07 | El período de análisis por defecto es el mes calendario. | Los ingresos y los vencimientos de servicios del dominio son mensuales. |
+| RD-08 | El día y el mes en curso se deciden en la hora de Argentina (`America/Argentina/Buenos_Aires`), la misma para todo el hogar y para todos sus clientes. | Las fechas de los gastos no tienen hora, y un mes tiene que significar lo mismo para todos los integrantes. Con la zona de cada dispositivo, un gasto cargado el 31 a las 22 h podría quedar en el mes siguiente, y el tablero abrir en un mes distinto del que el servidor considera en curso. El sistema se usa en Argentina (RD-06). |
 
 ---
 

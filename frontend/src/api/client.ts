@@ -80,6 +80,21 @@ export async function apiRequest<T>(path: string, { method = 'GET', body, auth =
   return (await readBody(response)) as T
 }
 
+/**
+ * Filtros como parámetros de consulta, con el `?` adelante. Los que no vienen no se mandan: sin filtro
+ * es sin restricción.
+ */
+export function query(filter: object): string {
+  const params = new URLSearchParams()
+  for (const [name, value] of Object.entries(filter)) {
+    if (value !== undefined && value !== null && value !== '') {
+      params.set(name, String(value))
+    }
+  }
+  const text = params.toString()
+  return text === '' ? '' : `?${text}`
+}
+
 async function readBody(response: Response): Promise<unknown> {
   const text = await response.text()
   return text === '' ? undefined : JSON.parse(text)

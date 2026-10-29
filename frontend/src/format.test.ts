@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatDayMonth, formatMoney, formatMonth } from './format.ts'
+import {
+  formatDate,
+  formatDayMonth,
+  formatMoney,
+  formatMoneyCompact,
+  formatMoneyParts,
+  formatMonth,
+  formatMonthShort,
+} from './format.ts'
 
 // Intl separa el símbolo de la moneda con un espacio duro (U+00A0), no con uno común.
 const NBSP = ' '
@@ -55,6 +63,60 @@ describe('formatDayMonth', () => {
 
   it('devuelve tal cual lo que no es una fecha', () => {
     expect(formatDayMonth('2026-09')).toBe('2026-09')
+  })
+})
+
+describe('formatMoneyParts', () => {
+  it('separa el símbolo de la cifra, con el mismo formato que formatMoney', () => {
+    expect(formatMoneyParts('1234.56')).toEqual({ currency: '$', number: '1.234,56' })
+    expect(formatMoneyParts('0.00')).toEqual({ currency: '$', number: '0,00' })
+  })
+
+  it('devuelve tal cual lo que no es un importe', () => {
+    expect(formatMoneyParts('abc')).toEqual({ currency: '', number: 'abc' })
+  })
+})
+
+// Intl separa el símbolo con un espacio duro; se comparan sin espacios.
+const noSpaces = (text: string) => text.replace(/\s/g, '')
+
+describe('formatMoneyCompact', () => {
+  // El sufijo es fijo: con notation: 'compact', Node 20 da "K" y Node 22 da "k".
+  it('abrevia los miles, los millones y los miles de millones con un decimal', () => {
+    expect(formatMoneyCompact('74070.75')).toBe(`$${NBSP}74,1${NBSP}K`)
+    expect(formatMoneyCompact('1234567.89')).toBe(`$${NBSP}1,2${NBSP}M`)
+    expect(formatMoneyCompact('2500000000.00')).toBe(`$${NBSP}2,5${NBSP}mil${NBSP}M`)
+  })
+
+  it('sin decimal cuando es redondo', () => {
+    expect(formatMoneyCompact('5000.00')).toBe(`$${NBSP}5${NBSP}K`)
+  })
+
+  it('pasa a la escala siguiente cuando el redondeo llega a mil', () => {
+    expect(formatMoneyCompact('999.50')).toBe(`$${NBSP}1${NBSP}K`)
+    expect(formatMoneyCompact('999950.00')).toBe(`$${NBSP}1${NBSP}M`)
+    expect(formatMoneyCompact('999999999.99')).toBe(`$${NBSP}1${NBSP}mil${NBSP}M`)
+  })
+
+  it('debajo de mil, el importe redondeado sin decimales', () => {
+    expect(noSpaces(formatMoneyCompact('950.50'))).toBe('$951')
+    expect(noSpaces(formatMoneyCompact('999.49'))).toBe('$999')
+    expect(noSpaces(formatMoneyCompact('0.00'))).toBe('$0')
+  })
+
+  it('devuelve tal cual lo que no es un importe', () => {
+    expect(formatMoneyCompact('abc')).toBe('abc')
+  })
+})
+
+describe('formatMonthShort', () => {
+  it('formatea un mes con su abreviatura', () => {
+    expect(formatMonthShort('2026-09')).toBe('sep')
+    expect(formatMonthShort('2027-01')).toBe('ene')
+  })
+
+  it('devuelve tal cual lo que no es un mes', () => {
+    expect(formatMonthShort('2026-13')).toBe('2026-13')
   })
 })
 

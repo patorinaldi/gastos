@@ -1,7 +1,8 @@
 /*
- * Dos disposiciones sobre el mismo marcado (M7): en móvil, barra superior, contenido y la acción
- * fija abajo; desde 768 px, barra lateral y contenido. Lo decide CSS, no JavaScript, así no hay
- * un parpadeo de la disposición equivocada al cargar.
+ * Dos disposiciones sobre el mismo marcado (M7): en móvil, barra superior con menú, contenido y la
+ * acción fija abajo; desde 768 px, barra superior con las secciones y las acciones, y debajo el
+ * contenido, con la barra lateral de la pantalla si tiene una. Lo decide CSS, no JavaScript, así no
+ * hay un parpadeo de la disposición equivocada al cargar.
  */
 
 .shell {
@@ -111,47 +112,76 @@
   border-top: var(--border-width) solid var(--color-divider);
 }
 
-.sidebar {
+.body {
+  display: flex;
+  flex: 1;
+}
+
+.sidebar,
+.desktopNav {
   display: none;
 }
 
 /* ---------- escritorio ---------- */
 
 @media (min-width: 768px) {
-  .shell {
-    flex-direction: row;
-  }
-
-  .topbar,
+  .menuButton,
+  .mobileNav,
   .actionbar {
     display: none;
   }
 
+  .topbarRow {
+    gap: var(--space-8);
+    padding: 0 var(--space-8);
+  }
+
+  .desktopNav {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .desktopNav .nav {
+    flex-direction: row;
+  }
+
+  .desktopActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .desktopActions .logout {
+    width: auto;
+  }
+
+  /* Debajo de la barra superior, y fija mientras se desplaza el contenido. Si el panel no entra en
+     una pantalla baja, se desplaza sola. */
   .sidebar {
     position: sticky;
-    top: 0;
+    top: var(--topbar-height);
     width: var(--sidebar-width);
-    height: 100dvh;
+    height: calc(100dvh - var(--topbar-height));
     flex: none;
-    padding: var(--space-6) var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
+    display: block;
+    padding: var(--space-6);
+    overflow-y: auto;
     background: var(--color-surface-sunken);
     border-right: var(--border-width) solid var(--color-divider);
   }
 
-  .sidebarBrand {
-    padding: 0 var(--space-3);
+  .sidebar:empty {
+    display: none;
   }
 
-  .spacer {
-    flex: 1;
-  }
-
+  /* Centrado en el espacio que queda: sin barra lateral, en la ventana; con ella, a su derecha. */
   .content {
     width: 100%;
     max-width: var(--content-max-width);
+    margin: 0 auto;
     padding: var(--space-6) var(--space-8);
   }
 }

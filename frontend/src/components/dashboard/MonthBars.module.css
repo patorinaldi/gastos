@@ -1,0 +1,55 @@
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-half);
+}
+
+/* Altura fija: es un resumen de un vistazo, no un gráfico para leer valores. Los valores están en cada
+   barra, para el lector de pantalla y al pasar el puntero. */
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-half);
+  height: var(--month-bars-height);
+}
+
+@media (min-width: 768px) {
+  .bars {
+    height: var(--month-bars-height-desktop);
+  }
+}
+
+.bar {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  height: 100%;
+}
+
+.fill {
+  display: block;
+  width: 100%;
+  /* Un mes sin gasto conserva una línea mínima, para que se vea que el mes existe. */
+  min-height: var(--space-half);
+  border-radius: var(--space-1) var(--space-1) 0 0;
+  background: var(--color-chart-idle);
+  transition: background-color 0.15s;
+}
+
+.bar:hover .fill {
+  background: var(--color-accent-dashed);
+}
+
+.bar[aria-pressed='true'] .fill {
+  background: var(--color-chart-1);
+}
+
+.caption {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
