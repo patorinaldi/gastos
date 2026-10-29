@@ -44,16 +44,31 @@ describe('slices', () => {
     expect(slices(summary, 'paymentMethod').map((s) => s.key)).toEqual(['Tarjeta', 'Efectivo'])
   })
 
+  const categories = (count: number): SummaryResponse['byCategory'] =>
+    Array.from({ length: count }, (_, i) => ({
+      categoryId: `00000000-0000-0000-0000-0000000000${String(i).padStart(2, '0')}`,
+      name: `C${i}`,
+      total: `${100 - i}.00`,
+    }))
+  const colors = (byCategory: SummaryResponse['byCategory']) =>
+    slices({ ...summary, byCategory }, 'category').map((s) => s.color.replace(/var\(--color-chart-(.+)\)/, '$1'))
+
   it('con más porciones que colores, la paleta vuelve a empezar', () => {
-    const many: SummaryResponse = {
-      ...summary,
-      byCategory: Array.from({ length: 9 }, (_, i) => ({
-        categoryId: `00000000-0000-0000-0000-00000000000${i}`,
-        name: `C${i}`,
-        total: `${100 - i}.00`,
-      })),
-    }
-    expect(slices(many, 'category')[8].color).toBe('var(--color-chart-1)')
+    expect(colors(categories(10))).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '1', '2'])
+  })
+
+  // El anillo se cierra: con 9, la última tocaría a la primera con el mismo color.
+  it('la última no repite el color de la primera, que la toca al cerrar el anillo', () => {
+    expect(colors(categories(9))).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '2'])
+    expect(colors(categories(17)).slice(-2)).toEqual(['8', '2'])
+  })
+
+  it('el cierre del anillo cuenta lo sin categoría como vecina', () => {
+    const byCategory = [...categories(9)]
+    byCategory.splice(8, 0, { categoryId: null, name: null, total: '92.50' })
+    expect(colors(byCategory).slice(-2)).toEqual(['neutral', '2'])
+    const first = [{ categoryId: null, name: null, total: '500.00' }, ...categories(9)]
+    expect(colors(first)).toEqual(['neutral', '1', '2', '3', '4', '5', '6', '7', '8', '1'])
   })
 
   it('sin gastos no hay porciones', () => {

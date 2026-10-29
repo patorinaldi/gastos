@@ -38,25 +38,43 @@ export interface Slice {
   share: number
 }
 
-const PALETTE_SIZE = 8
+const PALETTE = Array.from({ length: 8 }, (_, i) => `var(--color-chart-${i + 1})`)
 const NEUTRAL = 'var(--color-chart-neutral)'
 export const UNCATEGORIZED_LABEL = 'Sin categoría'
 
 /**
  * Las porciones de una dimensión, de la más grande a la más chica, con su color. Los colores van en
- * el orden de la paleta (`--color-chart-1` a `--color-chart-8`). Lo que no tiene categoría va en
- * neutro y no consume un color de la paleta.
+ * el orden de la paleta (`--color-chart-1` a `--color-chart-8`), y con más porciones vuelven a
+ * empezar. Lo que no tiene categoría va en neutro y no consume un color de la paleta.
  */
 export function slices(summary: SummaryResponse, dimension: Dimension): Slice[] {
   const raw = rawSlices(summary, dimension).sort((a, b) => Number(b.total) - Number(a.total))
   const sum = raw.reduce((acc, slice) => acc + Number(slice.total), 0)
   let colored = 0
-  return raw.map((slice) => {
+  const result = raw.map((slice) => {
     const neutral = dimension === 'category' && slice.key === UNCATEGORIZED
-    const color = neutral ? NEUTRAL : `var(--color-chart-${(colored++ % PALETTE_SIZE) + 1})`
+    const color = neutral ? NEUTRAL : PALETTE[colored++ % PALETTE.length]
     const value = Number(slice.total)
     return { ...slice, value, color, share: sum > 0 ? (value / sum) * 100 : 0 }
   })
+  return closeRing(result)
+}
+
+/**
+ * El anillo se cierra: la última porción toca a la primera. Con la paleta en ciclo, dos vecinas solo
+ * pueden compartir color ahí, cuando a la última le vuelve a tocar el de la primera (con 9 o 17
+ * porciones de color). En ese caso la última toma el primer color que no tenga ninguna de sus dos
+ * vecinas.
+ */
+function closeRing(result: Slice[]): Slice[] {
+  const first = result[0]
+  const last = result.at(-1)
+  if (result.length < 3 || !last || last.color === NEUTRAL || last.color !== first.color) {
+    return result
+  }
+  const previous = result[result.length - 2]
+  const color = PALETTE.find((c) => c !== first.color && c !== previous.color) ?? last.color
+  return [...result.slice(0, -1), { ...last, color }]
 }
 
 function rawSlices(summary: SummaryResponse, dimension: Dimension): { key: string; label: string; total: Money }[] {
