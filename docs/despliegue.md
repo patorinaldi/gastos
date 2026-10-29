@@ -12,7 +12,7 @@ y el diagrama de nodos, en [diagramas.md](diagramas.md#6-diagrama-de-despliegue)
 |---|---|---|
 | API (`backend/`) | **Azure App Service**, Linux, Java 21, plan gratuito | El trabajo *Despliegue del backend* de [`ci.yml`](../.github/workflows/ci.yml), en cada incorporación a `main`, después de que pasan `Backend` y `Frontend` |
 | Base de datos | **Azure Database for PostgreSQL – Flexible Server**, PostgreSQL 17 | Las migraciones de Flyway corren solas al arrancar la API |
-| Cliente web (`frontend/`) | **Cloudflare Pages** | Cloudflare compila y publica en cada push, conectado al repositorio |
+| Cliente web (`frontend/`) | **Cloudflare Pages** | Cloudflare compila y publica cada incorporación a `main`, conectado al repositorio |
 | Correo | Cualquier proveedor con **SMTP** | La API se conecta con las variables `MAIL_*` |
 
 Las tres partes se hablan por HTTPS. El cliente web llama a la API desde el navegador, así que su
@@ -59,8 +59,8 @@ la fecha de los gastos y el mes en curso del análisis, sin depender de la zona 
 | `NODE_VERSION` | Recomendada | `22`, la misma versión con la que compila la integración continua |
 
 `VITE_API_URL` se lee **en el momento del build**, no al cargar la página: queda escrita en el
-JavaScript publicado. Cambiarla exige volver a compilar, por ejemplo con *Retry deployment* en el
-panel de Pages. Un build de producción sin ella no apunta a `localhost` en silencio: la aplicación
+JavaScript publicado. Cambiarla exige volver a compilar: con el deploy hook de `main`
+([sección 4.3](#43-cliente-web-en-cloudflare-pages)) o con *Retry deployment* en el panel de Pages. Un build de producción sin ella no apunta a `localhost` en silencio: la aplicación
 falla al cargar con un error que la nombra (`src/config.ts`).
 
 ## 3. Coherencia entre las direcciones
@@ -76,10 +76,9 @@ Tres valores, cargados en dos plataformas distintas, tienen que referirse a las 
 Si `WEB_URL` y CORS no coinciden, los correos llevan enlaces a un sitio que no puede llamar a la
 API. Si `VITE_API_URL` apunta a otro lado, el cliente web carga pero ninguna pantalla trae datos.
 
-**Las vistas previas de Pages no llegan a la API de producción.** Cloudflare publica cada rama en
-una dirección propia (`https://<rama>.<proyecto>.pages.dev`), y CORS solo admite orígenes exactos.
-Para probar una rama contra la API de producción hay que agregar su dirección a
-`CORS_ALLOWED_ORIGINS`, y sacarla después.
+**Las vistas previas de Pages están desactivadas.** Cloudflare publicaría cada rama en un subdominio
+propio (`https://<rama>.<proyecto>.pages.dev`), y CORS solo admite orígenes exactos: ninguna vista
+previa podría llamar a la API de producción. Una rama se prueba con el backend local.
 
 ## 4. Primer despliegue
 
@@ -152,7 +151,9 @@ por dirección (RNF-06, RNF-30 a RNF-33).
 
 ### 4.3 Cliente web en Cloudflare Pages
 
-1. Crear el proyecto conectado al repositorio de GitHub, con rama de producción `main`.
+1. Crear el proyecto **como proyecto de Pages**, conectado al repositorio de GitHub, con rama de
+   producción `main`. El flujo nuevo de Cloudflare propone por defecto un Worker, que no sirve
+   acá: compila de otra forma y deja un check fallido en cada PR.
 2. Configuración del build:
 
    | Campo | Valor |
@@ -162,8 +163,19 @@ por dirección (RNF-06, RNF-30 a RNF-33).
    | Build output directory | `dist` |
 
 3. Cargar `VITE_API_URL` y `NODE_VERSION` ([sección 2](#cliente-web-en-cloudflare-pages)) para
-   *Production* y para *Preview*.
-4. Con la dirección de producción del proyecto, completar en App Service `WEB_URL` y
+   *Production*.
+4. Desactivar las vistas previas de las demás ramas: no llegarían a la API
+   ([sección 3](#3-coherencia-entre-las-direcciones)).
+5. Crear un deploy hook para `main`: una URL que, con un `POST`, compila y publica la última versión
+   de `main` sin esperar una incorporación. Sirve después de cambiar una variable o de reconectar el
+   repositorio ([sección 8](#8-problemas-frecuentes)). La URL es un secreto: quien la tenga puede
+   disparar despliegues.
+
+   ```bash
+   curl -X POST "<URL del deploy hook>"
+   ```
+
+6. Con la dirección de producción del proyecto, completar en App Service `WEB_URL` y
    `CORS_ALLOWED_ORIGINS` ([sección 3](#3-coherencia-entre-las-direcciones)).
 
 El cliente web es una aplicación de una sola página: todas sus rutas (`/expenses`, `/verify-email`…)
@@ -174,15 +186,30 @@ recarga en `/expenses` no terminen en un 404.
 ### 4.4 Correo
 
 Cualquier proveedor que ofrezca SMTP sirve; cambiar de proveedor es cambiar variables, no código.
-Para el volumen del proyecto alcanza un plan gratuito: por ejemplo, Brevo permite 300 correos por
-día.
+Producción envía con **Gmail**.
 
-1. En el panel del proveedor, verificar el remitente: la dirección o el dominio de `EMAIL_FROM`.
-   Sin eso, el proveedor rechaza los envíos.
-2. Generar las credenciales SMTP. En la mayoría de los proveedores son una clave específica para
-   SMTP, distinta de la contraseña de la cuenta.
-3. Cargar en App Service `EMAIL_FROM`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME` y `MAIL_PASSWORD`,
-   y recién después `EMAIL_SENDER=smtp` (ver el orden de la [sección 6](#6-cambios-que-suman-variables)).
+**Con Gmail**, como está configurado hoy:
+
+1. En la cuenta de Google de la casilla que envía, activar la verificación en dos pasos. Sin ella,
+   Google no deja generar contraseñas de aplicación.
+2. Generar una contraseña de aplicación para el correo. Es la que va en `MAIL_PASSWORD`, nunca la
+   contraseña de la cuenta.
+3. Cargar en App Service:
+
+   | Variable | Valor |
+   |---|---|
+   | `MAIL_HOST` | `smtp.gmail.com` |
+   | `MAIL_PORT` | `587` |
+   | `MAIL_USERNAME` | la casilla completa, `<casilla>@gmail.com` |
+   | `MAIL_PASSWORD` | la contraseña de aplicación |
+   | `EMAIL_FROM` | la misma casilla, con el nombre adelante: `Gastos <` + la casilla + `>`. Gmail reemplaza un remitente distinto por la casilla autenticada |
+
+4. Recién después, `EMAIL_SENDER=smtp` (ver el orden de la [sección 6](#6-cambios-que-suman-variables)).
+
+**Con otro proveedor**, por ejemplo Brevo, que en su plan gratuito permite 300 correos por día: en
+su panel, verificar el remitente (la dirección o el dominio de `EMAIL_FROM`), generar las
+credenciales SMTP, que suelen ser una clave específica distinta de la contraseña de la cuenta, y
+cargarlas en las mismas variables.
 
 Un correo que no sale no tira la API: queda en el log con el tipo de error, sin la dirección del
 destinatario. El health de la API no consulta al servidor SMTP, justamente para que una caída del
@@ -196,8 +223,9 @@ proveedor no haga fallar el despliegue.
   despliegue queda marcado como fallido en GitHub. Dos despliegues nunca corren a la vez.
 - **Migraciones.** Corren solas al arrancar, antes de que la API acepte pedidos. Una migración nueva
   entra con el mismo PR que el código que la necesita.
-- **Cliente web.** Cloudflare compila y publica `main` en producción, y cada rama en su vista
-  previa, sin pasar por GitHub Actions.
+- **Cliente web.** Cloudflare compila y publica solo `main`, en producción, sin pasar por GitHub
+  Actions. Si una incorporación no aparece en el sitio, ver la [sección 8](#8-problemas-frecuentes):
+  Cloudflare no avisa en las PR cuando deja de publicar.
 
 ## 6. Cambios que suman variables
 
@@ -268,7 +296,8 @@ completo: si uno falla, la [sección 8](#8-problemas-frecuentes) dice por dónde
 | El alta responde `201` pero el correo no llega | El proveedor rechaza el envío: remitente sin verificar o credenciales vencidas | Buscar en el log de App Service el error del envío; revisar el remitente en el panel del proveedor |
 | El enlace del correo lleva a otro sitio o a `localhost` | `WEB_URL` desactualizada | Corregirla: los enlaces se arman al enviar, así que los correos ya enviados conservan la dirección vieja |
 | La consola del navegador muestra un error de CORS | El origen del cliente web no está en `CORS_ALLOWED_ORIGINS`, o difiere en algo (barra final, `http` en vez de `https`) | Cargar el origen exacto ([sección 3](#3-coherencia-entre-las-direcciones)) |
-| El cliente web carga en blanco con `Falta VITE_API_URL` en la consola | El build se hizo sin la variable | Cargarla en Pages y volver a compilar |
+| El cliente web carga en blanco con `Falta VITE_API_URL` en la consola | El build se hizo sin la variable | Cargarla en Pages y volver a compilar con el deploy hook |
+| El sitio no muestra lo último que se incorporó a `main` | El proyecto de Pages se desconectó de GitHub y sigue sirviendo una versión vieja. Cloudflare no avisa en las PR; el panel de Pages muestra un aviso | Reconectar el repositorio en el panel y disparar el deploy hook de `main` ([sección 4.3](#43-cliente-web-en-cloudflare-pages)). *Retry deployment* no alcanza: vuelve a compilar el mismo commit viejo |
 | Muchos usuarios reciben `429` al iniciar sesión a la vez | La API cuenta a todos desde la dirección de la proxy | Revisar que la proxy de App Service siga en el rango de `internal-proxies` (`application.yaml`) |
 
 ### Arranque en frío
