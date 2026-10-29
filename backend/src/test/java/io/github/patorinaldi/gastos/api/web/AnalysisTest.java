@@ -198,6 +198,24 @@ class AnalysisTest extends AuthTestSupport {
                 .andExpect(jsonPath("$.total").value("0.00"));
     }
 
+    // Lo mismo en la serie y en el ranking: el gasto de la otra casa, de septiembre en Carrefour, no
+    // aparece filtrando por su categoría ni por su responsable.
+    @Test
+    void laSerieYElRankingFiltradosPorAlgoDeOtroHogarVienenVacios() throws Exception {
+        sembrarSeptiembre();
+
+        for (String[] filtro : new String[][] {{"categoryId", deOtroHogar.toString()}, {"ownerId", carla.toString()}}) {
+            mockMvc.perform(authorized(get("/api/expenses/monthly"), ana).param(filtro[0], filtro[1]))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.months", hasSize(0)))
+                    .andExpect(jsonPath("$.average").value("0.00"));
+            mockMvc.perform(authorized(get("/api/expenses/merchants"), ana)
+                            .param("from", "2026-09-01").param("to", "2026-09-30").param(filtro[0], filtro[1]))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(0)));
+        }
+    }
+
     // ── Serie mensual (HU-14) ───────────────────────────────────────────────
 
     // RN-14: un punto por mes con gasto; mayo no tiene, y no cuenta como cero en la media. Septiembre

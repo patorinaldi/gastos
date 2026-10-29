@@ -219,6 +219,35 @@ class PasswordResetTest extends EmailTestSupport {
                 .isZero();
     }
 
+    // Lo que cierra el restablecimiento es solo de quien lo pide: las sesiones y los tokens de quien
+    // comparte su hogar, y los de otro hogar, siguen como estaban.
+    @Test
+    void restablecerNoTocaLasSesionesNiLosTokensDeLosDemas() throws Exception {
+        UUID beto = createUser(casa, uniqueEmail("beto"), "Beto");
+        UUID otraCasa = createHousehold("Casa de Carla");
+        UUID carla = createUser(otraCasa, uniqueEmail("carla"), "Carla");
+        try {
+            String sesionDeBeto = bearer(beto);
+            String sesionDeCarla = bearer(carla);
+            for (UUID[] duenio : new UUID[][] {{casa, ana}, {casa, beto}, {otraCasa, carla}}) {
+                jdbcTemplate.update(
+                        "insert into machine_tokens (household_id, user_id, name, token_hash) values (?, ?, ?, ?)",
+                        duenio[0], duenio[1], "Atajo del teléfono", tokenValues.hash(tokenValues.generate()));
+            }
+
+            resetPassword(issue(ana, AuthTokenPurpose.PASSWORD_RESET), NEW_PASSWORD).andExpect(status().isNoContent());
+
+            mockMvc.perform(get("/api/auth/me").header(AUTHORIZATION, sesionDeBeto)).andExpect(status().isOk());
+            mockMvc.perform(get("/api/auth/me").header(AUTHORIZATION, sesionDeCarla)).andExpect(status().isOk());
+            assertThat(jdbcTemplate.queryForObject(
+                    "select count(*) from machine_tokens where user_id in (?, ?) and revoked_at is null",
+                    Integer.class, beto, carla))
+                    .isEqualTo(2);
+        } finally {
+            deleteHousehold(otraCasa);
+        }
+    }
+
     // Un solo uso también con dos canjes a la vez: el update condicional deja pasar a uno.
     @Test
     void deDosCanjesSimultaneosDelMismoEnlaceSoloUnoCambiaLaContrasena() throws Exception {
