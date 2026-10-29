@@ -45,6 +45,7 @@ const RECENT_EXPENSES = 8
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const current = currentMonth()
+  // Un período inválido o futuro en la dirección se ignora: muestra el mes en curso en lugar de un error.
   const period = parsePeriod(searchParams, current)
   const focus = parseFocus(searchParams)
   const [dimension, setDimension] = useState<Dimension>(focus?.dimension ?? 'category')

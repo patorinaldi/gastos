@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   currentMonth,
   includesMonth,
+  monthFromParam,
   monthRange,
   monthsUntil,
   parseMonth,
@@ -35,6 +36,25 @@ describe('parseMonth', () => {
     for (const value of [null, '', '2026-13', '2026-00', '2026-1', '26-10', '2026-10-01', 'octubre', ' 2026-10']) {
       expect(parseMonth(value), JSON.stringify(value)).toBeNull()
     }
+  })
+})
+
+describe('monthFromParam', () => {
+  it('usa el mes pedido si es válido y no es posterior al mes en curso', () => {
+    expect(monthFromParam('2026-09', '2026-10')).toBe('2026-09')
+    expect(monthFromParam('2025-12', '2026-10')).toBe('2025-12')
+    expect(monthFromParam('2026-10', '2026-10')).toBe('2026-10')
+  })
+
+  // Un mes futuro no tiene gastos, y ninguna barra de la evolución quedaría marcada.
+  it('un mes futuro abre el mes en curso', () => {
+    expect(monthFromParam('2026-11', '2026-10')).toBe('2026-10')
+    expect(monthFromParam('2030-01', '2026-10')).toBe('2026-10')
+  })
+
+  it('sin parámetro o con uno inválido abre el mes en curso', () => {
+    expect(monthFromParam(null, '2026-10')).toBe('2026-10')
+    expect(monthFromParam('2026-13', '2026-10')).toBe('2026-10')
   })
 })
 
@@ -77,8 +97,8 @@ describe('parsePeriod', () => {
     expect(parsePeriod(params('year=2026'), CURRENT)).toEqual({ kind: 'year', year: 2026 })
   })
 
-  it('sin período, o con uno inválido, es el mes en curso', () => {
-    for (const query of ['', 'month=2026-13', 'year=26', 'year=dos mil']) {
+  it('sin período, o con uno inválido o futuro, es el mes en curso', () => {
+    for (const query of ['', 'month=2026-13', 'year=26', 'year=dos mil', 'month=2026-11', 'year=2027']) {
       expect(parsePeriod(params(query), CURRENT), query).toEqual({ kind: 'month', month: CURRENT })
     }
   })

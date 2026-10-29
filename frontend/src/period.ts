@@ -35,6 +35,16 @@ export function parseMonth(value: string | null): IsoMonth | null {
   return value !== null && MONTH.test(value) ? value : null
 }
 
+/**
+ * El mes que muestra el tablero para el parámetro de la dirección: el pedido, si es válido y no
+ * es posterior a `current`; si no, `current`. Un mes futuro no tiene gastos, y la evolución no
+ * llega hasta él: ninguna barra quedaría marcada como el mes elegido.
+ */
+export function monthFromParam(value: string | null, current: IsoMonth): IsoMonth {
+  const requested = parseMonth(value)
+  return requested !== null && requested <= current ? requested : current
+}
+
 /** El mes que está `delta` meses antes (negativo) o después (positivo): "2026-01", -1 → "2025-12". */
 export function shiftMonth(month: IsoMonth, delta: number): IsoMonth {
   const [year, m] = month.split('-').map(Number)
@@ -64,16 +74,16 @@ export type Period = { kind: 'month'; month: IsoMonth } | { kind: 'year'; year: 
 const YEAR = /^\d{4}$/
 
 /**
- * El período de la dirección: `?month=2026-09` o `?year=2026`. Sin ninguno, o con uno inválido, el
- * mes en curso.
+ * El período de la dirección: `?month=2026-09` o `?year=2026`. Sin ninguno, con uno inválido o con
+ * uno futuro, el mes en curso.
  */
 export function parsePeriod(params: URLSearchParams, current: IsoMonth): Period {
-  const month = parseMonth(params.get('month'))
-  if (month) {
-    return { kind: 'month', month }
+  if (parseMonth(params.get('month'))) {
+    return { kind: 'month', month: monthFromParam(params.get('month'), current) }
   }
   const year = params.get('year')
-  if (year !== null && YEAR.test(year)) {
+  // Un año futuro, como un mes futuro, no tiene gastos: se abre el mes en curso.
+  if (year !== null && YEAR.test(year) && Number(year) <= Number(current.slice(0, 4))) {
     return { kind: 'year', year: Number(year) }
   }
   return { kind: 'month', month: current }
