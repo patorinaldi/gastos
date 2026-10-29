@@ -4,9 +4,12 @@ import io.github.patorinaldi.gastos.api.domain.Category;
 import io.github.patorinaldi.gastos.api.domain.Expense;
 import io.github.patorinaldi.gastos.api.domain.User;
 import io.github.patorinaldi.gastos.api.repository.CategoryRepository;
+import io.github.patorinaldi.gastos.api.repository.CategoryRuleRepository;
 import io.github.patorinaldi.gastos.api.repository.ExpenseRepository;
 import io.github.patorinaldi.gastos.api.repository.UserRepository;
 import io.github.patorinaldi.gastos.api.security.AuthenticatedUser;
+import io.github.patorinaldi.gastos.api.service.category.CategoryUnavailableException;
+import io.github.patorinaldi.gastos.api.service.category.RuleSet;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -60,17 +63,20 @@ public class ExpenseService {
 
     private final ExpenseRepository expenses;
     private final CategoryRepository categories;
+    private final CategoryRuleRepository rules;
     private final UserRepository users;
     private final Clock clock;
     private final ZoneId zone;
 
     public ExpenseService(ExpenseRepository expenses,
                           CategoryRepository categories,
+                          CategoryRuleRepository rules,
                           UserRepository users,
                           Clock clock,
                           ZoneId zone) {
         this.expenses = expenses;
         this.categories = categories;
+        this.rules = rules;
         this.users = users;
         this.clock = clock;
         this.zone = zone;
@@ -80,20 +86,26 @@ public class ExpenseService {
      * RF-13, RF-14. Registra un gasto a nombre del usuario, en su hogar. Sin fecha, la de hoy en la
      * zona de {@code TimeZoneConfiguration}, la misma con la que el análisis decide el mes en curso.
      *
-     * <p>Sin categoría, el gasto queda en la bandeja (RN-12). Cuando exista el motor de reglas de
-     * M4, resolverá acá la que falte.
+     * <p>Sin categoría, la resuelve el motor de M4 con las reglas del hogar (RF-20, ver {@link RuleSet}).
+     * Si ninguna coincide, el gasto queda en la bandeja (RF-21, RN-12). Una categoría elegida a mano
+     * manda sobre las reglas.
      *
      * @throws CategoryUnavailableException si la categoría indicada no existe o está dada de baja
      */
     @Transactional
     public ExpenseView create(AuthenticatedUser user, NewExpense expense) {
+        String merchant = expense.merchant().strip();
+        UUID categoryId;
         if (expense.categoryId() != null) {
             requireAssignable(expense.categoryId());
+            categoryId = expense.categoryId();
+        } else {
+            categoryId = RuleSet.of(rules.findAllOfActiveCategories()).categoryFor(merchant).orElse(null);
         }
         LocalDate date = expense.expenseDate() != null ? expense.expenseDate() : today();
-        Expense created = new Expense(user.householdId(), user.userId(), expense.merchant().strip(),
+        Expense created = new Expense(user.householdId(), user.userId(), merchant,
                 money(expense.amount()), date, expense.paymentMethod());
-        created.setCategoryId(expense.categoryId());
+        created.setCategoryId(categoryId);
         // saveAndFlush: las fechas de creación y modificación se completan al insertar, y van en la respuesta.
         Expense saved = expenses.saveAndFlush(created);
         log.info("Gasto {} registrado por el usuario {} en el hogar {}", saved.getId(), user.userId(), user.householdId());
@@ -168,13 +180,19 @@ public class ExpenseService {
      * RF-17, RF-18. Los gastos del hogar que cumplen todos los filtros, por fecha descendente y de a
      * una página. Sin período, el mes en curso (RD-07), igual que el resumen del análisis.
      *
+     * <p>La bandeja (RF-22) es la excepción: sin período muestra todos los gastos sin categoría, de
+     * cualquier mes. Es una lista de trabajo pendiente, no el gasto de un período, y con el mes en
+     * curso por defecto un gasto del mes anterior quedaría sin clasificar y fuera de la vista.
+     *
      * <p>Los nombres de categorías y responsables se buscan de una vez para toda la página, no gasto
      * por gasto. Las categorías dadas de baja también: sus gastos la conservan (RN-16).
      */
     @Transactional(readOnly = true)
     public Page<ExpenseView> list(ExpenseCriteria criteria, int page, int size) {
         YearMonth current = YearMonth.from(today());
-        ExpenseCriteria filter = criteria.withDefaultPeriod(current.atDay(1), current.atEndOfMonth());
+        ExpenseCriteria filter = criteria.uncategorized()
+                ? criteria
+                : criteria.withDefaultPeriod(current.atDay(1), current.atEndOfMonth());
         Page<Expense> found = expenses.findAll(matching(filter), PageRequest.of(page, size, NEWEST_FIRST));
         return new PageImpl<>(views(found.getContent()), found.getPageable(), found.getTotalElements());
     }

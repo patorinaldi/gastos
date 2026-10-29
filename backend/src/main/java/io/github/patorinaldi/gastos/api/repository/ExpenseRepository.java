@@ -1,12 +1,15 @@
 package io.github.patorinaldi.gastos.api.repository;
 
 import io.github.patorinaldi.gastos.api.domain.Expense;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,4 +42,30 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID>, JpaSpec
      */
     @Query(value = "select * from expenses where id = ?1 and active for no key update", nativeQuery = true)
     Optional<Expense> lockById(UUID id);
+
+    /**
+     * Identificador y comercio de los gastos de la bandeja, para la reclasificación retroactiva (RN-13).
+     * Solo esas dos columnas: el motor compara el comercio, y no hace falta cargar los gastos enteros.
+     */
+    @Query("select e.id as id, e.merchant as merchant from Expense e where e.categoryId is null")
+    List<UncategorizedExpense> findUncategorized();
+
+    /**
+     * Asigna la categoría a los gastos indicados que sigan activos y sin categoría, y devuelve cuántos
+     * cambió. La condición se vuelve a evaluar al escribir cada fila: si otro integrante clasificó o dio
+     * de baja uno de esos gastos mientras tanto, se respeta lo suyo y no se cuenta (RN-13).
+     */
+    @Modifying
+    @Transactional
+    @Query("""
+            update Expense e set e.categoryId = :categoryId, e.updatedAt = :now
+            where e.id in :ids and e.categoryId is null and e.active""")
+    int assignCategoryIfUncategorized(Collection<UUID> ids, UUID categoryId, Instant now);
+
+    interface UncategorizedExpense {
+
+        UUID getId();
+
+        String getMerchant();
+    }
 }
