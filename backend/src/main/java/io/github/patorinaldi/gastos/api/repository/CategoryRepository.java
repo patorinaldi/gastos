@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -40,4 +41,17 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
     /** Para validar que la categoría de una asignación nueva (gasto o regla) siga activa. */
     Optional<Category> findByIdAndActiveTrue(UUID id);
+
+    /**
+     * Lee una categoría activa y la bloquea en modo compartido hasta el fin de la transacción, para
+     * crearle una regla. La baja de la categoría escribe la fila, así que espera a que la regla esté
+     * creada y el trigger de la V4 la borra junto con las demás. Si la baja llegó antes, esta lectura
+     * espera, vuelve a evaluar {@code active} y no la encuentra. Sin el bloqueo, la regla podía quedar
+     * apuntando a una categoría dada de baja.
+     *
+     * <p>{@code for share} y no {@code for key share}, que es lo que toma la clave foránea de la regla:
+     * ese no choca con la baja, que no toca la clave.
+     */
+    @Query(value = "select * from categories where id = ?1 and active for share", nativeQuery = true)
+    Optional<Category> lockActiveById(UUID id);
 }
