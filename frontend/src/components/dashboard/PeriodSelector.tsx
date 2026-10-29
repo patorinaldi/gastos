@@ -1,50 +1,41 @@
-import { formatMonth } from '../../format.ts'
-import { shiftMonth } from '../../period.ts'
+import type { Period } from '../../period.ts'
 import type { IsoMonth } from '../../types/api.ts'
 import styles from './PeriodSelector.module.css'
 
 interface PeriodSelectorProps {
-  month: IsoMonth
-  /** El mes en curso: no se puede avanzar más allá. */
+  period: Period
+  /** El mes en curso, que define "Este mes" y "Año". */
   current: IsoMonth
-  onChange: (month: IsoMonth) => void
+  onChange: (period: Period) => void
 }
 
 /**
- * Selector del período del tablero, de a un mes (RF-34, RD-07). No avanza más allá del mes en curso:
- * un mes que todavía no empezó no tiene gastos que mostrar.
+ * Atajos de período del tablero (RF-34): el mes en curso o el año en curso. Un mes anterior se elige
+ * tocando su barra en la evolución mensual; en ese caso ninguno de los dos queda marcado.
  */
-export function PeriodSelector({ month, current, onChange }: PeriodSelectorProps) {
-  const atCurrent = month >= current
+export function PeriodSelector({ period, current, onChange }: PeriodSelectorProps) {
+  const currentYear = Number(current.slice(0, 4))
+  const thisMonth = period.kind === 'month' && period.month === current
+  const thisYear = period.kind === 'year' && period.year === currentYear
 
   return (
-    <div className={styles.selector} role="group" aria-label="Período">
+    <div className={styles.segmented} role="group" aria-label="Período">
       <button
         type="button"
-        className={styles.step}
-        aria-label="Mes anterior"
-        onClick={() => onChange(shiftMonth(month, -1))}
+        className={styles.segment}
+        aria-pressed={thisMonth}
+        onClick={() => onChange({ kind: 'month', month: current })}
       >
-        <span aria-hidden="true">‹</span>
+        Este mes
       </button>
-      {/* Se anuncia al cambiar, para que quien usa lector de pantalla sepa qué mes quedó elegido. */}
-      <p className={styles.label} aria-live="polite">
-        {formatMonth(month)}
-      </p>
       <button
         type="button"
-        className={styles.step}
-        aria-label="Mes siguiente"
-        disabled={atCurrent}
-        onClick={() => onChange(shiftMonth(month, 1))}
+        className={styles.segment}
+        aria-pressed={thisYear}
+        onClick={() => onChange({ kind: 'year', year: currentYear })}
       >
-        <span aria-hidden="true">›</span>
+        Año
       </button>
-      {!atCurrent && (
-        <button type="button" className={styles.reset} onClick={() => onChange(current)}>
-          Este mes
-        </button>
-      )}
     </div>
   )
 }
