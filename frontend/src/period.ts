@@ -35,6 +35,16 @@ export function parseMonth(value: string | null): IsoMonth | null {
   return value !== null && MONTH.test(value) ? value : null
 }
 
+/**
+ * El mes que muestra el tablero para el parámetro de la dirección: el pedido, si es válido y no
+ * es posterior a `current`; si no, `current`. Un mes futuro no tiene gastos, y en el selector
+ * dejaría "Mes siguiente" deshabilitado y sin "Este mes" para volver.
+ */
+export function monthFromParam(value: string | null, current: IsoMonth): IsoMonth {
+  const requested = parseMonth(value)
+  return requested !== null && requested <= current ? requested : current
+}
+
 /** El mes que está `delta` meses antes (negativo) o después (positivo): "2026-01", -1 → "2025-12". */
 export function shiftMonth(month: IsoMonth, delta: number): IsoMonth {
   const [year, m] = month.split('-').map(Number)

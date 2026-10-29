@@ -6,7 +6,7 @@ import { PeriodSelector } from '../components/dashboard/PeriodSelector.tsx'
 import { PageHeader } from '../components/layout/PageHeader.tsx'
 import { EmptyState, ErrorState, LoadingState } from '../components/states/States.tsx'
 import { formatMonth, formatMoney } from '../format.ts'
-import { currentMonth, monthRange, parseMonth } from '../period.ts'
+import { currentMonth, monthFromParam, monthRange } from '../period.ts'
 import type { IsoMonth, SummaryResponse } from '../types/api.ts'
 import styles from './DashboardPage.module.css'
 
@@ -24,8 +24,8 @@ type Result =
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const current = currentMonth()
-  // Un mes inválido en la dirección se ignora: muestra el mes en curso en lugar de un error.
-  const month = parseMonth(searchParams.get('month')) ?? current
+  // Un mes inválido o futuro en la dirección se ignora: muestra el mes en curso en lugar de un error.
+  const month = monthFromParam(searchParams.get('month'), current)
   const [attempt, setAttempt] = useState(0)
   const [result, setResult] = useState<Result | null>(null)
 

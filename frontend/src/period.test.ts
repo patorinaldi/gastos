@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { currentMonth, monthRange, parseMonth, shiftMonth } from './period.ts'
+import { currentMonth, monthFromParam, monthRange, parseMonth, shiftMonth } from './period.ts'
 
 describe('currentMonth', () => {
   it('decide el mes en la hora de Argentina', () => {
@@ -25,6 +25,25 @@ describe('parseMonth', () => {
     for (const value of [null, '', '2026-13', '2026-00', '2026-1', '26-10', '2026-10-01', 'octubre', ' 2026-10']) {
       expect(parseMonth(value), JSON.stringify(value)).toBeNull()
     }
+  })
+})
+
+describe('monthFromParam', () => {
+  it('usa el mes pedido si es válido y no es posterior al mes en curso', () => {
+    expect(monthFromParam('2026-09', '2026-10')).toBe('2026-09')
+    expect(monthFromParam('2025-12', '2026-10')).toBe('2025-12')
+    expect(monthFromParam('2026-10', '2026-10')).toBe('2026-10')
+  })
+
+  // Un mes futuro dejaría el selector sin "Mes siguiente" ni "Este mes" para volver.
+  it('un mes futuro abre el mes en curso', () => {
+    expect(monthFromParam('2026-11', '2026-10')).toBe('2026-10')
+    expect(monthFromParam('2030-01', '2026-10')).toBe('2026-10')
+  })
+
+  it('sin parámetro o con uno inválido abre el mes en curso', () => {
+    expect(monthFromParam(null, '2026-10')).toBe('2026-10')
+    expect(monthFromParam('2026-13', '2026-10')).toBe('2026-10')
   })
 })
 
