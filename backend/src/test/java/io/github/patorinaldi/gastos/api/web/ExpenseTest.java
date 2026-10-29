@@ -151,6 +151,18 @@ class ExpenseTest extends AuthTestSupport {
                 """
                 {"amount": "10.00", "merchant": "   "}""",
                 """
+                {"amount": "10.00"}""",
+                // El nulo llegaba al insert y Postgres lo rechazaba con un 500. Los demás pasaban el
+                // trim() del check y quedaban guardados como un comercio que se ve vacío.
+                """
+                {"amount": "10.00", "merchant": "Kiosco\\u0000"}""",
+                """
+                {"amount": "10.00", "merchant": "\\u00A0"}""",
+                """
+                {"amount": "10.00", "merchant": "\\u200B"}""",
+                """
+                {"amount": "10.00", "merchant": "Kiosco\\u0007"}""",
+                """
                 {"merchant": "Kiosco"}""",
                 """
                 {"amount": "10.00", "merchant": "Kiosco", "paymentMethod": "Cheque"}"""}) {
@@ -306,9 +318,12 @@ class ExpenseTest extends AuthTestSupport {
 
         update(ana, gasto, """
                 {"amount": "0"}""").andExpect(status().isBadRequest());
-        update(ana, gasto, """
-                {"merchant": "  "}""").andExpect(status().isBadRequest());
+        for (String merchant : new String[] {"  ", "Kiosco\\u0000", "\\u00A0", "\\u200B"}) {
+            update(ana, gasto, """
+                    {"merchant": "%s"}""".formatted(merchant)).andExpect(status().isBadRequest());
+        }
         assertThat(row(casa, gasto).get("amount")).isEqualTo(new BigDecimal("1000.00"));
+        assertThat(row(casa, gasto).get("merchant")).isEqualTo("Carrefour");
     }
 
     // ── Baja (HU-09, RN-16) ─────────────────────────────────────────────────

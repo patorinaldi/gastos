@@ -2,7 +2,7 @@ package io.github.patorinaldi.gastos.api.web.dto.validation;
 
 /**
  * Validación de los nombres que se muestran en pantalla: el de una persona, el de un token de
- * cliente máquina. Se usa con {@code @Pattern(regexp = DisplayNames.PATTERN, message = DisplayNames.MESSAGE)}.
+ * cliente máquina, el comercio de un gasto. Se usa con {@code @Pattern(regexp = DisplayNames.PATTERN, message = DisplayNames.MESSAGE)}.
  *
  * <p>Rechaza los caracteres de control, también los de Unicode (C1) y no solo los ASCII, que es lo
  * único que cubre {@code \p{Cntrl}} sin {@code (?U)}: Postgres no puede guardar el carácter nulo en
