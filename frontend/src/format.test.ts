@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatDayMonth, formatMoney, formatMonth } from './format.ts'
+import {
+  formatDate,
+  formatDayMonth,
+  formatMoney,
+  formatMoneyCompact,
+  formatMoneyParts,
+  formatMonth,
+  formatMonthShort,
+} from './format.ts'
 
 // Intl separa el símbolo de la moneda con un espacio duro (U+00A0), no con uno común.
 const NBSP = ' '
@@ -55,6 +63,47 @@ describe('formatDayMonth', () => {
 
   it('devuelve tal cual lo que no es una fecha', () => {
     expect(formatDayMonth('2026-09')).toBe('2026-09')
+  })
+})
+
+describe('formatMoneyParts', () => {
+  it('separa el símbolo de la cifra, con el mismo formato que formatMoney', () => {
+    expect(formatMoneyParts('1234.56')).toEqual({ currency: '$', number: '1.234,56' })
+    expect(formatMoneyParts('0.00')).toEqual({ currency: '$', number: '0,00' })
+  })
+
+  it('devuelve tal cual lo que no es un importe', () => {
+    expect(formatMoneyParts('abc')).toEqual({ currency: '', number: 'abc' })
+  })
+})
+
+// Los espacios dependen de cómo arma Intl cada notación; se comparan sin espacios.
+const noSpaces = (text: string) => text.replace(/\s/g, '')
+
+describe('formatMoneyCompact', () => {
+  it('abrevia los miles y los millones con un decimal', () => {
+    expect(noSpaces(formatMoneyCompact('74070.75'))).toBe('$74,1K')
+    expect(noSpaces(formatMoneyCompact('1234567.89'))).toBe('$1,2M')
+  })
+
+  it('debajo de mil, el importe redondeado sin decimales', () => {
+    expect(noSpaces(formatMoneyCompact('950.50'))).toBe('$951')
+    expect(noSpaces(formatMoneyCompact('0.00'))).toBe('$0')
+  })
+
+  it('devuelve tal cual lo que no es un importe', () => {
+    expect(formatMoneyCompact('abc')).toBe('abc')
+  })
+})
+
+describe('formatMonthShort', () => {
+  it('formatea un mes con su abreviatura', () => {
+    expect(formatMonthShort('2026-09')).toBe('sep')
+    expect(formatMonthShort('2027-01')).toBe('ene')
+  })
+
+  it('devuelve tal cual lo que no es un mes', () => {
+    expect(formatMonthShort('2026-13')).toBe('2026-13')
   })
 })
 

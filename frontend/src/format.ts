@@ -31,6 +31,45 @@ export function formatMoney(amount: Money): string {
   return money.format(amount as Intl.StringNumericLiteral)
 }
 
+/**
+ * "1234.56" → { currency: "$", number: "1.234,56" }: el mismo formato que formatMoney, en dos partes,
+ * para mostrar el símbolo más chico que la cifra. Lo que no es un importe vuelve entero en `number`.
+ */
+export function formatMoneyParts(amount: Money): { currency: string; number: string } {
+  if (!MONEY.test(amount)) {
+    return { currency: '', number: amount }
+  }
+  const parts = money.formatToParts(amount as Intl.StringNumericLiteral)
+  const currency = parts.find((part) => part.type === 'currency')?.value ?? ''
+  const number = parts
+    .filter((part) => part.type !== 'currency')
+    .map((part) => part.value)
+    .join('')
+    .trim()
+  return { currency, number }
+}
+
+const compactMoney = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+const wholeMoney = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })
+
+/**
+ * "74070.75" → "$74,1 K"; "950.50" → "$ 951". Para un lugar chico donde el importe exacto ya está a la
+ * vista en otro lado, como el centro del anillo del tablero. Redondea: no sirve para mostrar un importe
+ * solo, que va siempre con formatMoney (RD-01).
+ */
+export function formatMoneyCompact(amount: Money): string {
+  if (!MONEY.test(amount)) {
+    return amount
+  }
+  const value = amount as Intl.StringNumericLiteral
+  return Math.abs(Number(amount)) < 1000 ? wholeMoney.format(value) : compactMoney.format(value)
+}
+
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const MONTHS_LONG = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -75,6 +114,12 @@ export function formatDate(date: IsoDate): string {
     return date
   }
   return `${String(parts.day).padStart(2, '0')}/${String(parts.month).padStart(2, '0')}/${parts.year}`
+}
+
+/** "2026-09" → "sep". */
+export function formatMonthShort(month: IsoMonth): string {
+  const parts = monthParts(month)
+  return parts ? MONTHS[parts.month - 1] : month
 }
 
 /** "2026-09" → "septiembre 2026". */
