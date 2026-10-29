@@ -34,4 +34,12 @@ public interface ExpenseFilter {
     default boolean isUncategorized() {
         return ExpenseContracts.UNCATEGORIZED.equals(categoryId());
     }
+
+    /**
+     * La categoría como identificador: nula sin filtro de categoría o con la bandeja. Solo se llama
+     * sobre un filtro ya validado, en el que {@code categoryId} es un UUID o la bandeja.
+     */
+    default UUID categoryUuid() {
+        return categoryId() == null || isUncategorized() ? null : UUID.fromString(categoryId());
+    }
 }
