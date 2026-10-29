@@ -4,6 +4,7 @@ import { AuthLayout } from './layouts/AuthLayout.tsx'
 import { RequireSession } from './layouts/RequireSession.tsx'
 import { DashboardPage } from './pages/DashboardPage.tsx'
 import { ExpensesPage } from './pages/ExpensesPage.tsx'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx'
 import { HouseholdPage } from './pages/HouseholdPage.tsx'
 import { InboxPage } from './pages/InboxPage.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
@@ -39,6 +40,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      // El enlace del correo de restablecimiento: /reset-password#token=...
       { path: '/reset-password', element: <ResetPasswordPage /> },
       // El enlace del correo de alta: /verify-email#token=...
       { path: '/verify-email', element: <VerifyEmailPage /> },

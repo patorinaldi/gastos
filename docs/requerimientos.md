@@ -80,9 +80,9 @@ sacrificable), `Podría` (deseable).
 
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
-| RF-30 | El sistema debe exponer un punto de entrada de captura rápida que registre un gasto a partir de importe y comercio. | Debe | Pendiente |
-| RF-31 | El sistema debe autenticar ese punto de entrada mediante token de cliente máquina, sin requerir sesión de usuario. | Debe | Pendiente |
-| RF-32 | El sistema debe normalizar de forma defensiva los importes recibidos desde clientes externos, aceptando separadores de miles y decimales en formato local. | Debe | Pendiente |
+| RF-30 | El sistema debe exponer un punto de entrada de captura rápida que registre un gasto a partir de importe y comercio. | Debe | Implementado |
+| RF-31 | El sistema debe autenticar ese punto de entrada mediante token de cliente máquina, sin requerir sesión de usuario. | Debe | Implementado |
+| RF-32 | El sistema debe normalizar de forma defensiva los importes recibidos desde clientes externos, aceptando separadores de miles y decimales en formato local. | Debe | Implementado |
 
 ### M7. Interfaz de usuario
 

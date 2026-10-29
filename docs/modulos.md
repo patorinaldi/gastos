@@ -26,13 +26,13 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 
 | Módulo | Responsable | Estado |
 |---|---|---|
-| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; en el cliente web, las pantallas de registro, inicio de sesión y confirmación de correo implementadas, y las de restablecimiento de contraseña y tokens de cliente máquina pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
+| M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; en el cliente web, las pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementadas, y las de tokens de cliente máquina pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
 | M2 Hogares | Elian | Backend implementado, pantallas pendientes |
 | M3 Gastos | Elian | Alta con categoría automática, detalle, edición, baja lógica y listado con filtros implementados; pantallas pendientes |
 | M4 Categorización | Elian | Catálogo, motor de reglas en el alta, bandeja y reglas con reclasificación implementados; pantallas pendientes |
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
-| M6 API de integración | Juan | Pendiente |
-| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión y confirmación de correo implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; el resto de las pantallas pendiente |
+| M6 API de integración | Juan | Captura rápida implementada, con normalización de importes y autenticación por token de cliente máquina |
+| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; el resto de las pantallas pendiente |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
 
 ---
@@ -642,9 +642,22 @@ Contrato:
 ```
 POST /api/capture
   Authorization: Token <token de cliente máquina>
-  { "amount": "1.234,56", "merchant": "Carrefour" }
-  → 201 { "id": "...", "categoryId": "...", "amount": "1234.56" }
+  { "amount": "1.234,56", "merchant": "Carrefour", "paymentMethod": "Tarjeta" }
+  → 201 { "id": "...", "amount": "1234.56", "merchant": "Carrefour", "categoryId": "...",
+          "expenseDate": "2026-10-29" }
+  → 400 importe que no se puede interpretar sin ambigüedad, o comercio vacío o inválido
+  → 401 token inexistente, revocado, de un hogar que su dueño dejó o archivado
+  → 403 con una sesión web en lugar de un token de cliente máquina
 ```
+
+El gasto queda en el hogar del token, a nombre de su dueño y con la fecha de hoy en la hora de
+Argentina, igual que un alta desde la interfaz. `paymentMethod` es opcional y por defecto es
+`Tarjeta`: la captura sale de notificaciones del banco, que son de compras con tarjeta o de
+transferencias. La categoría la resuelve el mismo motor de reglas que el alta (RN-17), así que una
+captura y un gasto cargado a mano con el mismo comercio quedan en la misma categoría, y sin regla
+que coincida el gasto queda en la bandeja. El comercio también llega como se leyó de la
+notificación: antes de validarlo se reducen los saltos de línea, los espacios duros y los espacios
+repetidos a uno solo, con el mismo criterio con el que el análisis agrupa los comercios.
 
 **Normalización defensiva de importes.** El cliente que invoca este punto de entrada suele extraer
 el importe de un texto, como una notificación bancaria o un mensaje, y lo envía tal como lo leyó.
@@ -677,7 +690,7 @@ Requisitos: RF-33 a RF-38. No funcionales: RNF-14 a RNF-17, RNF-26.
 
 | Pantalla | Contenido |
 |---|---|
-| Registro, inicio de sesión y confirmación | Alta de cuenta, acceso y confirmación de correo (RF-33). |
+| Registro, inicio de sesión y confirmación | Alta de cuenta, acceso, confirmación de correo y restablecimiento de contraseña (RF-33, RF-06). |
 | Tablero | Selector de período, total, gráficos de distribución y evolución, movimientos recientes y filtrado desde los gráficos (RF-34 a RF-37). |
 | Movimientos | Listado paginado con filtros combinables y alta, edición y baja de gastos. |
 | Bandeja de no categorizados | Gastos sin categoría y alta de reglas desde ahí (RF-22, RF-23). |
