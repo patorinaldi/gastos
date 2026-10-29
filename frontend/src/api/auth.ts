@@ -1,9 +1,11 @@
 import type {
+  ForgotPasswordRequest,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
   RegisterResponse,
   ResendVerificationRequest,
+  ResetPasswordRequest,
   VerifyEmailRequest,
 } from '../types/api.ts'
 import { apiRequest } from './client.ts'
@@ -44,7 +46,33 @@ export function resendVerification(email: string) {
 }
 
 /**
- * El token del enlace de confirmación, `/verify-email#token=...`. Viaja en el fragmento, como el
+ * Pide el enlace para elegir una contraseña nueva (RF-06, CU-08). El servidor responde lo mismo
+ * exista o no la cuenta, para no revelar quién tiene una.
+ */
+export function forgotPassword(email: string) {
+  return apiRequest<void>('/api/auth/password/forgot', {
+    method: 'POST',
+    body: { email } satisfies ForgotPasswordRequest,
+    auth: false,
+  })
+}
+
+/**
+ * Cambia la contraseña con el token del enlace. A diferencia de la confirmación de correo, no se
+ * pide al abrir la pantalla sino al enviar el formulario, así que no hace falta cuidarse del doble
+ * montaje de React.
+ */
+export function resetPassword(token: string, password: string) {
+  return apiRequest<void>('/api/auth/password/reset', {
+    method: 'POST',
+    body: { token, password } satisfies ResetPasswordRequest,
+    auth: false,
+  })
+}
+
+/**
+ * El token del enlace de confirmación, `/verify-email#token=...`, o del de restablecimiento,
+ * `/reset-password#token=...`. Viaja en el fragmento, como el
  * del restablecimiento de contraseña: el navegador no lo manda al servidor que sirve la página ni
  * en el header Referer, así que no queda en ningún registro de acceso.
  */
