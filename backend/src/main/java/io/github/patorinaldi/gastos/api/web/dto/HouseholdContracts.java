@@ -1,7 +1,9 @@
 package io.github.patorinaldi.gastos.api.web.dto;
 
+import io.github.patorinaldi.gastos.api.web.dto.validation.DisplayNames;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.UUID;
@@ -21,7 +23,13 @@ public final class HouseholdContracts {
     public record HouseholdResponse(UUID id, String name, Instant createdAt) {
     }
 
-    public record RenameHouseholdRequest(@NotBlank @Size(max = 200) String name) {
+    /**
+     * El nombre lo ven todos los integrantes, así que tiene las mismas reglas que el de una persona
+     * ({@link DisplayNames}).
+     */
+    public record RenameHouseholdRequest(
+            @NotBlank @Size(max = 200)
+            @Pattern(regexp = DisplayNames.PATTERN, message = DisplayNames.MESSAGE) String name) {
     }
 
     public record MemberResponse(UUID id, String name, String email) {

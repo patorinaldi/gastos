@@ -234,6 +234,11 @@ Requisitos: RF-08 a RF-12. Reglas: RN-04, RN-05, RN-18.
 Contratos principales:
 
 ```
+PATCH /api/household
+  { "name": "Casa Rivoira" }
+  → 200 { "id": "...", "name": "Casa Rivoira", "createdAt": "..." }
+  → 400 nombre vacío, de más de 200 caracteres o con caracteres de control o invisibles
+
 POST /api/household/invitations
   → 201 { "code": "GST-4K2P-9XZ", "expiresAt": "..." }
   → 409 el hogar ya tiene el máximo de invitaciones vigentes (RNF-30)
