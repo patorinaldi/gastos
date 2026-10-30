@@ -36,6 +36,6 @@ class CaptureController {
         ExpenseView expense = captures.capture(
                 owner, request.amount(), request.merchant(), PaymentMethods.toDomain(request.paymentMethod()));
         return new CaptureResponse(
-                expense.id(), expense.amount(), expense.merchant(), expense.categoryId(), expense.expenseDate());
+                expense.id(), expense.amount(), expense.merchant(), expense.categoryName(), expense.expenseDate());
     }
 }

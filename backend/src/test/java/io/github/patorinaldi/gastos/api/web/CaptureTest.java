@@ -74,7 +74,9 @@ class CaptureTest extends AuthTestSupport {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.amount").value("1234.56"))
                 .andExpect(jsonPath("$.merchant").value("Carrefour"))
-                .andExpect(jsonPath("$.categoryId").value(supermercado.toString()))
+                .andExpect(jsonPath("$.categoryName").value("Supermercado"))
+                // El identificador no viaja: con el token no hay cómo traducirlo.
+                .andExpect(jsonPath("$.categoryId").doesNotExist())
                 .andExpect(jsonPath("$.expenseDate").value(LocalDate.now(ZONE).toString()))
                 .andReturn().getResponse().getContentAsString();
 
@@ -82,6 +84,7 @@ class CaptureTest extends AuthTestSupport {
         assertThat(saved)
                 .containsEntry("household_id", casa)
                 .containsEntry("owner_id", ana)
+                .containsEntry("category_id", supermercado)
                 .containsEntry("payment_method", "Tarjeta");
     }
 
@@ -95,7 +98,7 @@ class CaptureTest extends AuthTestSupport {
     void sinReglaQueCoincidaElGastoQuedaSinCategoria() throws Exception {
         capture(token, "500", "Kiosco de la esquina")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.categoryId").doesNotExist());
+                .andExpect(jsonPath("$.categoryName").doesNotExist());
     }
 
     @Test
@@ -118,7 +121,7 @@ class CaptureTest extends AuthTestSupport {
         capture(token, "1.000", "  CARREFOUR\\n  Express ")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.merchant").value("CARREFOUR Express"))
-                .andExpect(jsonPath("$.categoryId").value(supermercado.toString()));
+                .andExpect(jsonPath("$.categoryName").value("Supermercado"));
     }
 
     // CU-07, 3a: un importe ambiguo no se registra con un valor adivinado.
@@ -186,7 +189,7 @@ class CaptureTest extends AuthTestSupport {
 
         capture(token, "500", "Kiosco de la esquina")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.categoryId").doesNotExist());
+                .andExpect(jsonPath("$.categoryName").doesNotExist());
     }
 
     // ── Ayudantes ───────────────────────────────────────────────────────────
@@ -208,7 +211,7 @@ class CaptureTest extends AuthTestSupport {
 
     private Map<String, Object> savedExpense(UUID id) {
         return withHousehold(casa, () -> jdbcTemplate.queryForMap(
-                "select household_id, owner_id, payment_method from expenses where id = ?", id));
+                "select household_id, owner_id, category_id, payment_method from expenses where id = ?", id));
     }
 
     private int expensesOf(UUID household) {

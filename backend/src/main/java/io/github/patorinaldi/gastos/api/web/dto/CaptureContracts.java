@@ -55,12 +55,16 @@ public final class CaptureContracts {
      * Devuelve el importe ya normalizado para que el cliente pueda mostrarlo y verificar que se
      * interpretó como esperaba. Si no se pudo interpretar, no hay respuesta: se rechaza la captura
      * en lugar de registrar un importe adivinado.
+     *
+     * <p>La categoría va por su nombre y no por su identificador: el token de cliente máquina solo
+     * habilita la captura, así que el cliente no podría pedir las categorías para traducirlo. Con el
+     * nombre puede avisar en qué categoría quedó el gasto, y sin él, que quedó en la bandeja.
      */
     public record CaptureResponse(
             UUID id,
             @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal amount,
             String merchant,
-            UUID categoryId,
+            String categoryName,
             LocalDate expenseDate) {
     }
 }

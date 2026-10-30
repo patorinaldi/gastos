@@ -322,6 +322,7 @@ export interface CaptureResponse {
   /** Ya normalizado, para poder verificar que se interpretó como se esperaba. */
   amount: Money
   merchant: string
-  categoryId: Uuid | null
+  /** Por nombre: el token de máquina no puede pedir las categorías. Nulo si quedó en la bandeja. */
+  categoryName: string | null
   expenseDate: IsoDate
 }

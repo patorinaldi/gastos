@@ -648,7 +648,7 @@ Contrato:
 POST /api/capture
   Authorization: Token <token de cliente máquina>
   { "amount": "1.234,56", "merchant": "Carrefour", "paymentMethod": "Tarjeta" }
-  → 201 { "id": "...", "amount": "1234.56", "merchant": "Carrefour", "categoryId": "...",
+  → 201 { "id": "...", "amount": "1234.56", "merchant": "Carrefour", "categoryName": "Supermercado",
           "expenseDate": "2026-10-29" }
   → 400 importe que no se puede interpretar sin ambigüedad, o comercio vacío o inválido
   → 401 token inexistente, revocado, de un hogar que su dueño dejó o archivado
@@ -660,7 +660,9 @@ Argentina, igual que un alta desde la interfaz. `paymentMethod` es opcional y po
 `Tarjeta`: la captura sale de notificaciones del banco, que son de compras con tarjeta o de
 transferencias. La categoría la resuelve el mismo motor de reglas que el alta (RN-17), así que una
 captura y un gasto cargado a mano con el mismo comercio quedan en la misma categoría, y sin regla
-que coincida el gasto queda en la bandeja. El comercio también llega como se leyó de la
+que coincida el gasto queda en la bandeja. La respuesta trae la categoría por su nombre y no por su
+identificador, porque el token no habilita a pedir las categorías para traducirlo; sin categoría,
+el nombre falta. El comercio también llega como se leyó de la
 notificación: antes de validarlo se reducen los saltos de línea, los espacios duros y los espacios
 repetidos a uno solo, con el mismo criterio con el que el análisis agrupa los comercios.
 
