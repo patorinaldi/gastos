@@ -13,8 +13,10 @@ están en el [README principal](../README.md#frontend).
 | `src/components/layout/` | Piezas de estructura de una pantalla: `PageHeader` y `Brand`, la marca que comparten los dos layouts |
 | `src/styles/` | `tokens.css` con las variables del sistema de diseño, `base.css` con el reset y el foco, y `typography.module.css` con estilos de texto compartidos |
 | `src/components/expenses/` | El formulario de un gasto, compartido por el alta y la edición, y el selector de período del listado |
+| `src/components/inbox/` | Un comercio de la bandeja y el formulario para clasificarlo |
 | `src/format.ts` | Formato de importes y fechas para Argentina, con sus pruebas en `format.test.ts` |
 | `src/amount.ts` | El importe escrito en el formulario (`1.234,56`) llevado al formato de la API, con las mismas reglas que `AmountParser` del backend |
+| `src/patterns.ts`, `src/inbox.ts` | Cómo se compara un patrón de regla con un comercio, espejo de `Patterns` y `MerchantKey` del backend, y la bandeja agrupada por comercio |
 | `src/expenseForm.ts`, `src/expenseFilters.ts` | La lógica del formulario de un gasto (validar y armar la petición de alta o edición) y de los filtros del listado de movimientos en la dirección |
 | `src/types/api.ts` | Contratos de la API, espejo de los DTOs del backend |
 | `src/api/` | `client.ts`, por donde pasa toda llamada a la API: token, errores `problem+json` y tiempo de espera; y un archivo por módulo de la API con sus llamadas |
@@ -85,6 +87,14 @@ aparecen también quienes ya no están en el hogar pero tienen gastos.
 Cada fila de movimientos, en el tablero y en el listado, abre la edición (`/expenses/:id`). La
 edición manda solo los campos que cambiaron y vuelve a la pantalla que la abrió, con sus filtros.
 La baja pide confirmación.
+
+La bandeja (`/inbox`) muestra los gastos sin categoría de cualquier mes, agrupados por comercio
+("Almacén de Pepe" junto con "ALMACEN DE PEPE"). Clasificar un comercio crea, por defecto, una regla
+con el comercio como patrón: el servidor la aplica a toda la bandeja y responde cuántos gastos
+salieron de ella, que es lo que dice el aviso. Antes de crearla, el campo del patrón dice con cuántos
+gastos de la bandeja coincide, con la misma comparación que el backend (`src/patterns.ts`), y un
+patrón que no coincide con el comercio del grupo se rechaza: la regla se crearía y esos gastos
+seguirían ahí. Sin la regla, se clasifican solo los gastos del grupo, de a uno.
 
 ## Pruebas
 

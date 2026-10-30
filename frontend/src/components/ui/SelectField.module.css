@@ -11,6 +11,10 @@
   composes: hint from './TextField.module.css';
 }
 
+.error {
+  composes: error from './TextField.module.css';
+}
+
 /* El lugar de la flecha: el select pierde la del navegador, que en cada uno se ve distinta. */
 .control {
   position: relative;
