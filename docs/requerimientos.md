@@ -93,7 +93,7 @@ sacrificable), `Podría` (deseable).
 | RF-35 | El sistema debe representar gráficamente la distribución del gasto por categoría, integrante y medio de pago. | Debe | Implementado |
 | RF-36 | El sistema debe representar gráficamente la evolución mensual del gasto contra su media histórica. | Debe | Implementado |
 | RF-37 | El sistema debe permitir que al seleccionar un elemento de un gráfico se re-filtre el resto de la pantalla. | Debería | Implementado |
-| RF-38 | El sistema debe ofrecer pantallas para invitar integrantes, unirse por código y ver los miembros del hogar. | Debe | Pendiente |
+| RF-38 | El sistema debe ofrecer pantallas para invitar integrantes, unirse por código y ver los miembros del hogar. | Debe | Implementado |
 
 ### M8. Plataforma y calidad
 
