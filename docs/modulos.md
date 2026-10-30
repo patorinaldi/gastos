@@ -27,12 +27,12 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | Módulo | Responsable | Estado |
 |---|---|---|
 | M1 Identidad y acceso | Juan (usuario), Pato (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; en el cliente web, las pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementadas, y las de tokens de cliente máquina pendientes. Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
-| M2 Hogares | Elian | Backend implementado, pantallas pendientes |
+| M2 Hogares | Elian | Backend y pantalla del hogar implementados: integrantes, invitación, canje con confirmación y nombre |
 | M3 Gastos | Elian | Alta con categoría automática, detalle, edición, baja lógica y listado con filtros implementados; en el cliente web, las pantallas de alta, edición y baja, y el listado de movimientos con filtros, implementadas |
 | M4 Categorización | Elian | Catálogo, motor de reglas en el alta, bandeja y reglas con reclasificación implementados; en el cliente web, la bandeja con la creación de reglas implementada, y las pantallas del catálogo de categorías y del listado de reglas pendientes |
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
 | M6 API de integración | Juan | Captura rápida implementada, con normalización de importes y autenticación por token de cliente máquina |
-| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; alta, edición y baja de gastos, listado de movimientos con filtros y bandeja de no categorizados con creación de reglas; el resto de las pantallas pendiente |
+| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; pantalla del hogar; alta, edición y baja de gastos, listado de movimientos con filtros y bandeja de no categorizados con creación de reglas; el resto de las pantallas pendiente |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
 
 ---
@@ -719,6 +719,14 @@ filtros de la API, así un enlace se puede compartir y "atrás" deshace el últi
 se re-filtra a ese mes. Al seleccionar una porción de la distribución, el total, la evolución y los
 movimientos pasan a mostrar solo esa categoría, persona o medio de pago; el anillo sigue mostrando el
 período completo, para que se vea cuánto pesa la porción (RF-37).
+
+**Hogar.** Una sola pantalla con cuatro bloques: integrantes, invitar, nombre del hogar y unirse a
+otro (RF-38). El código generado se muestra con su vencimiento y un botón para copiarlo, y vive solo
+en el estado de la pantalla: no va a la dirección ni al almacenamiento del navegador, porque no se
+puede volver a pedir y quien lo tiene entra al hogar. Unirse va en dos pasos, como pide CU-03: la
+vista previa dice qué hogar es, si el actual queda archivado y cuántos tokens de cliente máquina se
+revocan, y recién la confirmación canjea el código. Cancelar no lo consume. Después del canje la
+pantalla vuelve a pedir el hogar y los integrantes; el token de sesión sigue sirviendo (RN-18).
 
 Depende de todos los módulos de la API.
 
