@@ -1,0 +1,49 @@
+.form,
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.lede {
+  color: var(--color-text-secondary);
+}
+
+/* La confirmación de un cambio que no se deshace: el borde la separa del resto de la pantalla. */
+.confirm {
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+}
+
+.confirmTitle {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Recibe el foco al aparecer, para que el lector de pantalla lo anuncie; no es un control. */
+.confirmTitle:focus {
+  outline: none;
+}
+
+.consequences {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+  color: var(--color-text-secondary);
+  list-style: disc;
+  overflow-wrap: anywhere;
+}
+
+.consequences strong {
+  color: var(--color-ink);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

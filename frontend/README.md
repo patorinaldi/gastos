@@ -19,7 +19,7 @@ están en el [README principal](../README.md#frontend).
 | `src/types/api.ts` | Contratos de la API, espejo de los DTOs del backend |
 | `src/api/` | `client.ts`, por donde pasa toda llamada a la API: token, errores `problem+json` y tiempo de espera; y un archivo por módulo de la API con sus llamadas |
 | `src/session.ts` | La sesión: el token del login, dónde se guarda y cuándo se descarta |
-| `src/validation.ts` | Validaciones de los formularios de cuenta y del comercio de un gasto, espejo de las del backend |
+| `src/validation.ts` | Validaciones de los formularios de cuenta, del hogar y del comercio de un gasto, espejo de las del backend |
 | `src/config.ts` | Configuración leída del entorno (`VITE_API_URL`) |
 
 ## Estilos
@@ -67,6 +67,15 @@ correo es `/reset-password#token=...`: la pantalla lee el token y lo borra de la
 la de confirmación, pero lo canjea recién al enviar la contraseña nueva. Si el enlace venció o ya se
 usó, ofrece pedir otro. Al cambiarla, el servidor cierra todas las sesiones de la cuenta, y la
 pantalla descarta también la que hubiera en ese navegador.
+
+## Hogar
+
+`/household` reúne los integrantes, la invitación, el nombre del hogar y el canje de un código
+(`components/household/`). El código de invitación en claro llega una sola vez, en la respuesta que
+lo genera: queda en el estado de la pantalla y en ningún otro lado, ni en la dirección ni en
+`localStorage`. Unirse a otro hogar pasa siempre por la vista previa, que muestra qué se pierde, y
+recién la confirmación lo canjea con `confirm: true`. Al cambiarse de hogar no se pide otro token: la
+pantalla vuelve a pedir el hogar y los integrantes.
 
 ## Gastos
 

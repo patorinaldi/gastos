@@ -1,7 +1,8 @@
 /*
- * Validaciones de los formularios de cuenta y del gasto. Repiten las de los contratos del backend
- * (AuthContracts, ExpenseContracts) para avisar antes de enviar, con un mensaje que dice qué corregir (RNF-17). El
- * servidor valida igual: esto es para el usuario, no una barrera.
+ * Validaciones de los formularios de cuenta, del hogar y del gasto. Repiten las de los contratos del
+ * backend (AuthContracts, HouseholdContracts, ExpenseContracts) para avisar antes de enviar, con un
+ * mensaje que dice qué corregir (RNF-17). El servidor valida igual: esto es para el usuario, no una
+ * barrera.
  *
  * Cada función devuelve el mensaje de error, o undefined si el valor sirve.
  */
@@ -11,6 +12,7 @@ const PASSWORD_MAX_BYTES = 72
 const PASSWORD_MIN_LENGTH = 8
 const NAME_MAX_LENGTH = 200
 const EMAIL_MAX_LENGTH = 320
+const INVITATION_CODE_MAX_LENGTH = 32
 
 // Tan permisiva como @Email del backend, que acepta "ana@ejemplo" sin dominio de nivel superior:
 // una más estricta rechazaría correos que el servidor admite.
@@ -44,6 +46,34 @@ export function validateEmail(email: string): string | undefined {
   }
   if (!EMAIL.test(email) || email.length > EMAIL_MAX_LENGTH) {
     return 'Ingresá un correo válido, como ana@ejemplo.com'
+  }
+  return undefined
+}
+
+/**
+ * El nombre del hogar (HouseholdContracts.RenameHouseholdRequest): no vacío y hasta 200 caracteres.
+ * El backend no le aplica la regla de los caracteres invisibles del nombre de una persona.
+ */
+export function validateHouseholdName(name: string): string | undefined {
+  if (name.trim() === '') {
+    return 'Ingresá un nombre para el hogar'
+  }
+  if (name.length > NAME_MAX_LENGTH) {
+    return `Usá un nombre de hasta ${NAME_MAX_LENGTH} caracteres`
+  }
+  return undefined
+}
+
+/**
+ * El código de invitación. El formato no se valida acá: el servidor acepta minúsculas, espacios y
+ * guiones de más, y un código mal escrito responde lo mismo que uno vencido.
+ */
+export function validateInvitationCode(code: string): string | undefined {
+  if (code.trim() === '') {
+    return 'Ingresá el código que te pasaron'
+  }
+  if (code.length > INVITATION_CODE_MAX_LENGTH) {
+    return 'Revisá el código: tiene la forma GST-ABCD-EFG'
   }
   return undefined
 }

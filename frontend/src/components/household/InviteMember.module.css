@@ -1,0 +1,58 @@
+.invite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.lede {
+  color: var(--color-text-secondary);
+}
+
+/* El código pide atención: el ámbar punteado de lo que todavía falta hacer, como la bandeja. */
+.issued {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width) dashed var(--color-accent-dashed);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-notice);
+}
+
+/* user-select: all selecciona el código entero con un toque, para copiarlo a mano si el portapapeles
+   no está disponible. */
+.code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.expiry {
+  color: var(--color-accent-text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.copied,
+.copyFailed {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.copied {
+  color: var(--color-text-secondary);
+}
+
+.copyFailed {
+  color: var(--color-danger);
+}

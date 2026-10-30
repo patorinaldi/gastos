@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { validateEmail, validateMerchant, validateName, validateNewPassword, validatePassword } from './validation.ts'
+import {
+  validateEmail,
+  validateHouseholdName,
+  validateInvitationCode,
+  validateMerchant,
+  validateName,
+  validateNewPassword,
+  validatePassword,
+} from './validation.ts'
 
 describe('validateName', () => {
   it('acepta un nombre con tildes y espacios', () => {
@@ -77,6 +85,42 @@ describe('validateNewPassword', () => {
     // 37 eñes son 37 caracteres pero 74 bytes.
     expect(validateNewPassword('ñ'.repeat(36))).toBeUndefined()
     expect(validateNewPassword('ñ'.repeat(37))).toMatch(/más corta/)
+  })
+})
+
+describe('validateHouseholdName', () => {
+  it('acepta un nombre con tildes', () => {
+    expect(validateHouseholdName('Depto Palermo')).toBeUndefined()
+    expect(validateHouseholdName('Casa de Ana ✨')).toBeUndefined()
+  })
+
+  // HU-18: un nombre hecho solo de espacios se rechaza y queda el anterior.
+  it('pide un nombre que no sea solo espacios', () => {
+    expect(validateHouseholdName('')).toBe('Ingresá un nombre para el hogar')
+    expect(validateHouseholdName('   ')).toBe('Ingresá un nombre para el hogar')
+  })
+
+  it('rechaza un nombre de más de 200 caracteres', () => {
+    expect(validateHouseholdName('a'.repeat(200))).toBeUndefined()
+    expect(validateHouseholdName('a'.repeat(201))).toMatch(/hasta 200/)
+  })
+})
+
+describe('validateInvitationCode', () => {
+  it('acepta el código como se comparte, también en minúsculas o sin guiones', () => {
+    expect(validateInvitationCode('GST-ABCD-EFG')).toBeUndefined()
+    expect(validateInvitationCode('gst abcd efg')).toBeUndefined()
+  })
+
+  it('pide un código', () => {
+    expect(validateInvitationCode('')).toBe('Ingresá el código que te pasaron')
+    expect(validateInvitationCode('   ')).toBe('Ingresá el código que te pasaron')
+  })
+
+  // El backend lo rechaza con 400, que no dice qué corregir.
+  it('rechaza un código de más de 32 caracteres', () => {
+    expect(validateInvitationCode('A'.repeat(32))).toBeUndefined()
+    expect(validateInvitationCode('A'.repeat(33))).toMatch(/GST-ABCD-EFG/)
   })
 })
 
