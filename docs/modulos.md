@@ -641,8 +641,9 @@ Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07, RN-17, RN-18.
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
 | `POST` | `/api/capture` | Captura rápida de un gasto. | Token de cliente máquina |
+| `GET` | `/api/capture/connection` | Verificación del token, sin registrar nada. | Token de cliente máquina |
 
-Contrato:
+Contratos:
 
 ```
 POST /api/capture
@@ -653,7 +654,16 @@ POST /api/capture
   → 400 importe que no se puede interpretar sin ambigüedad, o comercio vacío o inválido
   → 401 token inexistente, revocado, de un hogar que su dueño dejó o archivado
   → 403 con una sesión web en lugar de un token de cliente máquina
+
+GET /api/capture/connection
+  Authorization: Token <token de cliente máquina>
+  → 200 { "ownerName": "Ana", "householdName": "Casa Rivoira" }
+  → 401 y 403 como la captura
 ```
+
+La verificación la pide el cliente al configurar el token: confirma que sirve, y a qué hogar
+quedó conectado, sin registrar un gasto de prueba. Como toda petición con token, registra su
+último uso.
 
 El gasto queda en el hogar del token, a nombre de su dueño y con la fecha de hoy en la hora de
 Argentina, igual que un alta desde la interfaz. `paymentMethod` es opcional y por defecto es
@@ -675,7 +685,7 @@ equivocado.
 
 **Decisión de diseño.** El canal de autenticación es propio y distinto del de la sesión web. El
 token es de larga duración, se guarda en un dispositivo y se puede revocar individualmente sin
-afectar la sesión de la persona. Solo habilita este punto de entrada, no el resto de la API: en
+afectar la sesión de la persona. Solo habilita los puntos de entrada de M6, no el resto de la API: en
 otra ruta se ignora, y la petición se rechaza por falta de sesión. Al autenticarlo, el módulo exige
 que no esté revocado y que su hogar sea el hogar actual de su dueño (RN-18), así una automatización
 no sigue cargando gastos en un hogar que su dueño dejó.

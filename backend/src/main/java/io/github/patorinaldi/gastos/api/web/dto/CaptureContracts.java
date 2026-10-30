@@ -67,4 +67,12 @@ public final class CaptureContracts {
             String categoryName,
             LocalDate expenseDate) {
     }
+
+    /**
+     * A quién y a qué hogar conecta el token. Lo pide el cliente al configurarlo, para confirmar que
+     * el token sirve antes de guardarlo, sin registrar un gasto de prueba. El hogar es el del token,
+     * que es el actual de su dueño: uno de un hogar que su dueño dejó ya no llega acá (RN-18).
+     */
+    public record CaptureConnectionResponse(String ownerName, String householdName) {
+    }
 }

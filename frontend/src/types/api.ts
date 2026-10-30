@@ -326,3 +326,9 @@ export interface CaptureResponse {
   categoryName: string | null
   expenseDate: IsoDate
 }
+
+/** `GET /api/capture/connection`: a quién y a qué hogar conecta el token, sin registrar nada. */
+export interface CaptureConnectionResponse {
+  ownerName: string
+  householdName: string
+}

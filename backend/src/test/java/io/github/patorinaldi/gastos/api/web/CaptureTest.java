@@ -3,6 +3,7 @@ package io.github.patorinaldi.gastos.api.web;
 import com.jayway.jsonpath.JsonPath;
 import io.github.patorinaldi.gastos.api.AuthTestSupport;
 import io.github.patorinaldi.gastos.api.service.auth.MachineTokenValues;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpHeaders.WWW_AUTHENTICATE;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -192,7 +194,60 @@ class CaptureTest extends AuthTestSupport {
                 .andExpect(jsonPath("$.categoryName").doesNotExist());
     }
 
+    // ── Verificación del token ──────────────────────────────────────────────
+
+    // El cliente la pide al configurar el token: dice a quién y a qué hogar conecta, sin registrar nada.
+    @Test
+    void laVerificacionDiceAQuienYAQueHogarConectaElToken() throws Exception {
+        connection(token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ownerName").value("Ana"))
+                .andExpect(jsonPath("$.householdName").value("Casa de Ana"));
+
+        assertThat(expensesOf(casa)).isZero();
+    }
+
+    // Cada token responde por su propio hogar.
+    @Test
+    void elTokenDeOtroHogarVerificaElSuyo() throws Exception {
+        UUID carla = createUser(otraCasa, uniqueEmail("carla"), "Carla");
+
+        connection(issueToken(otraCasa, carla))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ownerName").value("Carla"))
+                .andExpect(jsonPath("$.householdName").value("Casa de Carla"));
+    }
+
+    // El mismo rechazo que la captura: un token que no sirve para capturar tampoco se verifica.
+    @Test
+    void laVerificacionRechazaUnTokenRevocado() throws Exception {
+        jdbcTemplate.update("update machine_tokens set revoked_at = now() where token_hash = ?", (Object) values.hash(token));
+
+        connection(token)
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string(WWW_AUTHENTICATE, org.hamcrest.Matchers.startsWith("Token")));
+    }
+
+    @Test
+    void unaSesionWebNoSirveParaVerificar() throws Exception {
+        mockMvc.perform(get("/api/capture/connection").header(AUTHORIZATION, bearer(ana)))
+                .andExpect(status().isForbidden());
+    }
+
+    // Como toda petición con token, registra el último uso: la pantalla de tokens muestra que se usó.
+    @Test
+    void laVerificacionRegistraElUltimoUso() throws Exception {
+        connection(token).andExpect(status().isOk());
+
+        assertThat(jdbcTemplate.queryForObject("select last_used_at from machine_tokens where token_hash = ?",
+                Instant.class, values.hash(token))).isNotNull();
+    }
+
     // ── Ayudantes ───────────────────────────────────────────────────────────
+
+    private ResultActions connection(String machineToken) throws Exception {
+        return mockMvc.perform(get("/api/capture/connection").header(AUTHORIZATION, "Token " + machineToken));
+    }
 
     private String issueToken(UUID household, UUID user) {
         String value = values.generate();
