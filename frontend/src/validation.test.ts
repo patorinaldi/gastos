@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateEmail, validateName, validateNewPassword, validatePassword } from './validation.ts'
+import { validateEmail, validateMerchant, validateName, validateNewPassword, validatePassword } from './validation.ts'
 
 describe('validateName', () => {
   it('acepta un nombre con tildes y espacios', () => {
@@ -77,5 +77,23 @@ describe('validateNewPassword', () => {
     // 37 eñes son 37 caracteres pero 74 bytes.
     expect(validateNewPassword('ñ'.repeat(36))).toBeUndefined()
     expect(validateNewPassword('ñ'.repeat(37))).toMatch(/más corta/)
+  })
+})
+
+describe('validateMerchant', () => {
+  it('pide el comercio', () => {
+    expect(validateMerchant('')).toBe('Ingresá el comercio')
+    expect(validateMerchant('   ')).toBe('Ingresá el comercio')
+    expect(validateMerchant('Carrefour')).toBeUndefined()
+  })
+
+  it('admite hasta 200 caracteres', () => {
+    expect(validateMerchant('a'.repeat(200))).toBeUndefined()
+    expect(validateMerchant('a'.repeat(201))).toMatch(/hasta 200/)
+  })
+
+  it('rechaza los caracteres invisibles, como el backend', () => {
+    expect(validateMerchant('Carre\u200bfour')).toMatch(/invisibles/)
+    expect(validateMerchant('\u200b')).toMatch(/invisibles/)
   })
 })

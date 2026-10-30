@@ -1,0 +1,39 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--form-max-width);
+}
+
+.essential,
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* El importe es el dato principal del gasto: se escribe más grande. */
+.amount input {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Desde 768 px, fecha y medio de pago van lado a lado, y la categoría debajo, a todo el ancho. */
+@media (min-width: 768px) {
+  .details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .category {
+    grid-column: 1 / -1;
+  }
+}

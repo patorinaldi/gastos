@@ -1,6 +1,6 @@
 /*
- * Validaciones de los formularios de cuenta. Repiten las de los contratos del backend
- * (AuthContracts) para avisar antes de enviar, con un mensaje que dice qué corregir (RNF-17). El
+ * Validaciones de los formularios de cuenta y del gasto. Repiten las de los contratos del backend
+ * (AuthContracts, ExpenseContracts) para avisar antes de enviar, con un mensaje que dice qué corregir (RNF-17). El
  * servidor valida igual: esto es para el usuario, no una barrera.
  *
  * Cada función devuelve el mensaje de error, o undefined si el valor sirve.
@@ -63,6 +63,20 @@ export function validateNewPassword(password: string): string | undefined {
   }
   if (utf8.encode(password).length > PASSWORD_MAX_BYTES) {
     return `Usá una contraseña más corta: admite hasta ${PASSWORD_MAX_BYTES} caracteres, menos si lleva tildes o eñes`
+  }
+  return undefined
+}
+
+/** El comercio de un gasto: un nombre que se muestra, como el de una persona (RN-07). */
+export function validateMerchant(merchant: string): string | undefined {
+  if (merchant.trim() === '') {
+    return 'Ingresá el comercio'
+  }
+  if (merchant.length > NAME_MAX_LENGTH) {
+    return `Usá un comercio de hasta ${NAME_MAX_LENGTH} caracteres`
+  }
+  if (!DISPLAY_NAME.test(merchant)) {
+    return 'Escribí el comercio sin caracteres invisibles: a veces se cuelan al pegarlo'
   }
   return undefined
 }

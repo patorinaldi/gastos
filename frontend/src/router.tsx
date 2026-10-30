@@ -3,6 +3,7 @@ import { AppLayout } from './layouts/AppLayout.tsx'
 import { AuthLayout } from './layouts/AuthLayout.tsx'
 import { RequireSession } from './layouts/RequireSession.tsx'
 import { DashboardPage } from './pages/DashboardPage.tsx'
+import { EditExpensePage } from './pages/EditExpensePage.tsx'
 import { ExpensesPage } from './pages/ExpensesPage.tsx'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx'
 import { HouseholdPage } from './pages/HouseholdPage.tsx'
@@ -59,6 +60,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'expenses', element: <ExpensesPage /> },
       { path: 'expenses/new', element: <NewExpensePage /> },
+      { path: 'expenses/:id', element: <EditExpensePage /> },
       { path: 'inbox', element: <InboxPage /> },
       { path: 'household', element: <HouseholdPage /> },
     ],

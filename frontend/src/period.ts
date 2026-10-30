@@ -27,6 +27,18 @@ export function currentMonth(now: Date = new Date()): IsoMonth {
   return `${year}-${month}`
 }
 
+const dayParts = new Intl.DateTimeFormat('en-CA', { timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/**
+ * El día de hoy en la hora de Argentina: "2026-10-29". Es la fecha que el backend le pone a un gasto
+ * que llega sin fecha, y la que propone el formulario de alta.
+ */
+export function today(now: Date = new Date()): IsoDate {
+  const parts = dayParts.formatToParts(now)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
 /**
  * El mes de un parámetro de la dirección, o null si no es un mes válido. La dirección la puede
  * escribir cualquiera, así que se valida antes de pedirle nada al servidor.

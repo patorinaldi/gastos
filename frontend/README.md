@@ -8,15 +8,18 @@ están en el [README principal](../README.md#frontend).
 | `src/router.tsx` | Rutas de la aplicación |
 | `src/layouts/` | Shell de la app: `AppLayout` para las pantallas autenticadas, `AuthLayout` para registro, inicio de sesión y confirmación de correo, y `RequireSession`, que manda al login sin sesión |
 | `src/pages/` | Una pantalla por ruta |
-| `src/components/ui/` | Primitivos: `Button`, `ButtonLink`, `TextField`, `Notice` |
+| `src/components/ui/` | Primitivos: `Button`, `ButtonLink`, `TextField`, `SelectField`, `Notice` |
 | `src/components/states/` | Estados de carga, vacío y error de toda pantalla que consulta el servidor (RNF-16) |
 | `src/components/layout/` | Piezas de estructura de una pantalla: `PageHeader` y `Brand`, la marca que comparten los dos layouts |
 | `src/styles/` | `tokens.css` con las variables del sistema de diseño, `base.css` con el reset y el foco, y `typography.module.css` con estilos de texto compartidos |
+| `src/components/expenses/` | El formulario de un gasto, compartido por el alta y la edición, y el selector de período del listado |
 | `src/format.ts` | Formato de importes y fechas para Argentina, con sus pruebas en `format.test.ts` |
+| `src/amount.ts` | El importe escrito en el formulario (`1.234,56`) llevado al formato de la API, con las mismas reglas que `AmountParser` del backend |
+| `src/expenseForm.ts`, `src/expenseFilters.ts` | La lógica del formulario de un gasto (validar y armar la petición de alta o edición) y de los filtros del listado de movimientos en la dirección |
 | `src/types/api.ts` | Contratos de la API, espejo de los DTOs del backend |
 | `src/api/` | `client.ts`, por donde pasa toda llamada a la API: token, errores `problem+json` y tiempo de espera; y un archivo por módulo de la API con sus llamadas |
 | `src/session.ts` | La sesión: el token del login, dónde se guarda y cuándo se descarta |
-| `src/validation.ts` | Validaciones de los formularios de cuenta, espejo de las del backend |
+| `src/validation.ts` | Validaciones de los formularios de cuenta y del comercio de un gasto, espejo de las del backend |
 | `src/config.ts` | Configuración leída del entorno (`VITE_API_URL`) |
 
 ## Estilos
@@ -64,6 +67,24 @@ correo es `/reset-password#token=...`: la pantalla lee el token y lo borra de la
 la de confirmación, pero lo canjea recién al enviar la contraseña nueva. Si el enlace venció o ya se
 usó, ofrece pedir otro. Al cambiarla, el servidor cierra todas las sesiones de la cuenta, y la
 pantalla descarta también la que hubiera en ese navegador.
+
+## Gastos
+
+El alta (`/expenses/new`) pide solo importe y comercio; la fecha, el medio de pago y la categoría
+ya vienen con el valor que pondría el servidor, y sin categoría elegida la deciden las reglas del
+hogar. El importe se escribe en formato local y el campo dice cómo se va a guardar ("Se guarda como
+$ 1.234,00"): `src/amount.ts` lo normaliza con las mismas reglas que la captura rápida, y ante la
+duda lo rechaza en lugar de adivinar. Al guardar, la pantalla dice si el gasto quedó clasificado o
+en la bandeja, y deja el formulario limpio para el siguiente.
+
+El listado (`/expenses`) lleva sus filtros en la dirección, con los mismos nombres que la API y que
+el tablero (`?month=2026-09&categoryId=...&page=1`), así "Ver todos" en el tablero abre los mismos
+movimientos. Las personas y categorías que ofrece como filtro salen del resumen del período, así
+aparecen también quienes ya no están en el hogar pero tienen gastos.
+
+Cada fila de movimientos, en el tablero y en el listado, abre la edición (`/expenses/:id`). La
+edición manda solo los campos que cambiaron y vuelve a la pantalla que la abrió, con sus filtros.
+La baja pide confirmación.
 
 ## Pruebas
 

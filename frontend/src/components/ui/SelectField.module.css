@@ -1,0 +1,47 @@
+.field {
+  composes: field from './TextField.module.css';
+  min-width: 0;
+}
+
+.label {
+  composes: label from './TextField.module.css';
+}
+
+.hint {
+  composes: hint from './TextField.module.css';
+}
+
+/* El lugar de la flecha: el select pierde la del navegador, que en cada uno se ve distinta. */
+.control {
+  position: relative;
+}
+
+.control::after {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  width: var(--space-2);
+  height: var(--space-2);
+  border-right: var(--stroke-width) solid var(--color-text-tertiary);
+  border-bottom: var(--stroke-width) solid var(--color-text-tertiary);
+  content: '';
+  pointer-events: none;
+  transform: translateY(-75%) rotate(45deg);
+}
+
+.select {
+  composes: input from './TextField.module.css';
+  overflow: hidden;
+  padding-right: var(--space-8);
+  appearance: none;
+  color: var(--color-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Con dos clases, para ganarle a .input de TextField, que llega por composes y puede cargarse después. */
+.select.compact {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  font-size: var(--text-sm);
+}
