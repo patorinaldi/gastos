@@ -50,8 +50,8 @@ export function validateEmail(email: string): string | undefined {
 }
 
 /**
- * El nombre del hogar (HouseholdContracts.RenameHouseholdRequest): no vacío y hasta 200 caracteres.
- * El backend no le aplica la regla de los caracteres invisibles del nombre de una persona.
+ * El nombre del hogar (HouseholdContracts.RenameHouseholdRequest): las mismas reglas que el de una
+ * persona, porque lo ven todos los integrantes.
  */
 export function validateHouseholdName(name: string): string | undefined {
   if (name.trim() === '') {
@@ -59,6 +59,9 @@ export function validateHouseholdName(name: string): string | undefined {
   }
   if (name.length > NAME_MAX_LENGTH) {
     return `Usá un nombre de hasta ${NAME_MAX_LENGTH} caracteres`
+  }
+  if (!DISPLAY_NAME.test(name)) {
+    return 'Escribí el nombre sin caracteres invisibles: a veces se cuelan al pegarlo'
   }
   return undefined
 }
@@ -71,7 +74,8 @@ export function validateInvitationCode(code: string): string | undefined {
   if (code.trim() === '') {
     return 'Ingresá el código que te pasaron'
   }
-  if (code.length > INVITATION_CODE_MAX_LENGTH) {
+  // Se mide como se envía, sin los espacios de alrededor que suelen venir al pegarlo.
+  if (code.trim().length > INVITATION_CODE_MAX_LENGTH) {
     return 'Revisá el código: tiene la forma GST-ABCD-EFG'
   }
   return undefined

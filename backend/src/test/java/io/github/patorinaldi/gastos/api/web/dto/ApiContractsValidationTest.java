@@ -13,6 +13,7 @@ import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.ExpenseFilterRe
 import io.github.patorinaldi.gastos.api.web.dto.ExpenseContracts.UpdateExpenseRequest;
 import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.InvitationPreviewRequest;
 import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.RedeemInvitationRequest;
+import io.github.patorinaldi.gastos.api.web.dto.HouseholdContracts.RenameHouseholdRequest;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -303,6 +304,21 @@ class ApiContractsValidationTest {
     }
 
     // ── Hogares ─────────────────────────────────────────────────────────────
+
+    // El nombre del hogar lo ven todos los integrantes: un NUL volvería como 500, y un override de
+    // dirección o un espacio de ancho cero lo dejarían al revés o vacío para todos.
+    @Test
+    void aHouseholdNameWithControlOrInvisibleCharactersIsRejected() {
+        for (String name : new String[] {"Casa\u0000", "Casa\nRivoira", "Casa\u0085", "\u202Easac", "\u200B", "\u00A0"}) {
+            assertThat(validate(new RenameHouseholdRequest(name))).as(name).contains("name");
+        }
+    }
+
+    @Test
+    void aHouseholdNameWithAccentsAndEmojiIsAccepted() {
+        assertThat(validate(new RenameHouseholdRequest("Depto Núñez ✨"))).isEmpty();
+        assertThat(validate(new RenameHouseholdRequest("Familia 👨\u200D👩\u200D👧"))).isEmpty();
+    }
 
     // El canje deja los gastos en el hogar anterior y no se deshace: sin confirmación, no va.
     @Test

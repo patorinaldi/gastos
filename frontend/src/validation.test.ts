@@ -103,6 +103,18 @@ describe('validateHouseholdName', () => {
     expect(validateHouseholdName('a'.repeat(200))).toBeUndefined()
     expect(validateHouseholdName('a'.repeat(201))).toMatch(/hasta 200/)
   })
+
+  // Lo ven todos los integrantes: un override de dirección o un espacio de ancho cero lo dejarían
+  // al revés o vacío para todos, y el backend responde 400 (DisplayNames).
+  it('rechaza los caracteres de control y los invisibles', () => {
+    for (const name of ['Casa\u0000', 'Casa\nRivoira', 'Casa\u0085', '\u202Easac', 'Casa\u200B']) {
+      expect(validateHouseholdName(name), JSON.stringify(name)).toMatch(/invisibles/)
+    }
+  })
+
+  it('acepta emoji compuestos con la unión de ancho cero', () => {
+    expect(validateHouseholdName('Familia 👨\u200D👩\u200D👧')).toBeUndefined()
+  })
 })
 
 describe('validateInvitationCode', () => {
@@ -120,5 +132,10 @@ describe('validateInvitationCode', () => {
   it('rechaza un código de más de 32 caracteres', () => {
     expect(validateInvitationCode('A'.repeat(32))).toBeUndefined()
     expect(validateInvitationCode('A'.repeat(33))).toMatch(/GST-ABCD-EFG/)
+  })
+
+  // Se envía recortado: los espacios que trae al pegarlo no cuentan para el tope.
+  it('no cuenta los espacios de alrededor', () => {
+    expect(validateInvitationCode(`  ${'A'.repeat(32)}  `)).toBeUndefined()
   })
 })
