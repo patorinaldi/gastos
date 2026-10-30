@@ -322,6 +322,13 @@ export interface CaptureResponse {
   /** Ya normalizado, para poder verificar que se interpretó como se esperaba. */
   amount: Money
   merchant: string
-  categoryId: Uuid | null
+  /** Por nombre: el token de máquina no puede pedir las categorías. Nulo si quedó en la bandeja. */
+  categoryName: string | null
   expenseDate: IsoDate
+}
+
+/** `GET /api/capture/connection`: a quién y a qué hogar conecta el token, sin registrar nada. */
+export interface CaptureConnectionResponse {
+  ownerName: string
+  householdName: string
 }
