@@ -748,7 +748,7 @@ RNF-25, RNF-27, RNF-28.
 
 | Componente | Estado | Descripción |
 |---|---|---|
-| Migraciones versionadas | Implementado | V1 esquema base, V2 rol y políticas de aislamiento, V2.5 índice de correo, V3 catálogo inicial, V4 baja lógica, V5 cambio de hogar y tablas de acceso, V6 versión de sesión. |
+| Migraciones versionadas | Implementado | V1 esquema base, V2 rol y políticas de aislamiento, V2.5 índice de correo, V3 catálogo inicial, V4 baja lógica, V5 cambio de hogar y tablas de acceso, V6 versión de sesión, V7 canje único de las invitaciones (RN-05). |
 | Rol de aplicación restringido | Implementado | `gastos_api`, sin privilegio de omisión de políticas ni de superusuario. |
 | Propagación del contexto de hogar | Implementado | Se fija al inicio de cada transacción, con alcance transaccional para que no se filtre entre peticiones al devolver la conexión al pool. |
 | Entidades y repositorios | Implementado | Siete entidades validadas contra el esquema al arrancar. |
@@ -757,8 +757,8 @@ RNF-25, RNF-27, RNF-28.
 | Migraciones complementarias | Implementado | Migración V5: tokens de verificación y restablecimiento, invitaciones y tokens de cliente máquina, guardados como hash y sin RLS por ser datos de acceso. Archivado de hogares y cambio de hogar conservando los gastos en el hogar anterior (RN-18). |
 | Baja lógica | Implementado | Marca de baja (`active`, `deleted_at`) en gastos y categorías, con un check que impide que se contradigan. El borrado por JPA es una baja lógica. Los gastos dados de baja quedan fuera de todas las consultas; las categorías, solo de las que las ofrecen, y sus reglas se eliminan. Índice único parcial para que un nombre dado de baja no siga ocupando el suyo. |
 | Manejo global de errores | Parcial | Los errores de los controladores y de la validación, y los 401 y 403 que responde la cadena de seguridad antes de llegar a un controlador, salen como `problem+json` con el mismo formato. La cadena conserva además el header `WWW-Authenticate`. Falta un manejo explícito de los errores no previstos y de los de integridad de la base, para que respondan sin detalle técnico (RNF-17). |
-| Integración continua | Implementado | GitHub Actions en cada PR: el backend con `./mvnw verify`, incluidas las pruebas de integración contra un PostgreSQL de Testcontainers, y el frontend con chequeo de tipos, build y lint. Que una ejecución en rojo bloquee la incorporación depende de marcar los dos checks como obligatorios en la protección de `main`. |
-| Despliegue | Backend implementado, cliente web pendiente | El backend se publica en Azure App Service en cada incorporación a `main`, con Flyway al arrancar contra una Azure Database for PostgreSQL – Flexible Server (PostgreSQL 17). La preparación de la base y las variables de entorno están en el README. Falta publicar el cliente web. |
+| Integración continua | Implementado | GitHub Actions en cada PR: el backend con `./mvnw verify`, incluidas las pruebas de integración contra un PostgreSQL de Testcontainers, y el frontend con chequeo de tipos, build, lint y pruebas. La protección de `main` exige los dos checks, `Backend` y `Frontend`: una ejecución en rojo bloquea la incorporación (RF-42). |
+| Despliegue | Implementado | El backend se publica en Azure App Service en cada incorporación a `main`, con Flyway al arrancar contra una Azure Database for PostgreSQL – Flexible Server (PostgreSQL 17). El cliente web, en Cloudflare Pages, que compila y publica cada incorporación a `main`. La preparación de la base, las variables de entorno y la verificación están en [despliegue.md](despliegue.md). |
 
 **Verificación de estado.** `GET /actuator/health` responde sin autenticación y sin detalle de
 componentes. El detalle revelaría nombres de host, esquemas y estado de las dependencias (RF-41).
