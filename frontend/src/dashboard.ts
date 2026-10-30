@@ -92,7 +92,19 @@ function rawSlices(summary: SummaryResponse, dimension: Dimension): { key: strin
   }
 }
 
+/** El color de cada categoría en el anillo, para que las tablas de movimientos usen el mismo. */
+export function categoryColors(summary: SummaryResponse): (categoryId: string) => string | undefined {
+  const colors = new Map(slices(summary, 'category').map((s) => [s.key, s.color]))
+  return (categoryId) => colors.get(categoryId)
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Si el texto es un identificador. Los de la dirección se validan antes de mandarlos al servidor. */
+export function isUuid(value: string): boolean {
+  return UUID.test(value)
+}
+
 const PAYMENT_METHODS: readonly string[] = ['Efectivo', 'Tarjeta', 'Transferencia'] satisfies PaymentMethod[]
 
 /**

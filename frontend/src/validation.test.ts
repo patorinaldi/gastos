@@ -3,6 +3,7 @@ import {
   validateEmail,
   validateHouseholdName,
   validateInvitationCode,
+  validateMerchant,
   validateName,
   validateNewPassword,
   validatePassword,
@@ -137,5 +138,23 @@ describe('validateInvitationCode', () => {
   // Se envía recortado: los espacios que trae al pegarlo no cuentan para el tope.
   it('no cuenta los espacios de alrededor', () => {
     expect(validateInvitationCode(`  ${'A'.repeat(32)}  `)).toBeUndefined()
+  })
+})
+
+describe('validateMerchant', () => {
+  it('pide el comercio', () => {
+    expect(validateMerchant('')).toBe('Ingresá el comercio')
+    expect(validateMerchant('   ')).toBe('Ingresá el comercio')
+    expect(validateMerchant('Carrefour')).toBeUndefined()
+  })
+
+  it('admite hasta 200 caracteres', () => {
+    expect(validateMerchant('a'.repeat(200))).toBeUndefined()
+    expect(validateMerchant('a'.repeat(201))).toMatch(/hasta 200/)
+  })
+
+  it('rechaza los caracteres invisibles, como el backend', () => {
+    expect(validateMerchant('Carre\u200bfour')).toMatch(/invisibles/)
+    expect(validateMerchant('\u200b')).toMatch(/invisibles/)
   })
 })

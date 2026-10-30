@@ -9,3 +9,17 @@ export const SECTIONS = [
 
 /** Alta de un gasto: la acción principal de la app (RNF-14). */
 export const NEW_EXPENSE_PATH = '/expenses/new'
+/**
+ * A dónde vuelve una pantalla al terminar: la que la abrió, si pasó su dirección en el estado de la
+ * navegación (`state={{ back: '/expenses?month=2026-09' }}`), o `fallback`. Solo acepta direcciones
+ * de esta app: el estado lo puede armar cualquier enlace, y "//otro.sitio" llevaría afuera.
+ */
+export function backPath(state: unknown, fallback: string): string {
+  if (typeof state === 'object' && state !== null && 'back' in state && typeof state.back === 'string') {
+    const back = state.back
+    if (back.startsWith('/') && !back.startsWith('//')) {
+      return back
+    }
+  }
+  return fallback
+}

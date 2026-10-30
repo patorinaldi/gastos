@@ -128,6 +128,10 @@
   --sidebar-width: 308px;
   --content-max-width: 960px;
   --auth-card-max-width: 400px;
+  /* El formulario de un gasto: más ancho que una línea de texto no ayuda a leerlo. */
+  --form-max-width: 560px;
+  /* Lo mínimo que ocupa cada filtro del listado de movimientos antes de pasar a la línea siguiente. */
+  --filter-min-width: 150px;
 
   /* Tablero */
   --month-bars-height: 46px;

@@ -51,6 +51,7 @@
 }
 
 .row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -78,6 +79,18 @@
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* El enlace a la edición se estira sobre toda la fila: se toca en cualquier parte, y el lector de
+   pantalla igual lo anuncia solo con el nombre del comercio. */
+.merchantLink {
+  color: inherit;
+}
+
+.merchantLink::after {
+  position: absolute;
+  inset: 0;
+  content: '';
 }
 
 .meta {

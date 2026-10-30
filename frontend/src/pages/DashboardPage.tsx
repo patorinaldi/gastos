@@ -9,7 +9,15 @@ import { RecentExpenses } from '../components/dashboard/RecentExpenses.tsx'
 import { PageHeader } from '../components/layout/PageHeader.tsx'
 import { SidebarContent } from '../layouts/SidebarSlot.tsx'
 import { EmptyState, ErrorState, LoadingState } from '../components/states/States.tsx'
-import { focusFilter, monthSeries, parseFocus, slices, type Dimension, type Focus } from '../dashboard.ts'
+import {
+  categoryColors,
+  focusFilter,
+  monthSeries,
+  parseFocus,
+  slices,
+  type Dimension,
+  type Focus,
+} from '../dashboard.ts'
 import { formatMoneyParts, formatMonth } from '../format.ts'
 import { DESKTOP, useMediaQuery } from '../hooks/useMediaQuery.ts'
 import { useRequest } from '../hooks/useRequest.ts'
@@ -165,6 +173,9 @@ export function DashboardPage() {
                 title={`Movimientos de ${title}`}
                 page={expenses.data}
                 categoryColor={categoryColors(summary.data)}
+                // Los filtros del tablero se llaman igual que los del listado: "Ver todos" abre los
+                // mismos movimientos, completos.
+                allLink={searchParams.size > 0 ? `/expenses?${searchParams}` : '/expenses'}
               />
             )}
           </div>
@@ -176,12 +187,6 @@ export function DashboardPage() {
 
 function periodTitle(period: Period): string {
   return period.kind === 'month' ? formatMonth(period.month) : String(period.year)
-}
-
-/** El color de cada categoría en el anillo, para que la tabla de movimientos use el mismo. */
-function categoryColors(summary: SummaryResponse): (categoryId: string) => string | undefined {
-  const colors = new Map(slices(summary, 'category').map((s) => [s.key, s.color]))
-  return (categoryId) => colors.get(categoryId)
 }
 
 interface TotalProps {

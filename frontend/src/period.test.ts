@@ -10,6 +10,7 @@ import {
   periodParams,
   periodRange,
   shiftMonth,
+  today,
 } from './period.ts'
 
 describe('currentMonth', () => {
@@ -22,6 +23,14 @@ describe('currentMonth', () => {
     expect(currentMonth(new Date('2026-11-01T01:00:00Z'))).toBe('2026-10')
     expect(currentMonth(new Date('2027-01-01T02:59:59Z'))).toBe('2026-12')
     expect(currentMonth(new Date('2027-01-01T03:00:00Z'))).toBe('2027-01')
+  })
+})
+
+describe('today', () => {
+  it('decide el día en la hora de Argentina, aunque en UTC ya sea el siguiente', () => {
+    expect(today(new Date('2026-10-15T12:00:00Z'))).toBe('2026-10-15')
+    expect(today(new Date('2026-11-01T02:59:59Z'))).toBe('2026-10-31')
+    expect(today(new Date('2026-11-01T03:00:00Z'))).toBe('2026-11-01')
   })
 })
 
