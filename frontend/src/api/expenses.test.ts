@@ -108,3 +108,27 @@ describe('categorías', () => {
     expect(lastRequest()).toMatchObject({ url: 'http://localhost:8080/api/categories', method: 'GET' })
   })
 })
+
+describe('reglas', () => {
+  it('crea una regla con el patrón tal como se escribió', async () => {
+    const { createCategoryRule } = await load()
+    const created = { id: ID, pattern: 'almacen de pepe', categoryId: ID, reclassified: 7 }
+    fetchMock.mockResolvedValue(Response.json(created, { status: 201 }))
+
+    await expect(createCategoryRule({ pattern: 'Almacén de Pepe', categoryId: ID })).resolves.toEqual(created)
+    expect(lastRequest()).toMatchObject({
+      url: 'http://localhost:8080/api/category-rules',
+      method: 'POST',
+      body: { pattern: 'Almacén de Pepe', categoryId: ID },
+      authorization: 'Bearer token-de-prueba',
+    })
+  })
+
+  it('un patrón repetido trae el detalle del servidor', async () => {
+    const { createCategoryRule } = await load()
+    const detail = 'Ya existe una regla con ese patrón, para la categoría «Supermercado».'
+    fetchMock.mockResolvedValue(Response.json({ detail }, { status: 409 }))
+
+    await expect(createCategoryRule({ pattern: 'carrefour', categoryId: ID })).rejects.toMatchObject({ status: 409, detail })
+  })
+})
