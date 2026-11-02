@@ -9,8 +9,8 @@
 # siempre y deja la PR sin poder incorporarse.
 #
 # Este archivo no bloquea nada por sí solo: que una PR con las pruebas en rojo no se pueda mergear
-# depende de marcar estos dos checks como obligatorios en la protección de la rama main, que se
-# configura en GitHub y necesita permisos de administración del repositorio.
+# depende de que estos dos checks sean obligatorios en la protección de la rama main. Ya lo son, y
+# esa protección se configura en GitHub, con permisos de administración del repositorio.
 #
 # En cada incorporación a main, si pasan los dos trabajos, un tercero despliega el backend en Azure
 # App Service: el mismo jar que se acaba de probar, no uno compilado de nuevo.

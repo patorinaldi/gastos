@@ -33,7 +33,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
 | M6 API de integración | Juan | Captura rápida implementada, con normalización de importes y autenticación por token de cliente máquina |
 | M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; pantalla del hogar; alta, edición y baja de gastos, listado de movimientos con filtros y bandeja de no categorizados con creación de reglas; el resto de las pantallas pendiente |
-| M8 Plataforma y calidad | Pato | Migraciones, aislamiento y entidades implementados |
+| M8 Plataforma y calidad | Pato | Migraciones, aislamiento, entidades, integración continua y despliegue implementados |
 
 ---
 
@@ -770,7 +770,7 @@ RNF-25, RNF-27, RNF-28.
 | Baja lógica | Implementado | Marca de baja (`active`, `deleted_at`) en gastos y categorías, con un check que impide que se contradigan. El borrado por JPA es una baja lógica. Los gastos dados de baja quedan fuera de todas las consultas; las categorías, solo de las que las ofrecen, y sus reglas se eliminan. Índice único parcial para que un nombre dado de baja no siga ocupando el suyo. |
 | Manejo global de errores | Implementado | Los errores de los controladores y de la validación, y los 401 y 403 que responde la cadena de seguridad antes de llegar a un controlador, salen como `problem+json` con el mismo formato. La cadena conserva además el header `WWW-Authenticate`. Los errores no previstos, como una violación de integridad que el servicio no tradujo, los reenvía el contenedor a `/error`, que responde un 500 con el mismo formato y un mensaje para el usuario, sin detalle técnico (RNF-17). La excepción queda en el log, sin los valores que informa la base (RNF-09). |
 | Integración continua | Implementado | GitHub Actions en cada PR: el backend con `./mvnw verify`, incluidas las pruebas de integración contra un PostgreSQL de Testcontainers, y el frontend con chequeo de tipos, build, lint y pruebas. La protección de `main` exige los dos checks, `Backend` y `Frontend`: una ejecución en rojo bloquea la incorporación (RF-42). |
-| Despliegue | Implementado | El backend se publica en Azure App Service en cada incorporación a `main`, con Flyway al arrancar contra una Azure Database for PostgreSQL – Flexible Server (PostgreSQL 17). El cliente web, en Cloudflare Pages, que compila y publica cada incorporación a `main`. La preparación de la base, las variables de entorno y la verificación están en [despliegue.md](despliegue.md). |
+| Despliegue | Implementado | El backend se publica en Azure App Service en cada incorporación a `main`, con Flyway al arrancar contra una Azure Database for PostgreSQL – Flexible Server (PostgreSQL 17). El cliente web se publica en Cloudflare Pages, que compila y publica cada incorporación a `main`. La preparación de la base, las variables de entorno y la verificación están en [despliegue.md](despliegue.md). |
 
 **Verificación de estado.** `GET /actuator/health` responde sin autenticación y sin detalle de
 componentes. El detalle revelaría nombres de host, esquemas y estado de las dependencias (RF-41).
