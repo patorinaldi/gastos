@@ -24,7 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code error}, {@code path}) o con una página HTML.
  *
  * <p>Nunca lee la excepción: su mensaje puede nombrar tablas, columnas o valores (RNF-17). Queda en
- * el log, que la escribe el contenedor antes de reenviar la petición.
+ * el log, que la escribe el contenedor antes de reenviar la petición, y sin los valores que informa
+ * la base, que {@code logServerErrorDetail} deja afuera (RNF-09).
  */
 @RestController
 class ProblemDetailErrorController implements ErrorController {
@@ -33,9 +34,9 @@ class ProblemDetailErrorController implements ErrorController {
 
     /**
      * Un 4xx llega acá solo si alguien lo respondió con {@code sendError}, sin pasar por un handler:
-     * no es inesperado, pero tampoco se sabe qué corregir.
+     * no es inesperado, pero tampoco se sabe qué corregir, y puede no tener que ver con los datos.
      */
-    static final String CLIENT_DETAIL = "No pudimos atender el pedido. Revisá los datos e intentá de nuevo.";
+    static final String CLIENT_DETAIL = "No pudimos atender el pedido. Intentá de nuevo.";
 
     // Sin el Content-Type fijo, Spring negociaría el formato con el Accept de la petición, y a un
     // navegador que pide HTML no tendría cómo responderle.

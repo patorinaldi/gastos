@@ -2,6 +2,7 @@ package io.github.patorinaldi.gastos.api.web;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.patorinaldi.gastos.api.AuthTestSupport;
+import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URI;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
@@ -91,6 +93,29 @@ class UnexpectedErrorTest extends AuthTestSupport {
         assertThat(response.body()).doesNotContain(INTERNAL).doesNotContain("DataIntegrityViolation");
     }
 
+    // Un filtro corre antes de Spring MVC: ningún handler llega a ver lo que lanza.
+    @Test
+    void unaExcepcionEnUnFiltroRespondeElMismoProblemDetail() throws Exception {
+        HttpResponse<String> response = get(ProbeConfiguration.FAILING_FILTER, MediaType.APPLICATION_JSON_VALUE);
+
+        assertThat(response.statusCode()).isEqualTo(500);
+        assertThat(contentType(response)).startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        assertThat(JsonPath.<String>read(response.body(), "$.detail")).isEqualTo(ProblemDetailErrorController.DETAIL);
+        assertThat(JsonPath.<String>read(response.body(), "$.instance")).isEqualTo(ProbeConfiguration.FAILING_FILTER);
+        assertThat(response.body()).doesNotContain(INTERNAL).doesNotContain("IllegalStateException");
+    }
+
+    // Sin reenvío del contenedor no hay estado de error ni ruta original: Spring informa la pedida.
+    @Test
+    void unPedidoDirectoAErrorRespondeUn500() throws Exception {
+        HttpResponse<String> response = get("/error", MediaType.APPLICATION_JSON_VALUE);
+
+        assertThat(response.statusCode()).isEqualTo(500);
+        assertThat(contentType(response)).startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        assertThat(JsonPath.<String>read(response.body(), "$.detail")).isEqualTo(ProblemDetailErrorController.DETAIL);
+        assertThat(JsonPath.<String>read(response.body(), "$.instance")).isEqualTo("/error");
+    }
+
     // Como en la cadena de seguridad, el formato no se negocia con el Accept: un navegador que pide
     // HTML recibe igual el problem+json, y no la página de error de Spring Boot.
     @Test
@@ -145,9 +170,21 @@ class UnexpectedErrorTest extends AuthTestSupport {
     @TestConfiguration
     static class ProbeConfiguration {
 
+        static final String FAILING_FILTER = "/api/probe/filter";
+
         @Bean
         FailingProbe failingProbe() {
             return new FailingProbe();
+        }
+
+        @Bean
+        FilterRegistrationBean<Filter> failingFilter() {
+            Filter filter = (request, response, chain) -> {
+                throw new IllegalStateException(INTERNAL);
+            };
+            FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(filter);
+            registration.addUrlPatterns(FAILING_FILTER);
+            return registration;
         }
     }
 
