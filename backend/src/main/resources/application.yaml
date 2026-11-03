@@ -13,6 +13,11 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gastos}
     username: ${DB_API_USERNAME:gastos_api}
     password: ${DB_API_PASSWORD:gastos_api}
+    # Sin esto, los errores de PostgreSQL traen los valores de la fila (el correo repetido, por
+    # ejemplo) e Hibernate los escribe en el log. La restricción violada se sigue informando.
+    hikari:
+      data-source-properties:
+        logServerErrorDetail: false
   flyway:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gastos}
     user: ${DB_ADMIN_USERNAME:gastos}

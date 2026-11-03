@@ -100,7 +100,7 @@ sacrificable), `Podría` (deseable).
 | ID | Requisito | Prioridad | Estado |
 |---|---|---|---|
 | RF-39 | El sistema debe versionar el esquema de base de datos mediante migraciones y aplicarlas automáticamente al arrancar. | Debe | Implementado |
-| RF-40 | El sistema debe devolver los errores de la API en un formato estandarizado y resuelto de forma centralizada. | Debe | Pendiente |
+| RF-40 | El sistema debe devolver los errores de la API en un formato estandarizado y resuelto de forma centralizada. | Debe | Implementado |
 | RF-41 | El sistema debe exponer un punto de verificación de estado que no requiera autenticación ni revele detalle interno. | Debe | Implementado |
 | RF-42 | El sistema debe ejecutar la batería de pruebas en cada incorporación de cambios y bloquear la incorporación si falla. | Debe | Pendiente |
 

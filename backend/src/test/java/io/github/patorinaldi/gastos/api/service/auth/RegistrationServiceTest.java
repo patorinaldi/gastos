@@ -11,7 +11,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,6 +63,20 @@ class RegistrationServiceTest extends AuthTestSupport {
         // revirtiera, quedaría acá, sin ningún integrante.
         assertThat(hogaresDe("Otra")).isZero();
         assertThat(hogaresDe("Ana")).isEqualTo(1);
+    }
+
+    // Hibernate registra el error de la base antes de que el servicio lo traduzca. Tiene que nombrar
+    // la restricción, que es lo que sirve para diagnosticar, pero no el correo que la violó.
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void unAltaConCorreoRepetidoNoDejaElCorreoEnElLog(CapturedOutput output) {
+        String email = uniqueEmail("ana");
+        service.create(nombre("Ana"), email, HASH);
+
+        assertThatThrownBy(() -> service.create(nombre("Otra"), email, HASH))
+                .isInstanceOf(EmailAlreadyRegisteredException.class);
+
+        assertThat(output.getOut()).contains("users_email_key").doesNotContainIgnoringCase(email);
     }
 
     // Solo la violación de users_email_key es "correo repetido". Un nombre de más de 200
