@@ -75,22 +75,31 @@ interface ErrorStateProps {
    */
   message?: string
   onRetry?: () => void
+  /** Solo cuando el error ocupa toda la pantalla, como el de una pantalla que no se pudo mostrar. */
+  title?: string
+  /** Como en EmptyState: un párrafo dentro de una pantalla con PageHeader, su h1 si es toda la pantalla. */
+  titleAs?: 'p' | 'h1' | 'h2'
+  retryLabel?: string
 }
 
 export function ErrorState({
   message = 'No pudimos cargar esta información. Revisá tu conexión e intentá de nuevo.',
   onRetry,
+  title,
+  titleAs: Title = 'p',
+  retryLabel = 'Reintentar',
 }: ErrorStateProps) {
   return (
     <div className={styles.state} role="alert">
       <span className={`${styles.icon} ${styles.errorIcon}`} aria-hidden="true">
         !
       </span>
+      {title && <Title className={styles.title}>{title}</Title>}
       <p className={styles.description}>{message}</p>
       {onRetry && (
         <div className={styles.action}>
           <Button variant="secondary" onClick={onRetry}>
-            Reintentar
+            {retryLabel}
           </Button>
         </div>
       )}
