@@ -66,7 +66,8 @@ class EndpointIsolationInventoryTest extends IntegrationTest {
             entry("GET /api/expenses/monthly", "web.AnalysisTest"),
             entry("GET /api/expenses/merchants", "web.AnalysisTest"),
 
-            entry("POST /api/capture", "web.CaptureTest"));
+            entry("POST /api/capture", "web.CaptureTest"),
+            entry("GET /api/capture/connection", "web.CaptureTest"));
 
     /** Punto de acceso → por qué no opera sobre un hogar existente. */
     private static final Map<String, String> SIN_HOGAR = Map.of(

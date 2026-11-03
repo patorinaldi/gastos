@@ -641,26 +641,38 @@ Requisitos: RF-30 a RF-32. Reglas: RN-06, RN-07, RN-17, RN-18.
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
 | `POST` | `/api/capture` | Captura rápida de un gasto. | Token de cliente máquina |
+| `GET` | `/api/capture/connection` | Verificación del token, sin registrar nada. | Token de cliente máquina |
 
-Contrato:
+Contratos:
 
 ```
 POST /api/capture
   Authorization: Token <token de cliente máquina>
   { "amount": "1.234,56", "merchant": "Carrefour", "paymentMethod": "Tarjeta" }
-  → 201 { "id": "...", "amount": "1234.56", "merchant": "Carrefour", "categoryId": "...",
+  → 201 { "id": "...", "amount": "1234.56", "merchant": "Carrefour", "categoryName": "Supermercado",
           "expenseDate": "2026-10-29" }
   → 400 importe que no se puede interpretar sin ambigüedad, o comercio vacío o inválido
   → 401 token inexistente, revocado, de un hogar que su dueño dejó o archivado
   → 403 con una sesión web en lugar de un token de cliente máquina
+
+GET /api/capture/connection
+  Authorization: Token <token de cliente máquina>
+  → 200 { "ownerName": "Ana", "householdName": "Casa Rivoira" }
+  → 401 y 403 como la captura
 ```
+
+La verificación la pide el cliente al configurar el token: confirma que sirve, y a qué hogar
+quedó conectado, sin registrar un gasto de prueba. Como toda petición con token, registra su
+último uso.
 
 El gasto queda en el hogar del token, a nombre de su dueño y con la fecha de hoy en la hora de
 Argentina, igual que un alta desde la interfaz. `paymentMethod` es opcional y por defecto es
 `Tarjeta`: la captura sale de notificaciones del banco, que son de compras con tarjeta o de
 transferencias. La categoría la resuelve el mismo motor de reglas que el alta (RN-17), así que una
 captura y un gasto cargado a mano con el mismo comercio quedan en la misma categoría, y sin regla
-que coincida el gasto queda en la bandeja. El comercio también llega como se leyó de la
+que coincida el gasto queda en la bandeja. La respuesta trae la categoría por su nombre y no por su
+identificador, porque el token no habilita a pedir las categorías para traducirlo; sin categoría,
+el nombre falta. El comercio también llega como se leyó de la
 notificación: antes de validarlo se reducen los saltos de línea, los espacios duros y los espacios
 repetidos a uno solo, con el mismo criterio con el que el análisis agrupa los comercios.
 
@@ -673,7 +685,7 @@ equivocado.
 
 **Decisión de diseño.** El canal de autenticación es propio y distinto del de la sesión web. El
 token es de larga duración, se guarda en un dispositivo y se puede revocar individualmente sin
-afectar la sesión de la persona. Solo habilita este punto de entrada, no el resto de la API: en
+afectar la sesión de la persona. Solo habilita los puntos de entrada de M6, no el resto de la API: en
 otra ruta se ignora, y la petición se rechaza por falta de sesión. Al autenticarlo, el módulo exige
 que no esté revocado y que su hogar sea el hogar actual de su dueño (RN-18), así una automatización
 no sigue cargando gastos en un hogar que su dueño dejó.

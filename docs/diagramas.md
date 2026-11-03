@@ -549,7 +549,8 @@ sequenceDiagram
     end
 ```
 
-El token solo habilita este punto de entrada. Usado contra cualquier otra ruta de la API, se
+El token solo habilita la captura y su verificación (`GET /api/capture/connection`, que confirma
+el token al configurarlo sin registrar un gasto). Usado contra cualquier otra ruta de la API, se
 ignora y la petición se rechaza por falta de sesión (HU-17). El último uso se registra al
 autenticar, aunque la captura falle después: es el dato que se muestra para decidir qué token
 revocar.
