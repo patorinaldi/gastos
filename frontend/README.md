@@ -10,7 +10,7 @@ están en el [README principal](../README.md#frontend).
 | `src/pages/` | Una pantalla por ruta |
 | `src/components/ui/` | Primitivos: `Button`, `ButtonLink`, `TextField`, `SelectField`, `Notice` |
 | `src/components/states/` | Estados de carga, vacío y error de toda pantalla que consulta el servidor (RNF-16) |
-| `src/pages/RouteErrorPage.tsx` | Lo que se ve si una pantalla falla al dibujarse, en lugar de la pantalla por defecto de React Router, que muestra el stack en inglés (RNF-17). Pide recargar, y distingue una versión vieja de la app abierta durante una publicación nueva (`src/routeError.ts`) |
+| `src/pages/RouteErrorPage.tsx` | Lo que se ve si una pantalla falla al dibujarse, en lugar de la pantalla por defecto de React Router, que muestra el stack en inglés (RNF-17). Pide recargar o volver al inicio, sin mostrar el detalle de la excepción |
 | `src/components/layout/` | Piezas de estructura de una pantalla: `PageHeader` y `Brand`, la marca que comparten los dos layouts |
 | `src/styles/` | `tokens.css` con las variables del sistema de diseño, `base.css` con el reset y el foco, y `typography.module.css` con estilos de texto compartidos |
 | `src/components/expenses/` | El formulario de un gasto, compartido por el alta y la edición, y el selector de período del listado |
