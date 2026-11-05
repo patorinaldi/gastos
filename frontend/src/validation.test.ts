@@ -7,6 +7,7 @@ import {
   validateName,
   validateNewPassword,
   validatePassword,
+  validateTokenName,
 } from './validation.ts'
 
 describe('validateName', () => {
@@ -156,5 +157,23 @@ describe('validateMerchant', () => {
   it('rechaza los caracteres invisibles, como el backend', () => {
     expect(validateMerchant('Carre\u200bfour')).toMatch(/invisibles/)
     expect(validateMerchant('\u200b')).toMatch(/invisibles/)
+  })
+})
+
+describe('validateTokenName', () => {
+  it('pide un nombre para reconocer el dispositivo', () => {
+    expect(validateTokenName('')).toMatch(/Poné un nombre/)
+    expect(validateTokenName('   ')).toMatch(/Poné un nombre/)
+    expect(validateTokenName('Atajo del teléfono')).toBeUndefined()
+  })
+
+  it('acepta hasta 100 caracteres, como el backend', () => {
+    expect(validateTokenName('a'.repeat(100))).toBeUndefined()
+    expect(validateTokenName('a'.repeat(101))).toMatch(/hasta 100/)
+  })
+
+  it('rechaza los caracteres invisibles, que harían irreconocible el token en la lista', () => {
+    expect(validateTokenName('Ata​jo')).toMatch(/invisibles/)
+    expect(validateTokenName('‮ojatA')).toMatch(/invisibles/)
   })
 })
