@@ -57,31 +57,24 @@
   color: var(--color-accent-text);
 }
 
-/* En móvil el anillo va a la izquierda de la leyenda; en el panel de escritorio, arriba y centrado. */
+/* El anillo va arriba y centrado, para que la leyenda tenga todo el ancho: en móvil, a su lado, los
+   nombres de las categorías no entraban. */
 .body {
   display: flex;
-  align-items: center;
-  gap: var(--space-5);
-}
-
-@media (min-width: 768px) {
-  .body {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-4);
-  }
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 .donut {
   position: relative;
   flex: none;
+  align-self: center;
   width: var(--donut-size);
   height: var(--donut-size);
 }
 
 @media (min-width: 768px) {
   .donut {
-    align-self: center;
     width: var(--donut-size-desktop);
     height: var(--donut-size-desktop);
   }

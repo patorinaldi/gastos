@@ -15,7 +15,7 @@ interface DonutProps {
  * Ocupa la caja que le da el CSS del contenedor (`--donut-size`), y los radios van en porcentaje: el
  * tamaño se define en un solo lugar.
  *
- * Es solo la parte visual. La leyenda de al lado tiene los mismos datos y los mismos clics como
+ * Es solo la parte visual. La leyenda de abajo tiene los mismos datos y los mismos clics como
  * botones, que es lo que usan el teclado y el lector de pantalla; por eso el anillo queda oculto para
  * ellos y sin la capa de accesibilidad de Recharts.
  */
