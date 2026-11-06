@@ -32,6 +32,8 @@ backend/     API REST en Spring Boot, organizada por capas, con sus pruebas y la
              migraciones versionadas del esquema
 frontend/    Cliente web (React + TypeScript + Vite), build estático apto para CDN
 docs/        Documentación técnica e informes de todas las entregas
+integraciones/ios/
+             El atajo de iPhone que registra los pagos con Apple Pay
 .github/     Canalizaciones de integración y despliegue continuo
 ```
 
@@ -206,6 +208,15 @@ Lo mínimo para tener presente:
 - **Las variables nuevas se cargan antes de desplegar el código que las lee.**
 - **`WEB_URL`, `CORS_ALLOWED_ORIGINS` y la `VITE_API_URL` del cliente web tienen que coincidir**
   con las direcciones reales de las dos partes.
+
+---
+
+## Atajo de iPhone
+
+Un atajo de iOS registra un gasto cada vez que se paga con Apple Pay, a través de la captura rápida
+de la API y un token emitido desde **Hogar → Automatizaciones**. La instalación, el uso y las
+limitaciones están en [docs/atajo.md](docs/atajo.md), y el archivo, en
+[`integraciones/ios/`](integraciones/ios/).
 
 ---
 
