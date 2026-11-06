@@ -1,7 +1,8 @@
 /*
  * Dos disposiciones sobre el mismo marcado (M7): en móvil, barra superior con menú, contenido y la
- * acción fija abajo; desde 768 px, barra superior con las secciones y las acciones, y debajo el
- * contenido, con la barra lateral de la pantalla si tiene una. Lo decide CSS, no JavaScript, así no
+ * acción fija abajo; desde 768 px, barra superior con las secciones y "Cerrar sesión", debajo el
+ * contenido, con la barra lateral de la pantalla si tiene una, y la acción en una barra fija abajo,
+ * centrada. Lo decide CSS, no JavaScript, así no
  * hay un parpadeo de la disposición equivocada al cargar.
  */
 
@@ -126,9 +127,39 @@
 
 @media (min-width: 768px) {
   .menuButton,
-  .mobileNav,
-  .actionbar {
+  .mobileNav {
     display: none;
+  }
+
+  /* La misma barra fija de móvil, con su propio lugar abajo: el contenido nunca queda debajo. Sin
+     línea arriba: es parte de la página, no un panel aparte. El botón va centrado, con el ancho de
+     su texto en lugar de todo el ancho. */
+  .actionbar {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-1) var(--space-8);
+    border-top: none;
+  }
+
+  .actionbar a {
+    width: auto;
+    padding: 0 var(--space-6);
+  }
+
+  /* Con barra lateral, como en el tablero, el tramo de abajo continúa su fondo y su borde. El botón
+     sigue en el medio de la ventana, igual que en las pantallas sin barra lateral. */
+  .shell:has(.sidebar:not(:empty)) .actionbar {
+    background: linear-gradient(
+      to right,
+      var(--color-surface-sunken) calc(var(--sidebar-width) - var(--border-width)),
+      var(--color-divider) calc(var(--sidebar-width) - var(--border-width)) var(--sidebar-width),
+      var(--color-surface) var(--sidebar-width)
+    );
+  }
+
+  /* La barra lateral termina donde empieza la de abajo, para que esta no le tape lo último. */
+  .shell:has(.actionbar) .sidebar {
+    height: calc(100dvh - var(--topbar-height) - var(--control-height-lg) - var(--space-1) * 2);
   }
 
   .topbarRow {
