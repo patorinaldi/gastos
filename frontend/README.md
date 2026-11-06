@@ -80,6 +80,13 @@ lo genera: queda en el estado de la pantalla y en ningún otro lado, ni en la di
 recién la confirmación lo canjea con `confirm: true`. Al cambiarse de hogar no se pide otro token: la
 pantalla vuelve a pedir el hogar y los integrantes.
 
+La misma pantalla tiene los tokens de las automatizaciones de quien la mira
+(`components/household/MachineTokens.tsx`, RF-07): emitir uno para un atajo del teléfono, que carga
+gastos por la captura rápida, ver los que hay con su último uso, y revocarlos. Emitirlo pide la
+contraseña actual, y el token en claro se muestra una sola vez, como el código de invitación, junto
+con la dirección y el encabezado que necesita el atajo. La contraseña se borra del formulario después
+de cada intento.
+
 ## Gastos
 
 El alta (`/expenses/new`) pide solo importe y comercio; la fecha, el medio de pago y la categoría

@@ -3,6 +3,7 @@ import { getHousehold, listMembers } from '../api/household.ts'
 import { HouseholdNameForm } from '../components/household/HouseholdNameForm.tsx'
 import { InviteMember } from '../components/household/InviteMember.tsx'
 import { JoinHousehold } from '../components/household/JoinHousehold.tsx'
+import { MachineTokens } from '../components/household/MachineTokens.tsx'
 import { MemberList } from '../components/household/MemberList.tsx'
 import { PageHeader } from '../components/layout/PageHeader.tsx'
 import { EmptyState, ErrorState, LoadingState } from '../components/states/States.tsx'
@@ -13,7 +14,8 @@ import type { HouseholdResponse, RedeemInvitationResponse } from '../types/api.t
 import styles from './HouseholdPage.module.css'
 
 /**
- * El hogar (RF-38): sus integrantes, invitar a alguien, el nombre, y unirse a otro con un código.
+ * El hogar (RF-38): sus integrantes, invitar a alguien, el nombre, unirse a otro con un código, y los
+ * tokens de las automatizaciones de quien lo mira (RF-07).
  *
  * Cambiarse de hogar no pide un token nuevo: el servidor resuelve el hogar en cada petición (RN-18),
  * así que alcanza con volver a pedir el hogar y sus integrantes. Cada bloque se monta de nuevo con el
@@ -108,6 +110,11 @@ export function HouseholdPage() {
 
         <Section title="Unirte a otro hogar">
           <JoinHousehold key={current.id} onJoined={onJoined} />
+        </Section>
+
+        {/* Los tokens son de cada persona, pero de su hogar actual: al cambiarse, se revocan. */}
+        <Section title="Automatizaciones">
+          <MachineTokens key={current.id} />
         </Section>
       </div>
     </>

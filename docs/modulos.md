@@ -32,7 +32,7 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | M4 Categorización | Elian | Catálogo, motor de reglas en el alta, bandeja y reglas con reclasificación implementados; en el cliente web, la bandeja con la creación de reglas implementada, y las pantallas del catálogo de categorías y del listado de reglas pendientes |
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
 | M6 API de integración | Juan | Captura rápida implementada, con normalización de importes y autenticación por token de cliente máquina |
-| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; pantalla del hogar; alta, edición y baja de gastos, listado de movimientos con filtros y bandeja de no categorizados con creación de reglas; el resto de las pantallas pendiente |
+| M7 Interfaz de usuario | Elian, Pato | Sistema de diseño, shell y pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; pantalla del hogar, con los tokens de las automatizaciones; alta, edición y baja de gastos, listado de movimientos con filtros y bandeja de no categorizados con creación de reglas; el resto de las pantallas pendiente |
 | M8 Plataforma y calidad | Pato | Migraciones, aislamiento, entidades, integración continua y despliegue implementados |
 
 ---

@@ -101,6 +101,25 @@ export function validateNewPassword(password: string): string | undefined {
   return undefined
 }
 
+const TOKEN_NAME_MAX_LENGTH = 100
+
+/**
+ * El nombre de un token de cliente máquina (CreateMachineTokenRequest): sirve para reconocer el
+ * dispositivo al revocarlo, así que no puede verse vacío ni tener caracteres invisibles.
+ */
+export function validateTokenName(name: string): string | undefined {
+  if (name.trim() === '') {
+    return 'Poné un nombre para reconocerlo, por ejemplo "Atajo del teléfono"'
+  }
+  if (name.length > TOKEN_NAME_MAX_LENGTH) {
+    return `Usá un nombre de hasta ${TOKEN_NAME_MAX_LENGTH} caracteres`
+  }
+  if (!DISPLAY_NAME.test(name)) {
+    return 'Escribí el nombre sin caracteres invisibles: a veces se cuelan al pegarlo'
+  }
+  return undefined
+}
+
 /** El comercio de un gasto: un nombre que se muestra, como el de una persona (RN-07). */
 export function validateMerchant(merchant: string): string | undefined {
   if (merchant.trim() === '') {
