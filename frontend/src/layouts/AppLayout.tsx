@@ -10,8 +10,11 @@ import { SidebarSlotContext } from './sidebarSlotContext.ts'
 /**
  * Shell de las pantallas autenticadas.
  *
- * En móvil la navegación vive en un menú desplegable y la acción de alta queda fija abajo, a un
- * toque desde cualquier pantalla (RNF-14). En escritorio las dos van en la barra superior.
+ * La acción de alta queda a un toque desde cualquier pantalla (RNF-14), y aparte de la navegación:
+ * en móvil, fija abajo y de todo el ancho; en escritorio, en la misma barra fija, centrada. En la barra
+ * superior de escritorio quedaba al lado de "Cerrar sesión", dos acciones de peso muy distinto.
+ *
+ * En móvil la navegación vive en un menú desplegable; en escritorio, en la barra superior.
  *
  * La barra lateral de escritorio es de la pantalla, no de la navegación: solo aparece si la pantalla
  * pone algo en ella, como el resumen del tablero (ver SidebarSlot). Las demás usan todo el ancho.
@@ -56,9 +59,9 @@ export function AppLayout() {
     </button>
   )
 
-  // En la barra superior de escritorio, del tamaño de un botón; en la barra fija de móvil, de todo el ancho.
-  const addExpense = (size: 'normal' | 'large') => (
-    <ButtonLink to={NEW_EXPENSE_PATH} size={size} block={size === 'large'}>
+  // El mismo botón en las dos disposiciones: el CSS de .actionbar decide si es una barra o un flotante.
+  const addExpense = (
+    <ButtonLink to={NEW_EXPENSE_PATH} size="large" block>
       <span aria-hidden="true">+</span> Añadir gasto
     </ButtonLink>
   )
@@ -71,10 +74,7 @@ export function AppLayout() {
           {/* En escritorio, las secciones y las acciones van en la misma barra. */}
           <div className={styles.desktopNav}>
             {navigation()}
-            <div className={styles.desktopActions}>
-              {logout}
-              {!addingExpense && addExpense('normal')}
-            </div>
+            <div className={styles.desktopActions}>{logout}</div>
           </div>
           <button
             ref={menuButton}
@@ -110,7 +110,7 @@ export function AppLayout() {
         </main>
       </div>
 
-      {!addingExpense && <div className={styles.actionbar}>{addExpense('large')}</div>}
+      {!addingExpense && <div className={styles.actionbar}>{addExpense}</div>}
     </div>
   )
 }
