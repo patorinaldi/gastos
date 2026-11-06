@@ -1,7 +1,11 @@
+/* La tabla decide su disposición por el ancho que le toca, no por el de la ventana: en el tablero
+   de escritorio comparte la pantalla con la barra lateral, y con 768 px de ventana le quedan menos
+   de 400. Ver la consulta de contenedor de abajo. */
 .recent {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  container-type: inline-size;
 }
 
 .header {
@@ -73,7 +77,10 @@
   min-width: 0;
 }
 
+/* Un bloque, para que el corte con puntos suspensivos funcione: en un elemento en línea, overflow no
+   recorta, y un comercio largo se dibujaría encima de la columna de al lado. */
 .merchant {
+  display: block;
   overflow: hidden;
   font-size: var(--text-md);
   font-weight: 600;
@@ -130,9 +137,11 @@
   white-space: nowrap;
 }
 
-/* ---------- escritorio: una tabla ---------- */
+/* ---------- con lugar: una tabla ---------- */
 
-@media (min-width: 768px) {
+/* Fecha, categoría, persona e importe tienen ancho fijo, unos 450 px con los espacios. Desde 600 px
+   le quedan al comercio unos 150, suficiente para leerlo; con menos, sigue la lista de arriba. */
+@container (min-width: 600px) {
   .head,
   .row {
     display: flex;
