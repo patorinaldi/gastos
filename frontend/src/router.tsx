@@ -12,6 +12,7 @@ import { LoginPage } from './pages/LoginPage.tsx'
 import { NewExpensePage } from './pages/NewExpensePage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { RegisterPage } from './pages/RegisterPage.tsx'
+import { RouteErrorPage } from './pages/RouteErrorPage.tsx'
 import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
 import { VerifyEmailPage } from './pages/VerifyEmailPage.tsx'
 
@@ -34,19 +35,29 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
     ]
   : []
 
+// Si una pantalla falla al dibujarse, React Router muestra el errorElement más cercano. Va en dos
+// niveles: el de adentro, una ruta sin dirección alrededor de las pantallas, deja a la vista el layout
+// (la navegación o la marca); el de afuera reemplaza al layout, por si falla él mismo. Sin ninguno, se
+// vería la pantalla por defecto de React Router, con el stack de la excepción en inglés (RNF-17).
 export const router = createBrowserRouter([
   {
     // Las pantallas sin sesión, y la de dirección inexistente, no llevan el shell de la app.
     element: <AuthLayout />,
+    errorElement: <RouteErrorPage standalone />,
     children: [
-      { path: '/login', element: <LoginPage /> },
-      { path: '/register', element: <RegisterPage /> },
-      { path: '/forgot-password', element: <ForgotPasswordPage /> },
-      // El enlace del correo de restablecimiento: /reset-password#token=...
-      { path: '/reset-password', element: <ResetPasswordPage /> },
-      // El enlace del correo de alta: /verify-email#token=...
-      { path: '/verify-email', element: <VerifyEmailPage /> },
-      { path: '*', element: <NotFoundPage /> },
+      {
+        errorElement: <RouteErrorPage />,
+        children: [
+          { path: '/login', element: <LoginPage /> },
+          { path: '/register', element: <RegisterPage /> },
+          { path: '/forgot-password', element: <ForgotPasswordPage /> },
+          // El enlace del correo de restablecimiento: /reset-password#token=...
+          { path: '/reset-password', element: <ResetPasswordPage /> },
+          // El enlace del correo de alta: /verify-email#token=...
+          { path: '/verify-email', element: <VerifyEmailPage /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
     ],
   },
   {
@@ -56,13 +67,19 @@ export const router = createBrowserRouter([
         <AppLayout />
       </RequireSession>
     ),
+    errorElement: <RouteErrorPage standalone />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: 'expenses', element: <ExpensesPage /> },
-      { path: 'expenses/new', element: <NewExpensePage /> },
-      { path: 'expenses/:id', element: <EditExpensePage /> },
-      { path: 'inbox', element: <InboxPage /> },
-      { path: 'household', element: <HouseholdPage /> },
+      {
+        errorElement: <RouteErrorPage />,
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: 'expenses', element: <ExpensesPage /> },
+          { path: 'expenses/new', element: <NewExpensePage /> },
+          { path: 'expenses/:id', element: <EditExpensePage /> },
+          { path: 'inbox', element: <InboxPage /> },
+          { path: 'household', element: <HouseholdPage /> },
+        ],
+      },
     ],
   },
   ...devRoutes,

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { DIMENSIONS, slices, type Dimension, type Focus } from '../../dashboard.ts'
 import { formatMoney, formatMoneyCompact } from '../../format.ts'
 import type { SummaryResponse } from '../../types/api.ts'
+import { ChartBoundary } from './ChartBoundary.tsx'
 import styles from './Breakdown.module.css'
 
 // Recharts solo lo usa este anillo: se descarga al abrir el tablero, no con el login ni el registro.
@@ -54,10 +55,13 @@ export function Breakdown({ summary, dimension, onDimension, focus, onFocus }: B
 
       <div className={styles.body}>
         <div className={styles.donut}>
-          {/* Mientras se descarga Recharts, el lugar del anillo queda reservado y vacío. */}
-          <Suspense fallback={null}>
-            <Donut slices={items} selectedKey={selectedKey} onSelect={toggle} />
-          </Suspense>
+          {/* Mientras se descarga Recharts, el lugar del anillo queda reservado y vacío. Si no se puede
+              descargar, sigue vacío y el tablero funciona con la leyenda (ver ChartBoundary). */}
+          <ChartBoundary>
+            <Suspense fallback={null}>
+              <Donut slices={items} selectedKey={selectedKey} onSelect={toggle} />
+            </Suspense>
+          </ChartBoundary>
           {/* Abreviado, para que entre en el centro: el total exacto está arriba, en el resumen, y por
               eso esta copia queda oculta para el lector de pantalla. */}
           <p className={styles.hole} aria-hidden="true">

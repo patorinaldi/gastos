@@ -1,0 +1,14 @@
+/* Sin layout alrededor: el mismo fondo y los mismos márgenes que la página de AuthLayout. */
+.standalone {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-8) var(--gutter);
+  background: var(--color-surface-sunken);
+}
+
+.home {
+  display: flex;
+  justify-content: center;
+}
