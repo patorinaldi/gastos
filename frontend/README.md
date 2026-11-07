@@ -83,9 +83,13 @@ pantalla vuelve a pedir el hogar y los integrantes.
 La misma pantalla tiene los tokens de las automatizaciones de quien la mira
 (`components/household/MachineTokens.tsx`, RF-07): emitir uno para un atajo del teléfono, que carga
 gastos por la captura rápida, ver los que hay con su último uso, y revocarlos. Emitirlo pide la
-contraseña actual, y el token en claro se muestra una sola vez, como el código de invitación, junto
-con la dirección y el encabezado que necesita el atajo. La contraseña se borra del formulario después
-de cada intento.
+contraseña actual, y el token en claro se muestra una sola vez, como el código de invitación, solo
+para copiarlo: la dirección y el encabezado ya los trae el atajo, y para otra automatización están en
+[docs/atajo.md](../docs/atajo.md). La contraseña se borra del formulario después de cada intento.
+
+La sección es también la guía del atajo de iPhone ([docs/atajo.md](../docs/atajo.md)): cuatro pasos
+numerados, con el formulario de emisión en el segundo, y dos capturas de la app Atajos en
+`src/assets/atajo/`, que se cargan recién al llegar a ellas (`loading="lazy"`).
 
 ## Gastos
 

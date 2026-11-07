@@ -14,6 +14,7 @@ Documentación técnica e informes de todas las entregas del proyecto **Gastos**
 | [historias-de-usuario.md](historias-de-usuario.md) | Las 20 historias (INVEST) con criterios de aceptación en formato Given-When-Then. |
 | [trazabilidad.md](trazabilidad.md) | Matrices que relacionan requisitos, historias, casos de uso, reglas de negocio y tablas de la base de datos. |
 | [despliegue.md](despliegue.md) | Guía de despliegue: variables de entorno, primer despliegue, verificación y problemas frecuentes. |
+| [atajo.md](atajo.md) | El atajo de iPhone que registra los pagos con Apple Pay: instalación, uso, notificaciones y limitaciones. |
 | [der/](der/) | Diagrama entidad-relación completo: [código DBML](der/DER-gastos-code.md) y [diagrama exportado](der/DER-gastos.svg). |
 
 ## Entregas

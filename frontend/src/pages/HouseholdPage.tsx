@@ -113,7 +113,7 @@ export function HouseholdPage() {
         </Section>
 
         {/* Los tokens son de cada persona, pero de su hogar actual: al cambiarse, se revocan. */}
-        <Section title="Automatizaciones">
+        <Section title="Automatizaciones" wide>
           <MachineTokens key={current.id} />
         </Section>
       </div>
@@ -125,13 +125,15 @@ interface SectionProps {
   title: string
   /** Cuántos elementos tiene, cuando ya se sabe. */
   count?: number
+  /** En escritorio ocupa las dos columnas: la guía del atajo es mucho más larga que los demás bloques. */
+  wide?: boolean
   children: ReactNode
 }
 
-function Section({ title, count, children }: SectionProps) {
+function Section({ title, count, wide = false, children }: SectionProps) {
   const id = useId()
   return (
-    <section className={styles.section} aria-labelledby={id}>
+    <section className={wide ? `${styles.section} ${styles.wide}` : styles.section} aria-labelledby={id}>
       <h2 id={id} className={styles.title}>
         {title}
         {count !== undefined && <span className={styles.count}> · {count}</span>}
