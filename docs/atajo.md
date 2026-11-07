@@ -28,7 +28,9 @@ Automatizaciones**, junto al formulario para emitir el token.
 3. Ejecutar el atajo **a mano**, desde la app Atajos. Al no tener token, lo pide: propone lo que
    haya en el portapapeles. Lo comprueba contra `GET /api/capture/connection`, sin registrar ningún
    gasto, y si sirve lo guarda y avisa **"Conectado como _persona_ a _hogar_"**. Esta primera
-   ejecución no registra un gasto.
+   ejecución no registra un gasto. Después conviene copiar cualquier otra cosa: el token sigue en el
+   portapapeles hasta que se lo reemplaza, y con el Portapapeles universal de Apple pasa también
+   entre la computadora y el teléfono.
 4. En la app Atajos, ir a **Automatización**: la automatización del atajo, con el disparador de
    Wallet "Transacción", ya aparece, desactivada. Activarla.
 
@@ -67,7 +69,23 @@ de iCloud ni el archivo del repositorio lo contienen, y cada persona configura e
 Para cortar el acceso de un teléfono, se revoca su token desde **Hogar → Automatizaciones**. Cambiarse
 de hogar también revoca los tokens del hogar anterior (RN-18).
 
-## 5. Limitaciones
+## 5. Revisar el atajo
+
+El archivo está firmado y no se lee como texto en un PR. Lo que hace se puede comprobar así:
+
+- **Es el mismo archivo que el enlace.** El SHA-256 de `Gastos.shortcut` es
+  `78ccc5a1b59483d2d7a95f2204d6b5ee776431e842536aed49fd337f44af17aa`, el mismo del archivo firmado
+  que descarga el enlace de iCloud. Se comprueba con `sha256sum integraciones/ios/Gastos.shortcut`.
+- **Solo habla con la API.** Las dos acciones **Obtener contenido de URL** van por `https://` a la
+  API desplegada: `GET /api/capture/connection` para comprobar el token y `POST /api/capture` para
+  registrar el gasto. No hay otra acción que haga pedidos.
+- **Solo borra el token ante un `401`.** La única acción **Eliminar contenido almacenado** está
+  dentro de la condición de respuesta `401`. Cualquier otro error avisa y deja el token como está.
+- **Quién lo cambia.** El enlace es de la cuenta de iCloud de Patricio, y solo él puede compartir
+  una versión nueva. El enlace, el archivo y esta huella cambian en el repositorio con un PR, como
+  cualquier otro cambio (sección 8).
+
+## 6. Limitaciones
 
 - **Solo iPhone, con iOS 27 o posterior.** La app Atajos no existe en Android.
 - **Una sola moneda.** Wallet entrega el importe con el símbolo de la moneda de la tarjeta, y la API
@@ -83,7 +101,7 @@ de hogar también revoca los tokens del hogar anterior (RN-18).
 - **Apunta a la API desplegada.** La dirección está fija en las dos acciones **Obtener contenido de
   URL**. Para usarlo con otro despliegue, hay que cambiarla en las dos.
 
-## 6. Usar la API desde otra automatización
+## 7. Usar la API desde otra automatización
 
 El atajo es un cliente más de la captura rápida. Cualquier automatización que pueda hacer un
 pedido HTTP, en otro teléfono o en una computadora, puede usar el mismo token, emitido desde
@@ -105,12 +123,12 @@ Un token inválido o revocado responde `401`, y un importe que no se puede inter
 dos como `application/problem+json`, con el motivo en `detail`. El contrato completo está en
 [modulos.md](modulos.md), en M6.
 
-## 7. Actualizar el atajo
+## 8. Actualizar el atajo
 
 El enlace de iCloud y el archivo del repositorio tienen que ser el mismo atajo. Después de un
 cambio, se comparte de nuevo desde la app Atajos, y se reemplazan los dos: el enlace en esta guía y
 en la pantalla del hogar (`frontend/src/components/household/MachineTokens.tsx`), y el archivo, con
-el que descarga iCloud firmado.
+el que descarga iCloud firmado. También cambia el SHA-256 de la sección 5.
 
 La pantalla del hogar lleva además dos capturas de la app Atajos (`frontend/src/assets/atajo/`): el
 pedido del token y la automatización. Si el atajo cambia esos textos, o una versión nueva de iOS
