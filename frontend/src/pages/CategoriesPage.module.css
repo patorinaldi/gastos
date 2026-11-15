@@ -1,0 +1,78 @@
+.lede {
+  max-width: var(--form-max-width);
+  margin-top: calc(-1 * var(--space-3));
+  margin-bottom: var(--space-5);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Del ancho de los bloques que tiene debajo. */
+.status {
+  max-width: var(--form-max-width);
+}
+
+.status:has(> *) {
+  margin-bottom: var(--space-5);
+}
+
+/* Como la pantalla del hogar: en móvil, los bloques uno debajo del otro, separados por un divisor;
+   desde 768 px, cada uno en su tarjeta. Van en una sola columna, del ancho de un formulario: la lista
+   es de nombres cortos. */
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--form-max-width);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding-bottom: var(--space-6);
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.section:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.title {
+  composes: monoLabel from '../styles/typography.module.css';
+}
+
+/* Recibe el foco al dar de baja una categoría, para que no quede en el body; no es un control. */
+.title:focus {
+  outline: none;
+}
+
+.count {
+  color: var(--color-text-tertiary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+@media (min-width: 768px) {
+  .section,
+  .section:last-child {
+    padding: var(--space-5);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  /* Con la sección adelante: esta hoja se carga antes que la de monoLabel (el router importa la
+     pantalla primero), y con la misma especificidad ganaría monoLabel. */
+  .section .title {
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-md);
+    letter-spacing: normal;
+    text-transform: none;
+  }
+}

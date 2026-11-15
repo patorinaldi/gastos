@@ -107,6 +107,48 @@ describe('categorías', () => {
     await expect(listCategories()).resolves.toEqual([{ id: ID, name: 'Supermercado' }])
     expect(lastRequest()).toMatchObject({ url: 'http://localhost:8080/api/categories', method: 'GET' })
   })
+
+  it('crea una categoría con el nombre y la sesión', async () => {
+    const { createCategory } = await load()
+    fetchMock.mockResolvedValue(Response.json({ id: ID, name: 'Mascotas' }, { status: 201 }))
+
+    await expect(createCategory('Mascotas')).resolves.toEqual({ id: ID, name: 'Mascotas' })
+    expect(lastRequest()).toEqual({
+      url: 'http://localhost:8080/api/categories',
+      method: 'POST',
+      body: { name: 'Mascotas' },
+      authorization: 'Bearer token-de-prueba',
+    })
+  })
+
+  it('renombra por identificador', async () => {
+    const { renameCategory } = await load()
+    fetchMock.mockResolvedValue(Response.json({ id: ID, name: 'Animales' }))
+
+    await expect(renameCategory(ID, 'Animales')).resolves.toEqual({ id: ID, name: 'Animales' })
+    expect(lastRequest()).toMatchObject({
+      url: `http://localhost:8080/api/categories/${ID}`,
+      method: 'PATCH',
+      body: { name: 'Animales' },
+    })
+  })
+
+  it('da de baja por identificador', async () => {
+    const { deactivateCategory } = await load()
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+
+    await expect(deactivateCategory(ID)).resolves.toBeUndefined()
+    expect(lastRequest()).toMatchObject({ url: `http://localhost:8080/api/categories/${ID}`, method: 'DELETE' })
+  })
+
+  // RN-09: el nombre es único en el hogar sin distinguir mayúsculas, y el servidor dice por qué.
+  it('un nombre repetido trae el detalle del servidor', async () => {
+    const { createCategory } = await load()
+    const detail = 'Ya existe una categoría con ese nombre.'
+    fetchMock.mockResolvedValue(Response.json({ detail }, { status: 409 }))
+
+    await expect(createCategory('supermercado')).rejects.toMatchObject({ status: 409, detail })
+  })
 })
 
 describe('reglas', () => {

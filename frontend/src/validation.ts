@@ -68,6 +68,23 @@ export function validateHouseholdName(name: string): string | undefined {
 }
 
 /**
+ * El nombre de una categoría (CategoryContracts.SaveCategoryRequest): se muestra en los selectores,
+ * en el tablero y en cada gasto, así que tiene las mismas reglas que el de una persona.
+ */
+export function validateCategoryName(name: string): string | undefined {
+  if (name.trim() === '') {
+    return 'Ingresá un nombre para la categoría'
+  }
+  if (name.length > NAME_MAX_LENGTH) {
+    return `Usá un nombre de hasta ${NAME_MAX_LENGTH} caracteres`
+  }
+  if (!DISPLAY_NAME.test(name)) {
+    return 'Escribí el nombre sin caracteres invisibles: a veces se cuelan al pegarlo'
+  }
+  return undefined
+}
+
+/**
  * El código de invitación. El formato no se valida acá: el servidor acepta minúsculas, espacios y
  * guiones de más, y un código mal escrito responde lo mismo que uno vencido.
  */

@@ -2,6 +2,7 @@ import { createBrowserRouter, type RouteObject } from 'react-router'
 import { AppLayout } from './layouts/AppLayout.tsx'
 import { AuthLayout } from './layouts/AuthLayout.tsx'
 import { RequireSession } from './layouts/RequireSession.tsx'
+import { CategoriesPage } from './pages/CategoriesPage.tsx'
 import { DashboardPage } from './pages/DashboardPage.tsx'
 import { EditExpensePage } from './pages/EditExpensePage.tsx'
 import { ExpensesPage } from './pages/ExpensesPage.tsx'
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
           { path: 'expenses/new', element: <NewExpensePage /> },
           { path: 'expenses/:id', element: <EditExpensePage /> },
           { path: 'inbox', element: <InboxPage /> },
+          { path: 'categories', element: <CategoriesPage /> },
           { path: 'household', element: <HouseholdPage /> },
         ],
       },
