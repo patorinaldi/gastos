@@ -14,6 +14,7 @@ import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { RegisterPage } from './pages/RegisterPage.tsx'
 import { RouteErrorPage } from './pages/RouteErrorPage.tsx'
 import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
+import { RulesPage } from './pages/RulesPage.tsx'
 import { VerifyEmailPage } from './pages/VerifyEmailPage.tsx'
 
 // El catálogo del sistema de diseño solo existe en desarrollo. Se carga con un import dinámico
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
           { path: 'expenses/new', element: <NewExpensePage /> },
           { path: 'expenses/:id', element: <EditExpensePage /> },
           { path: 'inbox', element: <InboxPage /> },
+          { path: 'rules', element: <RulesPage /> },
           { path: 'household', element: <HouseholdPage /> },
         ],
       },
