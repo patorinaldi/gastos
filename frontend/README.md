@@ -117,6 +117,15 @@ gastos de la bandeja coincide, con la misma comparación que el backend (`src/pa
 patrón que no coincide con el comercio del grupo se rechaza: la regla se crearía y esos gastos
 seguirían ahí. Sin la regla, se clasifican solo los gastos del grupo, de a uno.
 
+## Reglas
+
+`/rules` lista las reglas del hogar (`components/rules/`, RF-43), agrupadas por categoría y con una
+búsqueda por patrón o por categoría que compara en la forma de los patrones, sin mayúsculas ni
+tildes (`src/rules.ts`). El alta valida el patrón como la bandeja (`src/patterns.ts`), y un patrón
+repetido se marca en el campo con la categoría de la regla que ya existe y cómo cambiarla: eliminarla
+y crearla de nuevo. Eliminar pide confirmación; los gastos que la regla ya clasificó conservan su
+categoría. Como el catálogo de categorías, la lista se pide una vez y se actualiza con las respuestas.
+
 ## Pruebas
 
 `npm test` corre las pruebas con Vitest, también en CI. Corren con la zona horaria de Buenos
