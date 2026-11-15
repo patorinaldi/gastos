@@ -5,6 +5,7 @@ export const SECTIONS = [
   { to: '/expenses', label: 'Movimientos', end: true },
   { to: '/inbox', label: 'Bandeja', end: false },
   { to: '/categories', label: 'Categorías', end: false },
+  { to: '/rules', label: 'Reglas', end: false },
   { to: '/household', label: 'Hogar', end: false },
 ] as const
 
