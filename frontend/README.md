@@ -117,6 +117,15 @@ gastos de la bandeja coincide, con la misma comparación que el backend (`src/pa
 patrón que no coincide con el comercio del grupo se rechaza: la regla se crearía y esos gastos
 seguirían ahí. Sin la regla, se clasifican solo los gastos del grupo, de a uno.
 
+## Categorías
+
+`/categories` es el catálogo del hogar (`components/categories/`, RF-24): crear, renombrar y dar de
+baja. El nombre se valida como el de una persona antes de enviarlo, y uno repetido, sin distinguir
+mayúsculas, se marca en el campo con el mensaje del servidor (RN-09). La baja pide confirmación y
+dice qué pasa: se eliminan las reglas de la categoría, y sus gastos la conservan. La lista se pide
+una vez y después se actualiza con las respuestas (`src/catalog.ts`): volver a pedirla en cada
+cambio dibujaría la carga y se llevaría el foco de la fila editada.
+
 ## Pruebas
 
 `npm test` corre las pruebas con Vitest, también en CI. Corren con la zona horaria de Buenos

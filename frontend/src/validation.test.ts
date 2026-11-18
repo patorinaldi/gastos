@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  validateCategoryName,
   validateEmail,
   validateHouseholdName,
   validateInvitationCode,
@@ -175,5 +176,28 @@ describe('validateTokenName', () => {
   it('rechaza los caracteres invisibles, que harían irreconocible el token en la lista', () => {
     expect(validateTokenName('Ata​jo')).toMatch(/invisibles/)
     expect(validateTokenName('‮ojatA')).toMatch(/invisibles/)
+  })
+})
+
+describe('validateCategoryName', () => {
+  it('acepta un nombre con tildes', () => {
+    expect(validateCategoryName('Educación')).toBeUndefined()
+    expect(validateCategoryName('Mascotas 🐾')).toBeUndefined()
+  })
+
+  it('pide un nombre que no sea solo espacios', () => {
+    expect(validateCategoryName('')).toBe('Ingresá un nombre para la categoría')
+    expect(validateCategoryName('   ')).toBe('Ingresá un nombre para la categoría')
+  })
+
+  it('acepta hasta 200 caracteres, como el backend', () => {
+    expect(validateCategoryName('a'.repeat(200))).toBeUndefined()
+    expect(validateCategoryName('a'.repeat(201))).toMatch(/hasta 200/)
+  })
+
+  // Se vería igual que otra categoría en los selectores y en el tablero, sin serlo.
+  it('rechaza los caracteres invisibles', () => {
+    expect(validateCategoryName('Super​mercado')).toMatch(/invisibles/)
+    expect(validateCategoryName('‮oicivres')).toMatch(/invisibles/)
   })
 })

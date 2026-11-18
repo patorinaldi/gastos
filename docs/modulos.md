@@ -29,10 +29,10 @@ sobre el que se apoyan todos está en [modelo-de-datos.md](modelo-de-datos.md).
 | M1 Identidad y acceso | Juan (usuario), Patricio (núcleo de seguridad) | Alta de cuenta, verificación de correo, inicio de sesión, sesión, emisión, revocación y autenticación de tokens de cliente máquina y restablecimiento de contraseña implementados; en el cliente web, las pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementadas, y la de tokens de cliente máquina, en la pantalla del hogar (M7). Con `EMAIL_SENDER=console`, el alta y los enlaces por correo responden 503 |
 | M2 Hogares | Elian | Backend y pantalla del hogar implementados: integrantes, invitación, canje con confirmación y nombre |
 | M3 Gastos | Elian | Alta con categoría automática, detalle, edición, baja lógica y listado con filtros implementados; en el cliente web, las pantallas de alta, edición y baja, y el listado de movimientos con filtros, implementadas |
-| M4 Categorización | Elian | Catálogo, motor de reglas en el alta, bandeja y reglas con reclasificación implementados; en el cliente web, la bandeja con la creación de reglas implementada, y las pantallas del catálogo de categorías y del listado de reglas pendientes |
+| M4 Categorización | Elian | Catálogo, motor de reglas en el alta, bandeja y reglas con reclasificación implementados; en el cliente web, la bandeja con la creación de reglas y el catálogo de categorías implementados, y el listado de reglas pendiente |
 | M5 Análisis | Juan | Resumen, serie mensual y ranking de comercios implementados, con los filtros del listado |
 | M6 API de integración | Juan | Captura rápida implementada, con normalización de importes y autenticación por token de cliente máquina |
-| M7 Interfaz de usuario | Elian, Patricio | Sistema de diseño, shell y pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; pantalla del hogar, con los tokens de las automatizaciones y la guía del atajo de iPhone; alta, edición y baja de gastos, listado de movimientos con filtros y bandeja de no categorizados con creación de reglas; el resto de las pantallas pendiente |
+| M7 Interfaz de usuario | Elian, Patricio | Sistema de diseño, shell y pantallas de registro, inicio de sesión, confirmación de correo y restablecimiento de contraseña implementados; tablero con período, total, evolución mensual, distribución, movimientos recientes y filtrado desde los gráficos; pantalla del hogar, con los tokens de las automatizaciones y la guía del atajo de iPhone; alta, edición y baja de gastos, listado de movimientos con filtros y bandeja de no categorizados con creación de reglas; catálogo de categorías con alta, renombrado y baja; el listado de reglas pendiente |
 | M8 Plataforma y calidad | Patricio | Migraciones, aislamiento, entidades, integración continua y despliegue implementados |
 
 ---
@@ -711,6 +711,7 @@ Requisitos: RF-33 a RF-38. No funcionales: RNF-14 a RNF-17, RNF-26.
 | Tablero | Selector de período, total, gráficos de distribución y evolución, movimientos recientes y filtrado desde los gráficos (RF-34 a RF-37). |
 | Movimientos | Listado paginado con filtros combinables y alta, edición y baja de gastos. |
 | Bandeja de no categorizados | Gastos sin categoría y alta de reglas desde ahí (RF-22, RF-23). |
+| Categorías | Catálogo del hogar: alta, renombrado y baja lógica (RF-24). |
 | Hogar | Integrantes, generación y canje de códigos de invitación, ajustes (RF-38). |
 
 **Sesión.** El token del login se guarda en el navegador y dura sus 7 días (RNF-29). Sin sesión,
@@ -744,6 +745,11 @@ puede volver a pedir y quien lo tiene entra al hogar. Unirse va en dos pasos, co
 vista previa dice qué hogar es, si el actual queda archivado y cuántos tokens de cliente máquina se
 revocan, y recién la confirmación canjea el código. Cancelar no lo consume. Después del canje la
 pantalla vuelve a pedir el hogar y los integrantes; el token de sesión sigue sirviendo (RN-18).
+
+**Categorías.** Una lista por nombre, con el alta arriba. Renombrar y dar de baja se hacen en la
+fila: la baja pide confirmación y avisa que se eliminan las reglas de la categoría y que sus gastos
+la conservan (RN-16). La lista se pide una vez y se actualiza con cada respuesta del servidor, así la
+fila editada no pierde el foco; lo que cambie otro integrante se ve al volver a la pantalla.
 
 Depende de todos los módulos de la API.
 
