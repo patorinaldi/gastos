@@ -62,43 +62,32 @@ verificación llegan por correo. Conviene usar nombres que identifiquen la prueb
 | 2.16 | A | *Movimientos*: editar el gasto de `Shell` y cambiar el importe; después, eliminar otro gasto | El cambio se ve en el listado y en los totales. El eliminado deja de contar | RF-15, RF-16, RN-16 | |
 | 2.17 | A | *Tablero*: mirar el total, la distribución por categoría, persona y medio de pago, y la evolución mensual | El total es la suma de los gastos vigentes. Cada desglose suma lo mismo que el total | RF-25 a RF-27, RF-34 a RF-36 | |
 | 2.18 | A | *Tablero*: tocar una porción del anillo, y después un mes en la evolución | El resto de la pantalla se filtra por esa porción, y después pasa a ese mes | RF-29, RF-37 | |
-| 2.19 | A | Emitir un token de cliente máquina y capturar un gasto con él, con los comandos de la [sección 3](#3-captura-rápida) | La captura responde `201` con el importe normalizado (`1234.56`) y la categoría por nombre. El gasto aparece en el tablero, a nombre de A | RF-07, RF-30 a RF-32 | |
-| 2.20 | A | Revocar el token y volver a capturar | `401` | RF-07, HU-17 | |
+| 2.19 | A | *Hogar → Automatizaciones*: emitir un token con su contraseña, copiarlo y capturar un gasto con él, con los comandos de la [sección 3](#3-captura-rápida) | El token se muestra una sola vez. La captura responde `201` con el importe normalizado (`1234.56`) y la categoría por nombre. El gasto aparece en el tablero, a nombre de A, y el token, en *Tus tokens* con la fecha de su último uso | RF-07, RF-30 a RF-32, HU-17 | |
+| 2.20 | A | *Hogar → Automatizaciones*: revocar el token y volver a capturar | El token figura como revocado, y la captura responde `401` | RF-07, HU-17 | |
 | 2.21 | B | Cerrar sesión. *¿Olvidaste tu contraseña?*, abrir el enlace del correo y elegir una contraseña nueva | "Contraseña cambiada". Inicia sesión con la nueva, y la anterior ya no sirve | RF-06, HU-04 | |
 
 ## 3. Captura rápida
 
-El cliente web no tiene una pantalla para emitir tokens de cliente máquina (ver la
-[sección 4](#4-problemas-encontrados)), así que el paso 2.19 usa la API directamente. Con `API` la
-dirección de la API, y el correo y la contraseña de A:
+El token se emite y se revoca desde *Hogar → Automatizaciones* (pasos 2.19 y 2.20). La captura es
+lo que hace el atajo del iPhone en cada pago; para la prueba se llama a la API directamente, así no
+hace falta un iPhone con iOS 27. Con `API` la dirección de la API y `<gst_...>` el token copiado:
 
 ```bash
 API=https://gastos-api-rrr-d2eyhtcmcabudrgk.canadacentral-01.azurewebsites.net
 
-# 1. Iniciar sesión y guardar el token de sesión
-SESION=$(curl -s -X POST "$API/api/auth/login" -H "Content-Type: application/json" \
-  -d '{"email": "<correo de A>", "password": "<contraseña de A>"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
-
-# 2. Emitir el token de cliente máquina: pide de nuevo la contraseña
-curl -s -X POST "$API/api/auth/machine-tokens" -H "Authorization: Bearer $SESION" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Prueba E2E", "password": "<contraseña de A>"}'
-# → 201 {"id":"...","name":"Prueba E2E","token":"gst_...","createdAt":"..."}
-
-# 3. Comprobar a qué hogar conecta, sin registrar nada
+# 1. Comprobar a qué hogar conecta, sin registrar nada
 curl -s "$API/api/capture/connection" -H "Authorization: Token <gst_...>"
 
-# 4. Capturar un gasto, con el importe en formato local
+# 2. Capturar un gasto, con el importe en formato local
 curl -s -X POST "$API/api/capture" -H "Authorization: Token <gst_...>" \
   -H "Content-Type: application/json" -d '{"amount": "1.234,56", "merchant": "Carrefour"}'
-
-# 5. Revocar el token (paso 2.20), con el id que devolvió el paso 2
-curl -s -X DELETE "$API/api/auth/machine-tokens/<id>" -H "Authorization: Bearer $SESION"
 ```
+
+Después de revocar el token (paso 2.20), repetir el comando 2: tiene que responder `401`.
 
 ## 4. Problemas encontrados
 
 | # | Paso | Qué pasó | Gravedad | Estado |
 |---|---|---|---|---|
-| 4.1 | 2.19 | El cliente web no tiene una pantalla para emitir, listar ni revocar tokens de cliente máquina. La API los implementa (RF-07), pero sin la pantalla, configurar el atajo del teléfono exige usar la API directamente | Media: la HU-17 no se puede completar desde la interfaz | Abierto |
+| 4.1 | 2.19 | El cliente web no tenía una pantalla para emitir, listar ni revocar tokens de cliente máquina. La API los implementaba (RF-07), pero sin la pantalla, configurar el atajo del teléfono exigía usar la API directamente | Media: la HU-17 no se podía completar desde la interfaz | Resuelto en #68: *Hogar → Automatizaciones* emite, lista y revoca los tokens |
 | 4.2 | 1.4 | El arranque en frío superó los 60 segundos, el doble de lo que estima la guía | Baja | Abierto |
