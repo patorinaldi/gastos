@@ -30,6 +30,15 @@ describe('reglas agrupadas por categoría', () => {
     expect(groupRules(rules, ' UBÉR ').map((g) => g.rules.map((r) => r.pattern))).toEqual([['uber eats'], ['uber']])
   })
 
+  it('filtra por patrón por su clave, sin espacios ni signos, como el servidor', () => {
+    expect(groupRules(rules, 'ubereats').map((g) => g.rules.map((r) => r.pattern))).toEqual([['uber eats']])
+    expect(groupRules(rules, 'uber-eats').map((g) => g.rules.map((r) => r.pattern))).toEqual([['uber eats']])
+  })
+
+  it('una búsqueda solo de signos no coincide con todos los patrones', () => {
+    expect(groupRules(rules, '*')).toEqual([])
+  })
+
   it('filtra por categoría: muestra todas sus reglas', () => {
     expect(groupRules(rules, 'super').map((g) => [g.categoryName, g.rules.length])).toEqual([['Supermercado', 2]])
   })

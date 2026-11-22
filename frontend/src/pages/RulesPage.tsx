@@ -63,6 +63,10 @@ function RuleList({ initial, categories }: RuleListProps) {
 
   const onCreated = (rule: CategoryRuleResponse, reclassified: number) => {
     setRules((current) => [...current, rule])
+    // Si la búsqueda la dejaría afuera, se limpia para que la regla nueva se vea.
+    if (groupRules([rule], query).length === 0) {
+      setQuery('')
+    }
     const moved =
       reclassified === 0
         ? 'no había gastos de ese comercio en la bandeja.'

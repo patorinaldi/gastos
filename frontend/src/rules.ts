@@ -1,4 +1,4 @@
-import { normalizePattern } from './patterns.ts'
+import { normalizePattern, patternKey } from './patterns.ts'
 import type { CategoryRuleResponse } from './types/api.ts'
 
 /*
@@ -18,14 +18,20 @@ const collator = new Intl.Collator('es', { sensitivity: 'base' })
  * Las reglas por categoría, las categorías por nombre y las reglas de cada una por patrón.
  *
  * Con `query`, quedan las reglas cuyo patrón lo contiene y todas las de las categorías cuyo nombre lo
- * contiene. Se compara en la forma de los patrones (minúscula, sin tildes), así "Ubér" encuentra "uber".
+ * contiene. El patrón se compara por su clave, como lo compara el servidor (sin mayúsculas, tildes,
+ * espacios ni signos), así "Ubér" encuentra "uber" y "burgerking" encuentra "burger king". El nombre de
+ * la categoría, en la forma de los patrones (minúscula, sin tildes).
  */
 export function groupRules(rules: CategoryRuleResponse[], query: string): RuleGroup[] {
   const wanted = normalizePattern(query)
+  // Una búsqueda solo de signos no tiene clave: no busca por patrón, solo por nombre de categoría.
+  const wantedKey = patternKey(query)
   const groups = new Map<string, RuleGroup>()
   for (const rule of rules) {
     const shown =
-      wanted === '' || rule.pattern.includes(wanted) || normalizePattern(rule.categoryName).includes(wanted)
+      wanted === '' ||
+      (wantedKey !== '' && patternKey(rule.pattern).includes(wantedKey)) ||
+      normalizePattern(rule.categoryName).includes(wanted)
     if (!shown) {
       continue
     }

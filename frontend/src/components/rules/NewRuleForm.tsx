@@ -64,10 +64,11 @@ export function NewRuleForm({ categories, onCreated }: NewRuleFormProps) {
       patternInput.current?.focus()
     } catch (failure) {
       // Un patrón repetido (RN-10): el detalle del servidor dice a qué categoría apunta la regla que ya
-      // está, y acá se dice cómo cambiarla.
+      // está, y acá se dice cómo cambiarla. Si otro integrante la creó después de cargar la pantalla,
+      // no está en la lista hasta recargar.
       if (failure instanceof ApiError && failure.status === 409) {
         setErrors({
-          pattern: `${errorMessage(failure, 'Ya existe una regla con ese patrón.')} Para que apunte a otra, eliminá esa regla y creala de nuevo.`,
+          pattern: `${errorMessage(failure, 'Ya existe una regla con ese patrón.')} Para que apunte a otra, eliminá esa regla y creala de nuevo. Si no la ves en la lista, recargá la pantalla.`,
         })
         patternInput.current?.focus()
       } else {
