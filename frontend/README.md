@@ -126,6 +126,16 @@ dice qué pasa: se eliminan las reglas de la categoría, y sus gastos la conserv
 una vez y después se actualiza con las respuestas (`src/catalog.ts`): volver a pedirla en cada
 cambio dibujaría la carga y se llevaría el foco de la fila editada.
 
+## Reglas
+
+`/rules` lista las reglas del hogar (`components/rules/`, RF-43), agrupadas por categoría y con una
+búsqueda por patrón o por categoría que compara sin mayúsculas ni tildes, y el patrón por su clave,
+como el servidor (`src/rules.ts`). Si la regla recién creada no coincide con la búsqueda, la
+búsqueda se limpia para que se vea. El alta valida el patrón como la bandeja (`src/patterns.ts`), y un patrón
+repetido se marca en el campo con la categoría de la regla que ya existe y cómo cambiarla: eliminarla
+y crearla de nuevo. Eliminar pide confirmación; los gastos que la regla ya clasificó conservan su
+categoría. Como el catálogo de categorías, la lista se pide una vez y se actualiza con las respuestas.
+
 ## Pruebas
 
 `npm test` corre las pruebas con Vitest, también en CI. Corren con la zona horaria de Buenos

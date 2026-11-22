@@ -1,5 +1,6 @@
 import type {
   CategoryResponse,
+  CategoryRuleResponse,
   CreateCategoryRuleRequest,
   CreateCategoryRuleResponse,
   SaveCategoryRequest,
@@ -49,4 +50,17 @@ export function deactivateCategory(id: string) {
  */
 export function createCategoryRule(request: CreateCategoryRuleRequest) {
   return apiRequest<CreateCategoryRuleResponse>('/api/category-rules', { method: 'POST', body: request })
+}
+
+/** RF-43. Las reglas que aplican, las de categorías activas, por patrón. */
+export function listCategoryRules() {
+  return apiRequest<CategoryRuleResponse[]>('/api/category-rules')
+}
+
+/**
+ * RF-43. Los gastos que la regla ya clasificó conservan su categoría; los próximos de ese comercio
+ * van a la bandeja si ninguna otra regla coincide.
+ */
+export function deleteCategoryRule(id: string) {
+  return apiRequest<void>(`/api/category-rules/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }

@@ -173,4 +173,25 @@ describe('reglas', () => {
 
     await expect(createCategoryRule({ pattern: 'carrefour', categoryId: ID })).rejects.toMatchObject({ status: 409, detail })
   })
+
+  it('pide las reglas del hogar con la sesión', async () => {
+    const { listCategoryRules } = await load()
+    const rules = [{ id: ID, pattern: 'carrefour', categoryId: ID, categoryName: 'Supermercado' }]
+    fetchMock.mockResolvedValue(Response.json(rules))
+
+    await expect(listCategoryRules()).resolves.toEqual(rules)
+    expect(lastRequest()).toMatchObject({
+      url: 'http://localhost:8080/api/category-rules',
+      method: 'GET',
+      authorization: 'Bearer token-de-prueba',
+    })
+  })
+
+  it('elimina una regla por identificador', async () => {
+    const { deleteCategoryRule } = await load()
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+
+    await expect(deleteCategoryRule(ID)).resolves.toBeUndefined()
+    expect(lastRequest()).toMatchObject({ url: `http://localhost:8080/api/category-rules/${ID}`, method: 'DELETE' })
+  })
 })
